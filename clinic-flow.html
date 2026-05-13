@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ClinicAI — Flow Preview</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --sb-bg:      #0f1622;
+      --sb-border:  rgba(255,255,255,0.07);
+      --sb-text:    #7a8a9a;
+      --sb-heading: #e2e8f0;
+      --act-bg:     rgba(10,143,143,0.12);
+      --act-border: #0a8f8f;
+      --act-text:   #2dd4bf;
+      --navy:       #1a3050;
+      --teal:       #0a8f8f;
+      --viewer-bg:  #1a2035;
+      --font:       'Inter', system-ui, sans-serif;
+    }
+
+    html, body { height: 100%; overflow: hidden; font-family: var(--font); }
+
+    /* ── STUDIO LAYOUT ── */
+    .studio { display: flex; height: 100vh; }
+
+    /* ── SIDEBAR ── */
+    .sidebar {
+      width: 220px;
+      background: var(--sb-bg);
+      display: flex; flex-direction: column;
+      flex-shrink: 0;
+      border-right: 1px solid var(--sb-border);
+      overflow: hidden;
+    }
+
+    .sb-logo {
+      padding: 13px 14px;
+      border-bottom: 1px solid var(--sb-border);
+      display: flex; align-items: center; gap: 10px;
+    }
+    .sb-logo-icon {
+      width: 30px; height: 30px; background: var(--teal);
+      border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .sb-logo-name { font-size: 13px; font-weight: 700; color: #e2e8f0; }
+    .sb-logo-sub  { font-size: 10px; color: var(--sb-text); }
+
+    .sb-meta {
+      padding: 9px 14px;
+      border-bottom: 1px solid var(--sb-border);
+    }
+    .sb-tag  { font-size: 9px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #3a4a5e; }
+    .sb-cnt  { font-size: 12px; color: var(--sb-text); margin-top: 2px; }
+
+    .sb-list { flex: 1; overflow-y: auto; padding: 6px 0; }
+
+    .sb-group {
+      padding: 8px 14px 3px;
+      font-size: 9px; font-weight: 700;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      color: #2d3a4a;
+    }
+
+    .sb-item {
+      display: flex; align-items: center; gap: 9px;
+      padding: 7px 14px;
+      cursor: pointer;
+      border-left: 3px solid transparent;
+      transition: background .1s;
+    }
+    .sb-item:hover { background: rgba(255,255,255,0.04); }
+    .sb-item.active {
+      background: var(--act-bg);
+      border-left-color: var(--act-border);
+    }
+    .sb-item.active .sb-iname { color: var(--act-text); }
+
+    .sb-icode {
+      font-size: 9px; font-weight: 700;
+      padding: 2px 6px; border-radius: 4px;
+      flex-shrink: 0; color: white;
+    }
+    .sb-iname { font-size: 11.5px; color: var(--sb-text); line-height: 1.3; }
+
+    /* Nav bar */
+    .sb-nav {
+      padding: 10px 14px;
+      border-top: 1px solid var(--sb-border);
+      display: flex; align-items: center; gap: 6px;
+    }
+    .nb {
+      flex: 1; padding: 6px 0;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--sb-border);
+      border-radius: 6px;
+      color: var(--sb-text);
+      font-family: var(--font); font-size: 12px; font-weight: 600;
+      cursor: pointer; transition: all .15s; text-align: center;
+    }
+    .nb:hover { background: rgba(255,255,255,0.09); color: white; }
+    .nb:disabled { opacity: 0.28; cursor: not-allowed; }
+    .nb-c { font-size: 11px; color: #3a4a5e; white-space: nowrap; }
+
+    /* Dropdown */
+    .sb-drop {
+      padding: 8px 14px;
+      border-top: 1px solid var(--sb-border);
+    }
+    .sb-sel {
+      width: 100%; background: rgba(255,255,255,0.05);
+      border: 1px solid var(--sb-border); border-radius: 6px;
+      padding: 6px 8px; color: var(--sb-text);
+      font-family: var(--font); font-size: 11px; cursor: pointer;
+    }
+
+    /* Switch view */
+    .sb-switch { padding: 10px 14px; border-top: 1px solid var(--sb-border); }
+    .sw-tag { font-size: 9px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #2d3a4a; margin-bottom: 6px; }
+    .sw-link {
+      display: flex; align-items: center; gap: 8px;
+      padding: 6px 8px; border-radius: 6px;
+      background: rgba(255,255,255,0.04);
+      color: var(--sb-text); font-size: 11px; font-weight: 500;
+      text-decoration: none; transition: background .1s;
+    }
+    .sw-link:hover { background: rgba(255,255,255,0.09); color: white; }
+
+    /* ── VIEWER ── */
+    .viewer {
+      flex: 1;
+      background: var(--viewer-bg);
+      display: flex; align-items: center; justify-content: center;
+      overflow: auto; padding: 24px;
+    }
+
+    .screen { display: none; flex-direction: column; align-items: center; gap: 10px; }
+    .screen.active { display: flex; }
+    .screen-lbl { font-size: 11px; font-weight: 600; color: #3a5070; letter-spacing: 0.08em; text-transform: uppercase; }
+
+    /* ── PHONE ── */
+    .ph-frame {
+      width: 300px; height: 620px;
+      background: #181e2c; border-radius: 44px; padding: 12px;
+      position: relative;
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.07), 0 0 0 2px rgba(0,0,0,0.5), 0 20px 56px rgba(0,0,0,0.7);
+    }
+    .ph-notch {
+      width: 80px; height: 20px; background: #181e2c;
+      border-radius: 0 0 12px 12px;
+      position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 10;
+    }
+    .ph-screen {
+      width: 100%; height: 100%; background: #f5f8fa;
+      border-radius: 33px; overflow: hidden; position: relative;
+    }
+
+    /* App structure */
+    .app { height: 100%; display: flex; flex-direction: column; }
+
+    .a-status {
+      height: 24px; background: var(--teal);
+      display: flex; align-items: center; padding: 0 16px; justify-content: space-between;
+    }
+    .ast { font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.9); }
+    .ass { display: flex; gap: 3px; align-items: flex-end; }
+    .asb { width: 3px; background: rgba(255,255,255,0.7); border-radius: 1px; }
+
+    .a-top { background: var(--teal); color: white; padding: 8px 14px 12px; }
+    .a-top .lbl { font-size: 9px; font-weight: 700; opacity: 0.65; letter-spacing: 0.1em; text-transform: uppercase; }
+    .a-top .pname { font-size: 18px; font-weight: 700; margin-top: 1px; }
+    .a-top .tbadge {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: rgba(255,255,255,0.18); border-radius: 100px;
+      padding: 2px 10px; font-size: 10px; font-weight: 700; margin-top: 6px;
+    }
+
+    .a-body {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; padding: 18px 14px; gap: 12px;
+    }
+
+    /* Buttons */
+    .mbtn {
+      width: 100%; padding: 11px 14px; border-radius: 10px; border: none;
+      font-family: var(--font); font-size: 12px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center; gap: 7px;
+    }
+    .mbtn-teal  { background: var(--teal); color: white; }
+    .mbtn-red   { background: #fff5f5; color: #e53e3e; border: 1px solid rgba(229,62,62,0.18); }
+    .mbtn-green { background: #38a169; color: white; }
+    .mbtn-ghost { background: white; color: #4a5568; border: 1px solid #e2e8f0; }
+
+    /* Record button */
+    .rec-wrap {
+      position: relative; width: 100px; height: 100px;
+      display: flex; align-items: center; justify-content: center; margin: 6px 0;
+    }
+    .pulse { position: absolute; inset: 0; border-radius: 50%; background: rgba(229,62,62,0.12); animation: ap 2s ease-out infinite; }
+    .pulse2 { animation-delay: 0.7s; }
+    @keyframes ap { 0%{transform:scale(0.8);opacity:0.9} 100%{transform:scale(1.5);opacity:0} }
+    .rec-btn {
+      width: 76px; height: 76px; border-radius: 50%; background: #e53e3e;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 20px rgba(229,62,62,0.4); position: relative; z-index: 2;
+    }
+    .rec-hint { font-size: 11px; color: #9aa5b4; text-align: center; line-height: 1.5; }
+
+    /* Waveform */
+    .waveform { display: flex; align-items: center; gap: 3px; height: 36px; }
+    .wb { width: 3px; background: #e53e3e; border-radius: 2px; animation: aw 0.85s ease-in-out infinite; }
+    .wb:nth-child(1){animation-delay:0s;height:6px}
+    .wb:nth-child(2){animation-delay:.1s;height:18px}
+    .wb:nth-child(3){animation-delay:.2s;height:9px}
+    .wb:nth-child(4){animation-delay:.05s;height:26px}
+    .wb:nth-child(5){animation-delay:.3s;height:14px}
+    .wb:nth-child(6){animation-delay:.15s;height:11px}
+    .wb:nth-child(7){animation-delay:.25s;height:22px}
+    .wb:nth-child(8){animation-delay:.08s;height:7px}
+    .wb:nth-child(9){animation-delay:.35s;height:28px}
+    .wb:nth-child(10){animation-delay:.18s;height:13px}
+    .wb:nth-child(11){animation-delay:.28s;height:18px}
+    .wb:nth-child(12){animation-delay:.12s;height:6px}
+    @keyframes aw { 0%,100%{height:5px} 50%{height:28px} }
+
+    .rec-lbl { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: #e53e3e; }
+    .rec-dot { width: 7px; height: 7px; border-radius: 50%; background: #e53e3e; animation: ab 1s ease-in-out infinite; }
+    @keyframes ab { 0%,100%{opacity:1} 50%{opacity:0.2} }
+    .rec-timer { font-size: 22px; font-weight: 700; color: #1a2332; letter-spacing: 0.05em; font-variant-numeric: tabular-nums; }
+
+    /* Transcript box */
+    .tx-box { background: white; border: 1px solid #e2e8f0; border-radius: 11px; padding: 11px 12px; width: 100%; }
+    .tx-lbl { font-size: 8px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: #9aa5b4; margin-bottom: 7px; }
+    .tx-text { font-size: 11px; line-height: 1.65; color: #1a2332; font-style: italic; }
+
+    /* Sent */
+    .sent-ico { width: 54px; height: 54px; background: #f0fff4; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 8px 0 4px; }
+    .sent-t { font-size: 18px; font-weight: 700; color: #1a2332; }
+    .sent-s { font-size: 11px; color: #9aa5b4; text-align: center; line-height: 1.55; }
+
+    /* ── BROWSER ── */
+    .br-frame {
+      width: 820px; background: #1c2232; border-radius: 14px; overflow: hidden;
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.07), 0 20px 56px rgba(0,0,0,0.7);
+    }
+    .br-chrome {
+      background: #232940; padding: 8px 14px;
+      display: flex; align-items: center; gap: 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .bdots { display: flex; gap: 6px; }
+    .bdot { width: 10px; height: 10px; border-radius: 50%; }
+    .bdot:nth-child(1){background:#ff5f57} .bdot:nth-child(2){background:#febc2e} .bdot:nth-child(3){background:#28c840}
+    .burl { flex: 1; background: rgba(255,255,255,0.05); border-radius: 6px; padding: 4px 12px; font-size: 11px; color: #6a7a8a; font-family: monospace; }
+
+    .br-body { height: 530px; background: white; display: flex; }
+
+    /* Doctor sidebar */
+    .ds { width: 195px; border-right: 1px solid #e8ecf0; display: flex; flex-direction: column; flex-shrink: 0; }
+    .ds-hdr { background: var(--teal); padding: 12px 13px 10px; color: white; }
+    .ds-clinic { font-weight: 700; font-size: 13.5px; }
+    .ds-date   { font-size: 9px; opacity: 0.65; margin-top: 2px; }
+    .ds-doc    { font-size: 10px; font-weight: 600; margin-top: 7px; opacity: 0.88; }
+    .ds-qlbl   { padding: 8px 12px 3px; font-size: 8px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: #9aa5b4; }
+    .ds-list   { overflow-y: auto; flex: 1; }
+
+    .dp { padding: 7px 12px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid rgba(0,0,0,0.04); }
+    .dp.sel { background: #e6f4f4; border-left: 3px solid var(--teal); padding-left: 9px; }
+    .dp-tok { width: 22px; height: 22px; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 800; flex-shrink: 0; }
+    .tdone  { background: #e6ffed; color: #38a169; }
+    .tready { background: #e6f4f4; color: var(--teal); }
+    .twait  { background: #f1f4f8; color: #9aa5b4; }
+    .dp-inf { flex: 1; min-width: 0; }
+    .dp-nm  { font-size: 11px; font-weight: 500; color: #1a2332; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .chip   { font-size: 8px; font-weight: 700; padding: 2px 6px; border-radius: 100px; display: inline-block; }
+    .cdone  { background: #e6ffed; color: #38a169; }
+    .cready { background: #e6f4f4; color: var(--teal); }
+    .cwait  { background: #f1f4f8; color: #9aa5b4; }
+    .csum   { background: #e6ffed; color: #38a169; }
+
+    /* Doctor main */
+    .dm { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    .dm-top { padding: 12px 16px; border-bottom: 1px solid #e8ecf0; display: flex; align-items: center; justify-content: space-between; }
+    .dm-name { font-size: 19px; font-weight: 700; color: #1a2332; }
+    .dm-meta { font-size: 10px; color: #9aa5b4; margin-top: 2px; }
+
+    .sumb { background: var(--teal); color: white; border: none; border-radius: 9px; padding: 8px 15px; font-family: var(--font); font-size: 12px; font-weight: 700; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 12px rgba(10,143,143,0.28); }
+    .sumbd { background: #38a169; color: white; border: none; border-radius: 9px; padding: 8px 15px; font-family: var(--font); font-size: 12px; font-weight: 700; display: flex; align-items: center; gap: 6px; }
+
+    .dm-body { flex: 1; padding: 14px 16px; overflow-y: auto; }
+
+    .stats { display: flex; gap: 8px; margin-bottom: 14px; }
+    .stat { flex: 1; background: #fafbfc; border: 1px solid #e8ecf0; border-radius: 9px; padding: 10px; text-align: center; }
+    .stn  { font-size: 20px; font-weight: 700; color: #1a2332; }
+    .stl  { font-size: 9px; color: #9aa5b4; margin-top: 1px; }
+
+    .sec-t { font-size: 9px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: #9aa5b4; margin-bottom: 8px; }
+    .raw-tx { background: #fafbfc; border: 1px solid #e8ecf0; border-radius: 9px; padding: 12px 14px; font-size: 12px; color: #4a5568; line-height: 1.75; margin-bottom: 14px; font-style: italic; }
+
+    .sum-card { background: linear-gradient(135deg, #e8f5f5 0%, #f2fbfb 100%); border: 1px solid rgba(10,143,143,0.18); border-radius: 11px; padding: 14px; }
+    .sum-hdr  { display: flex; align-items: center; gap: 8px; margin-bottom: 9px; }
+    .ai-badge { background: var(--teal); color: white; font-size: 8px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; padding: 3px 8px; border-radius: 100px; }
+    .ai-ts    { font-size: 10px; color: #9aa5b4; }
+    .sum-text { font-size: 12.5px; line-height: 1.8; color: #1a2332; }
+    .sum-text strong { color: #076b6b; }
+
+    ::-webkit-scrollbar { width: 3px; }
+    ::-webkit-scrollbar-thumb { background: #1e2a3a; border-radius: 3px; }
+    .ds-list::-webkit-scrollbar-thumb, .dm-body::-webkit-scrollbar-thumb { background: #e2e8f0; }
+  </style>
+</head>
+<body>
+<div class="studio">
+
+  <!-- ═══════════════ SIDEBAR ═══════════════ -->
+  <aside class="sidebar">
+
+    <div class="sb-logo">
+      <div class="sb-logo-icon">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="white"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 3c1.93 0 3.5 1.57 3.5 3.5S13.93 13 12 13s-3.5-1.57-3.5-3.5S10.07 6 12 6zm7 13H5v-.23c0-.62.28-1.2.76-1.58C7.47 15.82 9.64 15 12 15s4.53.82 6.24 2.19c.48.38.76.97.76 1.58V19z"/></svg>
+      </div>
+      <div>
+        <div class="sb-logo-name">ClinicAI</div>
+        <div class="sb-logo-sub">POC · Part 1 of 1</div>
+      </div>
+    </div>
+
+    <div class="sb-meta">
+      <div class="sb-tag">Preview Mode</div>
+      <div class="sb-cnt" id="sb-cnt">Screen 1 of 6</div>
+    </div>
+
+    <div class="sb-list">
+      <div class="sb-group">Attender — Mobile</div>
+      <div class="sb-item active" data-s="1" onclick="go(1)">
+        <span class="sb-icode" style="background:#1a3050">M-01</span>
+        <span class="sb-iname">Ready to Record</span>
+      </div>
+      <div class="sb-item" data-s="2" onclick="go(2)">
+        <span class="sb-icode" style="background:#1a3050">M-02</span>
+        <span class="sb-iname">Recording</span>
+      </div>
+      <div class="sb-item" data-s="3" onclick="go(3)">
+        <span class="sb-icode" style="background:#1a3050">M-03</span>
+        <span class="sb-iname">Transcribed</span>
+      </div>
+      <div class="sb-item" data-s="4" onclick="go(4)">
+        <span class="sb-icode" style="background:#1a3050">M-04</span>
+        <span class="sb-iname">Sent to Doctor</span>
+      </div>
+      <div class="sb-group" style="margin-top:6px">Doctor — Desktop</div>
+      <div class="sb-item" data-s="5" onclick="go(5)">
+        <span class="sb-icode" style="background:#0a8f8f">D-01</span>
+        <span class="sb-iname">Patient Dashboard</span>
+      </div>
+      <div class="sb-item" data-s="6" onclick="go(6)">
+        <span class="sb-icode" style="background:#0a8f8f">D-02</span>
+        <span class="sb-iname">AI Summary</span>
+      </div>
+    </div>
+
+    <div class="sb-nav">
+      <button class="nb" id="b-prev" onclick="nav(-1)">← Prev</button>
+      <span class="nb-c" id="b-cnt">1 / 6</span>
+      <button class="nb" id="b-next" onclick="nav(1)">Next →</button>
+    </div>
+
+    <div class="sb-drop">
+      <select class="sb-sel" id="sel" onchange="go(+this.value)">
+        <option value="1">M-01 Ready to Record</option>
+        <option value="2">M-02 Recording</option>
+        <option value="3">M-03 Transcribed</option>
+        <option value="4">M-04 Sent to Doctor</option>
+        <option value="5">D-01 Patient Dashboard</option>
+        <option value="6">D-02 AI Summary</option>
+      </select>
+    </div>
+
+    <div class="sb-switch">
+      <div class="sw-tag">Navigate</div>
+      <a href="clinic-poc.html" class="sw-link">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+        Back to Index
+      </a>
+    </div>
+
+  </aside>
+
+  <!-- ═══════════════ VIEWER ═══════════════ -->
+  <main class="viewer">
+
+    <!-- ── M-01 Ready ── -->
+    <div class="screen active" id="s1">
+      <div class="screen-lbl">M-01 &nbsp;·&nbsp; Attender — Ready to Record</div>
+      <div class="ph-frame">
+        <div class="ph-notch"></div>
+        <div class="ph-screen">
+          <div class="app">
+            <div class="a-status">
+              <span class="ast">9:41</span>
+              <div class="ass"><div class="asb" style="height:4px"></div><div class="asb" style="height:6px"></div><div class="asb" style="height:9px"></div><div class="asb" style="height:12px"></div></div>
+            </div>
+            <div class="a-top">
+              <div class="lbl">Current Patient</div>
+              <div class="pname">Lakshmi K.</div>
+              <div class="tbadge"><svg width="9" height="9" viewBox="0 0 24 24" fill="white"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19a2 2 0 002 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/></svg>Token 04</div>
+            </div>
+            <div class="a-body">
+              <div style="font-size:11px;color:#9aa5b4;text-align:center;line-height:1.6;margin-top:6px">Tap record and ask the<br>patient their complaints</div>
+              <div class="rec-wrap">
+                <div class="pulse"></div>
+                <div class="pulse pulse2"></div>
+                <div class="rec-btn">
+                  <svg width="26" height="26" viewBox="0 0 24 24" fill="white"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5zm6 6c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
+                </div>
+              </div>
+              <div class="rec-hint">Hold mic close while patient speaks</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── M-02 Recording ── -->
+    <div class="screen" id="s2">
+      <div class="screen-lbl">M-02 &nbsp;·&nbsp; Attender — Recording</div>
+      <div class="ph-frame">
+        <div class="ph-notch"></div>
+        <div class="ph-screen">
+          <div class="app">
+            <div class="a-status">
+              <span class="ast">9:41</span>
+              <div class="ass"><div class="asb" style="height:4px"></div><div class="asb" style="height:6px"></div><div class="asb" style="height:9px"></div><div class="asb" style="height:12px"></div></div>
+            </div>
+            <div class="a-top">
+              <div class="lbl">Current Patient</div>
+              <div class="pname">Lakshmi K.</div>
+              <div class="tbadge"><svg width="9" height="9" viewBox="0 0 24 24" fill="white"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19a2 2 0 002 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/></svg>Token 04</div>
+            </div>
+            <div class="a-body">
+              <div class="rec-lbl"><div class="rec-dot"></div>Recording</div>
+              <div class="waveform"><div class="wb"></div><div class="wb"></div><div class="wb"></div><div class="wb"></div><div class="wb"></div><div class="wb"></div><div class="wb"></div><div class="wb"></div><div class="wb"></div><div class="wb"></div><div class="wb"></div><div class="wb"></div></div>
+              <div class="rec-timer">0:24</div>
+              <div class="mbtn mbtn-red"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>Stop &amp; Transcribe</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── M-03 Transcribed ── -->
+    <div class="screen" id="s3">
+      <div class="screen-lbl">M-03 &nbsp;·&nbsp; Attender — Transcribed</div>
+      <div class="ph-frame">
+        <div class="ph-notch"></div>
+        <div class="ph-screen">
+          <div class="app">
+            <div class="a-status">
+              <span class="ast">9:42</span>
+              <div class="ass"><div class="asb" style="height:4px"></div><div class="asb" style="height:6px"></div><div class="asb" style="height:9px"></div><div class="asb" style="height:12px"></div></div>
+            </div>
+            <div class="a-top">
+              <div class="lbl">Current Patient</div>
+              <div class="pname">Lakshmi K.</div>
+              <div class="tbadge"><svg width="9" height="9" viewBox="0 0 24 24" fill="white"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19a2 2 0 002 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/></svg>Token 04</div>
+            </div>
+            <div class="a-body">
+              <div class="tx-box">
+                <div class="tx-lbl">Transcription · Tamil / English</div>
+                <div class="tx-text">"Patient solla, kadantha 3 days-la fever iruku. Headache also iruku, kadinamaaga iruku. Appetite reduce aagiruku. Medicine edukala, rest panna sonna family."</div>
+              </div>
+              <div class="mbtn mbtn-green"><svg width="13" height="13" viewBox="0 0 24 24" fill="white"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>Send to Doctor</div>
+              <div class="mbtn mbtn-ghost">Re-record</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── M-04 Sent ── -->
+    <div class="screen" id="s4">
+      <div class="screen-lbl">M-04 &nbsp;·&nbsp; Attender — Sent to Doctor</div>
+      <div class="ph-frame">
+        <div class="ph-notch"></div>
+        <div class="ph-screen">
+          <div class="app">
+            <div class="a-status">
+              <span class="ast">9:42</span>
+              <div class="ass"><div class="asb" style="height:4px"></div><div class="asb" style="height:6px"></div><div class="asb" style="height:9px"></div><div class="asb" style="height:12px"></div></div>
+            </div>
+            <div class="a-top">
+              <div class="lbl">Current Patient</div>
+              <div class="pname">Lakshmi K.</div>
+              <div class="tbadge"><svg width="9" height="9" viewBox="0 0 24 24" fill="white"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19a2 2 0 002 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/></svg>Token 04</div>
+            </div>
+            <div class="a-body">
+              <div class="sent-ico"><svg width="26" height="26" viewBox="0 0 24 24" fill="#38a169"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg></div>
+              <div class="sent-t">Sent to Doctor</div>
+              <div class="sent-s">Dr. Ramesh can now review<br>and summarise this case</div>
+              <div class="mbtn mbtn-teal" style="margin-top:10px">Next Patient →</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── D-01 Doctor Dashboard ── -->
+    <div class="screen" id="s5">
+      <div class="screen-lbl">D-01 &nbsp;·&nbsp; Doctor — Patient Dashboard</div>
+      <div class="br-frame">
+        <div class="br-chrome">
+          <div class="bdots"><div class="bdot"></div><div class="bdot"></div><div class="bdot"></div></div>
+          <div class="burl">clinic-ai.local / doctor</div>
+        </div>
+        <div class="br-body">
+          <div class="ds">
+            <div class="ds-hdr">
+              <div class="ds-clinic">CarePoint Clinic</div>
+              <div class="ds-date">Tuesday, 13 May 2026</div>
+              <div class="ds-doc">Dr. S. Ramesh · General</div>
+            </div>
+            <div class="ds-qlbl">Queue — 10 Patients</div>
+            <div class="ds-list">
+              <div class="dp"><div class="dp-tok tdone">01</div><div class="dp-inf"><div class="dp-nm">Ravi Kumar</div><span class="chip cdone">Done</span></div></div>
+              <div class="dp"><div class="dp-tok tdone">02</div><div class="dp-inf"><div class="dp-nm">Priya S.</div><span class="chip cdone">Done</span></div></div>
+              <div class="dp"><div class="dp-tok tdone">03</div><div class="dp-inf"><div class="dp-nm">Murugan R.</div><span class="chip cdone">Done</span></div></div>
+              <div class="dp sel"><div class="dp-tok tready">04</div><div class="dp-inf"><div class="dp-nm">Lakshmi K.</div><span class="chip cready">Ready</span></div></div>
+              <div class="dp"><div class="dp-tok twait">05</div><div class="dp-inf"><div class="dp-nm">Arun M.</div><span class="chip cwait">Waiting</span></div></div>
+              <div class="dp"><div class="dp-tok twait">06</div><div class="dp-inf"><div class="dp-nm">Deepa N.</div><span class="chip cwait">Waiting</span></div></div>
+              <div class="dp"><div class="dp-tok twait">07</div><div class="dp-inf"><div class="dp-nm">Suresh P.</div><span class="chip cwait">Waiting</span></div></div>
+              <div class="dp"><div class="dp-tok twait">08</div><div class="dp-inf"><div class="dp-nm">Kavitha R.</div><span class="chip cwait">Waiting</span></div></div>
+              <div class="dp"><div class="dp-tok twait">09</div><div class="dp-inf"><div class="dp-nm">Bala S.</div><span class="chip cwait">Waiting</span></div></div>
+              <div class="dp"><div class="dp-tok twait">10</div><div class="dp-inf"><div class="dp-nm">Nithya K.</div><span class="chip cwait">Waiting</span></div></div>
+            </div>
+          </div>
+          <div class="dm">
+            <div class="dm-top">
+              <div><div class="dm-name">Lakshmi Krishnamurthy</div><div class="dm-meta">Token 04 · Female, 34 yrs · General Consultation</div></div>
+              <button class="sumb"><svg width="13" height="13" viewBox="0 0 24 24" fill="white"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 3c1.93 0 3.5 1.57 3.5 3.5S13.93 13 12 13s-3.5-1.57-3.5-3.5S10.07 6 12 6zm7 13H5v-.23c0-.62.28-1.2.76-1.58C7.47 15.82 9.64 15 12 15s4.53.82 6.24 2.19c.48.38.76.97.76 1.58V19z"/></svg>Summarise with AI</button>
+            </div>
+            <div class="dm-body">
+              <div class="stats"><div class="stat"><div class="stn">3</div><div class="stl">Seen today</div></div><div class="stat"><div class="stn">7</div><div class="stl">Remaining</div></div><div class="stat"><div class="stn">~4m</div><div class="stl">Avg. per patient</div></div></div>
+              <div class="sec-t">Attender Recording — Raw Transcription</div>
+              <div class="raw-tx">"Patient solla, kadantha 3 days-la fever iruku. Headache also iruku, kadinamaaga iruku. Appetite reduce aagiruku. Medicine edukala, rest panna sonna family."</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── D-02 AI Summary ── -->
+    <div class="screen" id="s6">
+      <div class="screen-lbl">D-02 &nbsp;·&nbsp; Doctor — AI Summary Generated</div>
+      <div class="br-frame">
+        <div class="br-chrome">
+          <div class="bdots"><div class="bdot"></div><div class="bdot"></div><div class="bdot"></div></div>
+          <div class="burl">clinic-ai.local / doctor</div>
+        </div>
+        <div class="br-body">
+          <div class="ds">
+            <div class="ds-hdr">
+              <div class="ds-clinic">CarePoint Clinic</div>
+              <div class="ds-date">Tuesday, 13 May 2026</div>
+              <div class="ds-doc">Dr. S. Ramesh · General</div>
+            </div>
+            <div class="ds-qlbl">Queue — 10 Patients</div>
+            <div class="ds-list">
+              <div class="dp"><div class="dp-tok tdone">01</div><div class="dp-inf"><div class="dp-nm">Ravi Kumar</div><span class="chip cdone">Done</span></div></div>
+              <div class="dp"><div class="dp-tok tdone">02</div><div class="dp-inf"><div class="dp-nm">Priya S.</div><span class="chip cdone">Done</span></div></div>
+              <div class="dp"><div class="dp-tok tdone">03</div><div class="dp-inf"><div class="dp-nm">Murugan R.</div><span class="chip cdone">Done</span></div></div>
+              <div class="dp sel"><div class="dp-tok tdone">04</div><div class="dp-inf"><div class="dp-nm">Lakshmi K.</div><span class="chip csum">Summarised</span></div></div>
+              <div class="dp"><div class="dp-tok twait">05</div><div class="dp-inf"><div class="dp-nm">Arun M.</div><span class="chip cwait">Waiting</span></div></div>
+              <div class="dp"><div class="dp-tok twait">06</div><div class="dp-inf"><div class="dp-nm">Deepa N.</div><span class="chip cwait">Waiting</span></div></div>
+              <div class="dp"><div class="dp-tok twait">07</div><div class="dp-inf"><div class="dp-nm">Suresh P.</div><span class="chip cwait">Waiting</span></div></div>
+              <div class="dp"><div class="dp-tok twait">08</div><div class="dp-inf"><div class="dp-nm">Kavitha R.</div><span class="chip cwait">Waiting</span></div></div>
+              <div class="dp"><div class="dp-tok twait">09</div><div class="dp-inf"><div class="dp-nm">Bala S.</div><span class="chip cwait">Waiting</span></div></div>
+              <div class="dp"><div class="dp-tok twait">10</div><div class="dp-inf"><div class="dp-nm">Nithya K.</div><span class="chip cwait">Waiting</span></div></div>
+            </div>
+          </div>
+          <div class="dm">
+            <div class="dm-top">
+              <div><div class="dm-name">Lakshmi Krishnamurthy</div><div class="dm-meta">Token 04 · Female, 34 yrs · General Consultation</div></div>
+              <button class="sumbd"><svg width="13" height="13" viewBox="0 0 24 24" fill="white"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>Done</button>
+            </div>
+            <div class="dm-body">
+              <div class="stats"><div class="stat"><div class="stn">3</div><div class="stl">Seen today</div></div><div class="stat"><div class="stn">7</div><div class="stl">Remaining</div></div><div class="stat"><div class="stn">~4m</div><div class="stl">Avg. per patient</div></div></div>
+              <div class="sec-t">Attender Recording — Raw Transcription</div>
+              <div class="raw-tx">"Patient solla, kadantha 3 days-la fever iruku. Headache also iruku, kadinamaaga iruku. Appetite reduce aagiruku. Medicine edukala, rest panna sonna family."</div>
+              <div class="sum-card">
+                <div class="sum-hdr"><div class="ai-badge">AI Summary</div><span class="ai-ts">Generated just now</span></div>
+                <div class="sum-text">Patient presents with <strong>fever persisting for 3 days</strong>, accompanied by a <strong>severe headache</strong>. Reports a noticeable <strong>reduction in appetite</strong>. No medication has been administered prior to this visit. Family advised rest at home. Requires physical examination, temperature assessment, and consideration of a <strong>CBC and fever panel</strong>.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+  const TOTAL = 6;
+  let cur = 1;
+
+  window.addEventListener('load', () => {
+    const n = parseInt((location.hash || '').replace('#screen-', '')) || 1;
+    go(Math.min(Math.max(n, 1), TOTAL));
+  });
+
+  function go(n) {
+    if (n < 1 || n > TOTAL) return;
+    cur = n;
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById('s' + n).classList.add('active');
+    document.querySelectorAll('.sb-item').forEach(s => s.classList.remove('active'));
+    document.querySelector(`.sb-item[data-s="${n}"]`).classList.add('active');
+    document.getElementById('b-cnt').textContent   = `${n} / ${TOTAL}`;
+    document.getElementById('sb-cnt').textContent  = `Screen ${n} of ${TOTAL}`;
+    document.getElementById('sel').value            = n;
+    document.getElementById('b-prev').disabled     = n === 1;
+    document.getElementById('b-next').disabled     = n === TOTAL;
+    history.replaceState(null, '', `#screen-${n}`);
+  }
+
+  function nav(d) { go(cur + d); }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') nav(1);
+    if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   nav(-1);
+  });
+</script>
+</body>
+</html>

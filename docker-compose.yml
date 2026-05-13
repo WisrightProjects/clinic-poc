@@ -1,0 +1,6 @@
+services:
+  clinic-poc:
+    build: .
+    ports:
+      - "3030:80"
+    restart: unless-stopped
