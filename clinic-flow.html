@@ -89,6 +89,22 @@
     .qbtn { display: inline-flex; align-items: center; gap: 5px; padding: 5px 10px; border-radius: 8px; font-family: var(--font); font-size: 10.5px; font-weight: 700; border: none; cursor: pointer; }
     .qbtn-record { background: #fff0f0; color: #e53e3e; border: 1px solid rgba(229,62,62,0.2); }
     .qbtn-done   { background: #e6ffed; color: #38a169; }
+    .qbtn-retake { background: #fff; color: #3b82f6; border: 1px solid rgba(59,130,246,0.35); font-size: 10px; padding: 4px 9px; }
+    .q-btn-row   { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+    /* Review screen */
+    .rv-edit-bar { display:flex; justify-content:flex-end; margin-bottom:10px; }
+    .rv-edit-btn { display:inline-flex; align-items:center; gap:5px; background:#fff; border:1px solid rgba(59,130,246,0.35); color:#3b82f6; border-radius:8px; padding:5px 11px; font-size:10.5px; font-weight:700; cursor:pointer; }
+    .rv-sec-lbl  { font-size:9px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#8a9ab0; margin-bottom:8px; }
+    .rv-item     { background:#fff; border-radius:10px; border:1px solid #e8ecf0; padding:9px 11px; margin-bottom:7px; }
+    .rv-q-lbl    { font-size:10px; font-weight:700; color:#6b7a8d; margin-bottom:4px; display:flex; align-items:center; gap:5px; }
+    .rv-qnum     { background:#eef2ff; color:#4f6ef7; border-radius:5px; padding:1px 6px; font-size:9px; font-weight:700; flex-shrink:0; }
+    .rv-ans      { font-size:11px; font-style:italic; color:#1a2332; line-height:1.4; }
+    .rv-sum-card { background:linear-gradient(135deg,#f0fdf8,#e6ffed); border:1px solid #b2f5d4; border-radius:10px; padding:10px 12px; margin-top:10px; margin-bottom:4px; }
+    .rv-sum-hdr  { display:flex; align-items:center; gap:7px; margin-bottom:7px; }
+    .rv-ai-badge { background:#0a8f8f; color:#fff; font-size:8.5px; font-weight:700; padding:2px 8px; border-radius:100px; letter-spacing:0.05em; }
+    .rv-sum-ts   { font-size:9px; color:#68a88a; }
+    .rv-sum-text { font-size:10.5px; color:#1a4a3a; line-height:1.55; }
+    .rv-sum-text strong { color:#076b6b; }
 
     /* Settings question items */
     .sq-item { display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: white; border-radius: 10px; margin-bottom: 6px; border: 1px solid #e8ecf0; }
@@ -212,10 +228,10 @@
       <div class="sb-item" data-s="2" onclick="go(2)"><span class="sb-icode" style="background:#1a3050">M-01</span><span class="sb-iname">Question List</span></div>
       <div class="sb-item" data-s="3" onclick="go(3)"><span class="sb-icode" style="background:#1a3050">M-02</span><span class="sb-iname">Recording Q3</span></div>
       <div class="sb-item" data-s="4" onclick="go(4)"><span class="sb-icode" style="background:#1a3050">M-03</span><span class="sb-iname">All Answered</span></div>
-      <div class="sb-item" data-s="5" onclick="go(5)"><span class="sb-icode" style="background:#1a3050">M-04</span><span class="sb-iname">Sent to Doctor</span></div>
+      <div class="sb-item" data-s="5" onclick="go(5)"><span class="sb-icode" style="background:#1a3050">M-04</span><span class="sb-iname">Review &amp; Submit</span></div>
+      <div class="sb-item" data-s="6" onclick="go(6)"><span class="sb-icode" style="background:#1a3050">M-05</span><span class="sb-iname">Sent to Doctor</span></div>
       <div class="sb-group" style="margin-top:6px">Doctor — Desktop</div>
-      <div class="sb-item" data-s="6" onclick="go(6)"><span class="sb-icode" style="background:#0a8f8f">D-01</span><span class="sb-iname">Structured Q&amp;A</span></div>
-      <div class="sb-item" data-s="7" onclick="go(7)"><span class="sb-icode" style="background:#0a8f8f">D-02</span><span class="sb-iname">AI Summary</span></div>
+      <div class="sb-item" data-s="7" onclick="go(7)"><span class="sb-icode" style="background:#0a8f8f">D-01</span><span class="sb-iname">AI Summary &amp; Q&amp;A</span></div>
     </div>
     <div class="sb-nav">
       <button class="nb" id="b-prev" onclick="nav(-1)">← Prev</button>
@@ -228,9 +244,9 @@
         <option value="2">M-01 Question List</option>
         <option value="3">M-02 Recording Q3</option>
         <option value="4">M-03 All Answered</option>
-        <option value="5">M-04 Sent to Doctor</option>
-        <option value="6">D-01 Structured Q&amp;A</option>
-        <option value="7">D-02 AI Summary</option>
+        <option value="5">M-04 Review &amp; Submit</option>
+        <option value="6">M-05 Sent to Doctor</option>
+        <option value="7">D-01 AI Summary &amp; Q&amp;A</option>
       </select>
     </div>
     <div class="sb-switch">
@@ -345,21 +361,66 @@
                 <div class="q-progress-label"><span>5 of 5 answered</span><span style="color:#38a169;font-weight:700">✓ Complete</span></div>
                 <div class="q-progress-bar"><div class="q-progress-fill" style="width:100%;background:#38a169"></div></div>
               </div>
-              <div class="q-item"><div class="q-num qn-done"><svg width="11" height="11" viewBox="0 0 24 24" fill="#38a169"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div><div class="q-content"><div class="q-text">Main complaint today?</div><span class="qbtn qbtn-done"><svg width="10" height="10" viewBox="0 0 24 24" fill="#38a169"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>Done</span></div></div>
-              <div class="q-item"><div class="q-num qn-done"><svg width="11" height="11" viewBox="0 0 24 24" fill="#38a169"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div><div class="q-content"><div class="q-text">Since how long?</div><span class="qbtn qbtn-done"><svg width="10" height="10" viewBox="0 0 24 24" fill="#38a169"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>Done</span></div></div>
-              <div class="q-item"><div class="q-num qn-done"><svg width="11" height="11" viewBox="0 0 24 24" fill="#38a169"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div><div class="q-content"><div class="q-text">Any medication taken?</div><span class="qbtn qbtn-done"><svg width="10" height="10" viewBox="0 0 24 24" fill="#38a169"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>Done</span></div></div>
-              <div class="q-item"><div class="q-num qn-done"><svg width="11" height="11" viewBox="0 0 24 24" fill="#38a169"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div><div class="q-content"><div class="q-text">Any known allergies?</div><span class="qbtn qbtn-done"><svg width="10" height="10" viewBox="0 0 24 24" fill="#38a169"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>Done</span></div></div>
-              <div class="q-item"><div class="q-num qn-done"><svg width="11" height="11" viewBox="0 0 24 24" fill="#38a169"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div><div class="q-content"><div class="q-text">Past medical history?</div><span class="qbtn qbtn-done"><svg width="10" height="10" viewBox="0 0 24 24" fill="#38a169"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>Done</span></div></div>
+              <div class="q-item"><div class="q-num qn-done"><svg width="11" height="11" viewBox="0 0 24 24" fill="#38a169"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div><div class="q-content"><div class="q-text">Main complaint today?</div><div class="q-answer-text">"Fever iruku, 3 days achu..."</div><div class="q-btn-row"><span class="qbtn qbtn-done"><svg width="10" height="10" viewBox="0 0 24 24" fill="#38a169"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>Done</span><span class="qbtn qbtn-retake"><svg width="9" height="9" viewBox="0 0 24 24" fill="#3b82f6"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>Retake</span></div></div></div>
+              <div class="q-item"><div class="q-num qn-done"><svg width="11" height="11" viewBox="0 0 24 24" fill="#38a169"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div><div class="q-content"><div class="q-text">Since how long?</div><div class="q-answer-text">"Kadantha 3 days, headache also..."</div><div class="q-btn-row"><span class="qbtn qbtn-done"><svg width="10" height="10" viewBox="0 0 24 24" fill="#38a169"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>Done</span><span class="qbtn qbtn-retake"><svg width="9" height="9" viewBox="0 0 24 24" fill="#3b82f6"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>Retake</span></div></div></div>
+              <div class="q-item"><div class="q-num qn-done"><svg width="11" height="11" viewBox="0 0 24 24" fill="#38a169"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div><div class="q-content"><div class="q-text">Any medication taken?</div><div class="q-answer-text">"Medicine edukala, rest panna sonna..."</div><div class="q-btn-row"><span class="qbtn qbtn-done"><svg width="10" height="10" viewBox="0 0 24 24" fill="#38a169"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>Done</span><span class="qbtn qbtn-retake"><svg width="9" height="9" viewBox="0 0 24 24" fill="#3b82f6"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>Retake</span></div></div></div>
+              <div class="q-item"><div class="q-num qn-done"><svg width="11" height="11" viewBox="0 0 24 24" fill="#38a169"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div><div class="q-content"><div class="q-text">Any known allergies?</div><div class="q-answer-text">"Illai, allergy illai doctor..."</div><div class="q-btn-row"><span class="qbtn qbtn-done"><svg width="10" height="10" viewBox="0 0 24 24" fill="#38a169"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>Done</span><span class="qbtn qbtn-retake"><svg width="9" height="9" viewBox="0 0 24 24" fill="#3b82f6"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>Retake</span></div></div></div>
+              <div class="q-item"><div class="q-num qn-done"><svg width="11" height="11" viewBox="0 0 24 24" fill="#38a169"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div><div class="q-content"><div class="q-text">Past medical history?</div><div class="q-answer-text">"Diabetes illai, BP normal-a iruku..."</div><div class="q-btn-row"><span class="qbtn qbtn-done"><svg width="10" height="10" viewBox="0 0 24 24" fill="#38a169"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>Done</span><span class="qbtn qbtn-retake"><svg width="9" height="9" viewBox="0 0 24 24" fill="#3b82f6"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>Retake</span></div></div></div>
             </div>
-            <div class="a-footer"><div class="mbtn mbtn-green"><svg width="13" height="13" viewBox="0 0 24 24" fill="white"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>Send to Doctor</div></div>
+            <div class="a-footer"><div class="mbtn mbtn-green" onclick="go(5)" style="cursor:pointer"><svg width="13" height="13" viewBox="0 0 24 24" fill="white"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>Next → Review &amp; Submit</div></div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- M-04: Sent -->
+    <!-- M-04: Review before Submit -->
     <div class="screen" id="s5">
-      <div class="screen-lbl">M-04 · Attender — Sent to Doctor</div>
+      <div class="screen-lbl">M-04 · Attender — Review before Submit</div>
+      <div class="ph-frame">
+        <div class="ph-notch"></div>
+        <div class="ph-screen">
+          <div class="a-status"><span class="ast">9:46</span><div class="ass"><div class="asb" style="height:4px"></div><div class="asb" style="height:6px"></div><div class="asb" style="height:9px"></div><div class="asb" style="height:12px"></div></div></div>
+          <div class="a-top"><div class="lbl">Current Patient</div><div class="pname">Lakshmi K.</div><div class="tbadge"><svg width="9" height="9" viewBox="0 0 24 24" fill="white"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19a2 2 0 002 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/></svg>Token 04</div></div>
+          <div class="a-body">
+            <div class="a-scroll">
+              <div class="rv-edit-bar">
+                <span class="rv-edit-btn" onclick="go(4)"><svg width="10" height="10" viewBox="0 0 24 24" fill="#3b82f6"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 000-1.41l-2.34-2.34a1 1 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>Edit Answers</span>
+              </div>
+              <div class="rv-sec-lbl">Review — 5 Responses</div>
+              <div class="rv-item">
+                <div class="rv-q-lbl"><span class="rv-qnum">Q1</span>Main complaint today?</div>
+                <div class="rv-ans">"Fever iruku, 3 days-a aachu. Kadinamaaga iruku..."</div>
+              </div>
+              <div class="rv-item">
+                <div class="rv-q-lbl"><span class="rv-qnum">Q2</span>Since how long?</div>
+                <div class="rv-ans">"Kadantha 3 days-la iruku, headache also iruku..."</div>
+              </div>
+              <div class="rv-item">
+                <div class="rv-q-lbl"><span class="rv-qnum">Q3</span>Any medication taken?</div>
+                <div class="rv-ans">"Medicine edukala, rest panna sonna family..."</div>
+              </div>
+              <div class="rv-item">
+                <div class="rv-q-lbl"><span class="rv-qnum">Q4</span>Any known allergies?</div>
+                <div class="rv-ans">"Illai, allergy illai doctor..."</div>
+              </div>
+              <div class="rv-item">
+                <div class="rv-q-lbl"><span class="rv-qnum">Q5</span>Past medical history?</div>
+                <div class="rv-ans">"Diabetes illai, BP normal-a iruku..."</div>
+              </div>
+              <div class="rv-sum-card">
+                <div class="rv-sum-hdr"><span class="rv-ai-badge">AI Summary</span><span class="rv-sum-ts">Generated just now</span></div>
+                <div class="rv-sum-text">Patient (F/34) presents with <strong>fever for 3 days</strong> and a <strong>severe headache</strong>. <strong>No medication taken</strong> prior to visit. <strong>No known allergies</strong>. <strong>No significant past history</strong> — BP normal, no diabetes.</div>
+              </div>
+            </div>
+            <div class="a-footer"><div class="mbtn mbtn-green" onclick="go(6)" style="cursor:pointer"><svg width="13" height="13" viewBox="0 0 24 24" fill="white"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>Confirm &amp; Send to Doctor</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- M-05: Sent -->
+    <div class="screen" id="s6">
+      <div class="screen-lbl">M-05 · Attender — Sent to Doctor</div>
       <div class="ph-frame">
         <div class="ph-notch"></div>
         <div class="ph-screen">
@@ -376,51 +437,9 @@
     </div>
 
     <!-- D-01: Structured Q&A -->
-    <div class="screen" id="s6">
-      <div class="screen-lbl">D-01 · Doctor — Structured Q&amp;A View</div>
-      <div class="br-frame">
-        <div class="br-chrome"><div class="bdots"><div class="bdot"></div><div class="bdot"></div><div class="bdot"></div></div><div class="burl">clinic-ai.local / doctor</div></div>
-        <div class="br-body">
-          <div class="ds">
-            <div class="ds-hdr"><div class="ds-clinic">CarePoint Clinic</div><div class="ds-date">Tuesday, 13 May 2026</div><div class="ds-doc">Dr. S. Ramesh · General</div></div>
-            <div class="ds-qlbl">Queue — 10 Patients</div>
-            <div class="ds-list">
-              <div class="dp"><div class="dp-tok tdone">01</div><div class="dp-inf"><div class="dp-nm">Ravi Kumar</div><span class="chip cdone">Done</span></div></div>
-              <div class="dp"><div class="dp-tok tdone">02</div><div class="dp-inf"><div class="dp-nm">Priya S.</div><span class="chip cdone">Done</span></div></div>
-              <div class="dp"><div class="dp-tok tdone">03</div><div class="dp-inf"><div class="dp-nm">Murugan R.</div><span class="chip cdone">Done</span></div></div>
-              <div class="dp sel"><div class="dp-tok tready">04</div><div class="dp-inf"><div class="dp-nm">Lakshmi K.</div><span class="chip cready">Ready</span></div></div>
-              <div class="dp"><div class="dp-tok twait">05</div><div class="dp-inf"><div class="dp-nm">Arun M.</div><span class="chip cwait">Waiting</span></div></div>
-              <div class="dp"><div class="dp-tok twait">06</div><div class="dp-inf"><div class="dp-nm">Deepa N.</div><span class="chip cwait">Waiting</span></div></div>
-              <div class="dp"><div class="dp-tok twait">07</div><div class="dp-inf"><div class="dp-nm">Suresh P.</div><span class="chip cwait">Waiting</span></div></div>
-              <div class="dp"><div class="dp-tok twait">08</div><div class="dp-inf"><div class="dp-nm">Kavitha R.</div><span class="chip cwait">Waiting</span></div></div>
-              <div class="dp"><div class="dp-tok twait">09</div><div class="dp-inf"><div class="dp-nm">Bala S.</div><span class="chip cwait">Waiting</span></div></div>
-              <div class="dp"><div class="dp-tok twait">10</div><div class="dp-inf"><div class="dp-nm">Nithya K.</div><span class="chip cwait">Waiting</span></div></div>
-            </div>
-          </div>
-          <div class="dm">
-            <div class="dm-top">
-              <div><div class="dm-name">Lakshmi Krishnamurthy</div><div class="dm-meta">Token 04 · Female, 34 yrs · General</div></div>
-              <button class="sumb"><svg width="13" height="13" viewBox="0 0 24 24" fill="white"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 3c1.93 0 3.5 1.57 3.5 3.5S13.93 13 12 13s-3.5-1.57-3.5-3.5S10.07 6 12 6zm7 13H5v-.23c0-.62.28-1.2.76-1.58C7.47 15.82 9.64 15 12 15s4.53.82 6.24 2.19c.48.38.76.97.76 1.58V19z"/></svg>Summarise with AI</button>
-            </div>
-            <div class="dm-body">
-              <div class="stats"><div class="stat"><div class="stn">3</div><div class="stl">Seen today</div></div><div class="stat"><div class="stn">7</div><div class="stl">Remaining</div></div><div class="stat"><div class="stn">5/5</div><div class="stl">Q&amp;A done</div></div></div>
-              <div class="sec-t">Patient Responses — 5 Questions</div>
-              <div class="qa-list">
-                <div class="qa-item"><div class="qa-label"><span class="qa-qnum">Q1</span>Main complaint today?</div><div class="qa-a">"Fever iruku, 3 days-a aachu. Kadinamaaga iruku..."</div></div>
-                <div class="qa-item"><div class="qa-label"><span class="qa-qnum">Q2</span>Since how long?</div><div class="qa-a">"Kadantha 3 days-la iruku, headache also iruku..."</div></div>
-                <div class="qa-item"><div class="qa-label"><span class="qa-qnum">Q3</span>Any medication taken?</div><div class="qa-a">"Medicine edukala, rest panna sonna family..."</div></div>
-                <div class="qa-item"><div class="qa-label"><span class="qa-qnum">Q4</span>Any known allergies?</div><div class="qa-a">"Illai, allergy illai doctor..."</div></div>
-                <div class="qa-item"><div class="qa-label"><span class="qa-qnum">Q5</span>Past medical history?</div><div class="qa-a">"Diabetes illai, BP normal-a iruku..."</div></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- D-02: AI Summary -->
+    <!-- D-01: AI Summary + Q&A Drilldown -->
     <div class="screen" id="s7">
-      <div class="screen-lbl">D-02 · Doctor — AI Summary Generated</div>
+      <div class="screen-lbl">D-01 · Doctor — AI Summary &amp; Patient Responses</div>
       <div class="br-frame">
         <div class="br-chrome"><div class="bdots"><div class="bdot"></div><div class="bdot"></div><div class="bdot"></div></div><div class="burl">clinic-ai.local / doctor</div></div>
         <div class="br-body">
@@ -447,15 +466,17 @@
             </div>
             <div class="dm-body">
               <div class="stats"><div class="stat"><div class="stn">3</div><div class="stl">Seen today</div></div><div class="stat"><div class="stn">7</div><div class="stl">Remaining</div></div><div class="stat"><div class="stn">5/5</div><div class="stl">Q&amp;A done</div></div></div>
-              <div class="sec-t">Patient Responses — 5 Questions</div>
+              <div class="sum-card" style="margin-bottom:16px">
+                <div class="sum-hdr"><div class="ai-badge">AI Summary</div><span class="ai-ts">Generated just now</span></div>
+                <div class="sum-text">Patient (F/34) presents with <strong>fever for 3 days</strong> and a <strong>severe headache</strong>. <strong>No medication taken</strong> prior to visit. <strong>No known allergies</strong>. <strong>No significant past history</strong> — BP normal, no diabetes. Requires physical examination and temperature assessment. Consider <strong>CBC and fever panel</strong>.</div>
+              </div>
+              <div class="sec-t">Patient Responses — Details</div>
               <div class="qa-list">
                 <div class="qa-item"><div class="qa-label"><span class="qa-qnum">Q1</span>Main complaint today?</div><div class="qa-a">"Fever iruku, 3 days-a aachu. Kadinamaaga iruku..."</div></div>
                 <div class="qa-item"><div class="qa-label"><span class="qa-qnum">Q2</span>Since how long?</div><div class="qa-a">"Kadantha 3 days-la iruku, headache also iruku..."</div></div>
                 <div class="qa-item"><div class="qa-label"><span class="qa-qnum">Q3</span>Any medication taken?</div><div class="qa-a">"Medicine edukala, rest panna sonna family..."</div></div>
-              </div>
-              <div class="sum-card">
-                <div class="sum-hdr"><div class="ai-badge">AI Summary</div><span class="ai-ts">Generated just now</span></div>
-                <div class="sum-text">Patient (F/34) presents with <strong>fever for 3 days</strong> and a <strong>severe headache</strong>. <strong>No medication taken</strong> prior to visit. <strong>No known allergies</strong>. <strong>No significant past history</strong> — BP normal, no diabetes. Requires physical examination and temperature assessment. Consider <strong>CBC and fever panel</strong>.</div>
+                <div class="qa-item"><div class="qa-label"><span class="qa-qnum">Q4</span>Any known allergies?</div><div class="qa-a">"Illai, allergy illai doctor..."</div></div>
+                <div class="qa-item"><div class="qa-label"><span class="qa-qnum">Q5</span>Past medical history?</div><div class="qa-a">"Diabetes illai, BP normal-a iruku..."</div></div>
               </div>
             </div>
           </div>
