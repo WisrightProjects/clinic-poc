@@ -10,8 +10,7 @@ async function create({ patientName, age, sex, departmentId }) {
   if (!patientName || !departmentId) {
     throw new AppError('BAD_REQUEST', 'patientName and departmentId are required', 400);
   }
-  const tokenNumber = await visitRepository.getNextToken();
-  return visitRepository.create({ tokenNumber, patientName, age, sex, departmentId });
+  return visitRepository.createWithToken({ patientName, age, sex, departmentId });
 }
 
 async function list(statusQuery) {

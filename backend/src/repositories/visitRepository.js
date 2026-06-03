@@ -34,17 +34,25 @@ async function updateStatus(id, status) {
   return rows[0];
 }
 
-async function getNextToken() {
+async function createWithToken({ patientName, age, sex, departmentId }) {
   const client = await db.connect();
   try {
     await client.query('BEGIN');
-    const { rows } = await client.query(
-      `SELECT COALESCE(MAX(token_number), 0) + 1 AS next_token
-       FROM visits WHERE created_at::date = CURRENT_DATE
+    // Lock actual rows for today — valid FOR UPDATE usage (no aggregate)
+    const { rows: locked } = await client.query(
+      `SELECT token_number FROM visits
+       WHERE visit_date = CURRENT_DATE
+       ORDER BY token_number DESC
        FOR UPDATE`
     );
+    const nextToken = locked.length > 0 ? locked[0].token_number + 1 : 1;
+    const { rows } = await client.query(
+      `INSERT INTO visits (token_number, patient_name, age, sex, department_id, visit_date)
+       VALUES ($1, $2, $3, $4, $5, CURRENT_DATE) RETURNING *`,
+      [nextToken, patientName, age, sex, departmentId]
+    );
     await client.query('COMMIT');
-    return rows[0].next_token;
+    return rows[0];
   } catch (err) {
     await client.query('ROLLBACK');
     throw err;
@@ -53,4 +61,4 @@ async function getNextToken() {
   }
 }
 
-module.exports = { create, findById, list, updateStatus, getNextToken };
+module.exports = { create, createWithToken, findById, list, updateStatus };
