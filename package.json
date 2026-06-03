@@ -1,0 +1,13 @@
+{
+  "name": "clinic-poc",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "migrate": "node db/run-migrations.js",
+    "seed": "node db/run-seeds.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.3.1",
+    "pg": "^8.11.3"
+  }
+}
