@@ -6,7 +6,8 @@ async function check(_req, res) {
     await db.query('SELECT 1');
     dbOk = true;
   } catch (_err) {}
-  res.json({ status: 'ok', db: dbOk });
+  if (!dbOk) return res.status(503).json({ status: 'error', db: false });
+  res.json({ status: 'ok', db: true });
 }
 
 module.exports = { check };

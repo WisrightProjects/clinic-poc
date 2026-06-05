@@ -39,9 +39,10 @@ async function submit(visitId) {
   if (!visit) throw new AppError('NOT_FOUND', 'Visit not found', 404);
   statusEngine.assertTransition(visit.status, 'summarised');
   const existing = await summaryRepository.findByVisitId(visitId);
-  if (existing) return visitRepository.findById(visitId);
-  const summaryText = await summaryService.generate(visitId);
-  await summaryRepository.create(visitId, summaryText, 'mock');
+  if (!existing) {
+    const summaryText = await summaryService.generate(visitId);
+    await summaryRepository.create(visitId, summaryText, 'mock');
+  }
   return visitRepository.updateStatus(visitId, 'summarised');
 }
 

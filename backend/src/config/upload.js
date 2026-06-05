@@ -11,8 +11,9 @@ const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, config.audioDir),
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname) || '.m4a';
-    const questionId = req.body.questionId || 'unknown';
-    cb(null, `visit-${req.params.id}-q${questionId}-${Date.now()}${ext}`);
+    const visitId = String(req.params.id || '').replace(/[^a-zA-Z0-9]/g, '');
+    const questionId = String(req.body.questionId || 'unknown').replace(/[^a-zA-Z0-9]/g, '');
+    cb(null, `visit-${visitId}-q${questionId}-${Date.now()}${ext}`);
   },
 });
 

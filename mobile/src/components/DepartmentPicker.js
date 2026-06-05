@@ -7,11 +7,18 @@ export function DepartmentPicker({ value, onChange }) {
   const [departments, setDepartments] = useState([]);
 
   useEffect(() => {
-    getDepartments().then((d) => {
-      setDepartments(d);
-      if (!value && d.length) onChange(d[0].id);
-    }).catch(() => {});
-  }, []);
+    let cancelled = false;
+    getDepartments()
+      .then((d) => {
+        if (cancelled) return;
+        setDepartments(d);
+        if (!value && d.length) onChange(d[0].id);
+      })
+      .catch((err) => {
+        if (!cancelled) console.warn('DepartmentPicker: failed to load departments', err);
+      });
+    return () => { cancelled = true; };
+  }, [value, onChange]);
 
   return (
     <View style={styles.container}>

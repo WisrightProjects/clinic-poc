@@ -34,18 +34,21 @@ async function updateStatus(id, status) {
   return rows[0];
 }
 
+const TOKEN_LOCK_KEY = 20240001;
+
 async function createWithToken({ patientName, age, sex, departmentId }) {
   const client = await db.connect();
   try {
     await client.query('BEGIN');
-    // Lock actual rows for today — valid FOR UPDATE usage (no aggregate)
-    const { rows: locked } = await client.query(
-      `SELECT token_number FROM visits
-       WHERE visit_date = CURRENT_DATE
-       ORDER BY token_number DESC
-       FOR UPDATE`
+    // Advisory lock serializes all token allocations for the day,
+    // including the first visit when no rows exist yet to FOR UPDATE.
+    await client.query('SELECT pg_advisory_xact_lock($1)', [TOKEN_LOCK_KEY]);
+    const { rows: existing } = await client.query(
+      `SELECT COALESCE(MAX(token_number), 0) + 1 AS next
+         FROM visits
+        WHERE visit_date = CURRENT_DATE`
     );
-    const nextToken = locked.length > 0 ? locked[0].token_number + 1 : 1;
+    const nextToken = existing[0].next;
     const { rows } = await client.query(
       `INSERT INTO visits (token_number, patient_name, age, sex, department_id, visit_date)
        VALUES ($1, $2, $3, $4, $5, CURRENT_DATE) RETURNING *`,

@@ -36,7 +36,7 @@ CREATE TABLE visits (
 CREATE TABLE answers (
   id                SERIAL PRIMARY KEY,
   visit_id          INTEGER NOT NULL REFERENCES visits(id) ON DELETE CASCADE,
-  question_id       INTEGER NOT NULL REFERENCES questions(id),
+  question_id       INTEGER NOT NULL REFERENCES questions(id) ON DELETE RESTRICT,
   audio_path        TEXT,
   transcript        TEXT,
   transcript_status transcript_status NOT NULL DEFAULT 'pending',

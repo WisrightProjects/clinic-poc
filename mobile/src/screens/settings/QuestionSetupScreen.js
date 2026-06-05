@@ -25,7 +25,7 @@ export default function QuestionSetupScreen() {
     if (departmentId) {
       load(departmentId).catch(() => showToast('Could not load template'));
     }
-  }, [departmentId]);
+  }, [departmentId, load]);
 
   const onSave = async () => {
     const ok = await save();
