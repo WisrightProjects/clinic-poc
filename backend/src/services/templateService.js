@@ -1,5 +1,6 @@
 const templateRepository = require('../repositories/templateRepository');
 const { AppError } = require('../utils/errors');
+const { validateQuestions } = require('../utils/questionValidation');
 
 async function getByDepartment(departmentId) {
   if (!departmentId) throw new AppError('BAD_REQUEST', 'departmentId is required', 400);
@@ -9,9 +10,7 @@ async function getByDepartment(departmentId) {
 }
 
 async function update(id, questions) {
-  if (!Array.isArray(questions) || questions.length === 0) {
-    throw new AppError('BAD_REQUEST', 'questions must be a non-empty array', 400);
-  }
+  validateQuestions(questions);
   const template = await templateRepository.findById(id);
   if (!template) throw new AppError('NOT_FOUND', 'Template not found', 404);
   return templateRepository.updateQuestions(id, questions);
