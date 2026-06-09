@@ -13,6 +13,7 @@
     "react-native": "0.85.3",
     "react-native-draggable-flatlist": "^4.0.3",
     "react-native-gesture-handler": "^3.0.0",
+    "react-native-reanimated": "4.3.1",
     "react-native-safe-area-context": "^5.8.0",
     "react-native-screens": "^4.25.2"
   },
@@ -22,5 +23,8 @@
     "ios": "expo start --ios",
     "web": "expo start --web"
   },
-  "private": true
+  "private": true,
+  "devDependencies": {
+    "babel-preset-expo": "^56.0.14"
+  }
 }

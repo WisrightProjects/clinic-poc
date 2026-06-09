@@ -2,13 +2,13 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StyleSheet } from 'react-native';
-import { SettingsStack } from './src/navigation/SettingsStack';
+import { AppNavigator } from './src/navigation/AppNavigator';
 
 export default function App() {
   return (
     <GestureHandlerRootView style={styles.root}>
       <NavigationContainer>
-        <SettingsStack />
+        <AppNavigator />
       </NavigationContainer>
     </GestureHandlerRootView>
   );

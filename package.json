@@ -4,10 +4,24 @@
   "private": true,
   "scripts": {
     "migrate": "node db/run-migrations.js",
-    "seed": "node db/run-seeds.js"
+    "seed": "node db/run-seeds.js",
+    "test": "jest"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testMatch": ["**/__tests__/clinic003*.test.js"],
+    "transform": {
+      "^.+\\.js$": "babel-jest"
+    }
   },
   "dependencies": {
     "dotenv": "^16.3.1",
     "pg": "^8.11.3"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.29.7",
+    "@babel/preset-env": "^7.29.7",
+    "babel-jest": "^30.4.1",
+    "jest": "^30.4.2"
   }
 }

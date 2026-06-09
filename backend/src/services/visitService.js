@@ -5,12 +5,11 @@ const templateRepository = require('../repositories/templateRepository');
 const statusEngine = require('./statusEngine');
 const summaryService = require('./summaryService');
 const { AppError } = require('../utils/errors');
+const { validateNewVisit } = require('../utils/visitValidation');
 
 async function create({ patientName, age, sex, departmentId }) {
-  if (!patientName || !departmentId) {
-    throw new AppError('BAD_REQUEST', 'patientName and departmentId are required', 400);
-  }
-  return visitRepository.createWithToken({ patientName, age, sex, departmentId });
+  const clean = validateNewVisit({ patientName, age, sex, departmentId });
+  return visitRepository.createWithToken(clean);
 }
 
 async function list(statusQuery) {
