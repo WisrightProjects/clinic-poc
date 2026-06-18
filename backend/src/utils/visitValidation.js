@@ -8,7 +8,7 @@ const { AppError } = require('./errors');
 function validateNewVisit({ patientName, age, sex, departmentId }) {
   const errors = {};
 
-  if (!patientName || !patientName.trim()) {
+  if (!patientName || typeof patientName !== 'string' || !patientName.trim()) {
     errors.patientName = 'required';
   }
 
@@ -16,11 +16,12 @@ function validateNewVisit({ patientName, age, sex, departmentId }) {
     errors.departmentId = 'required';
   }
 
-  if (age != null && (age < 0 || age > 120)) {
+  const ageNum = age != null ? Number(age) : null;
+  if (age != null && (isNaN(ageNum) || ageNum < 0 || ageNum > 120)) {
     errors.age = 'out of range (0–120)';
   }
 
-  if (sex && !['M', 'F', 'O'].includes(sex)) {
+  if (sex != null && sex !== '' && (typeof sex !== 'string' || !['M', 'F', 'O'].includes(sex))) {
     errors.sex = 'invalid (must be M, F, or O)';
   }
 
@@ -35,7 +36,7 @@ function validateNewVisit({ patientName, age, sex, departmentId }) {
 
   return {
     patientName: patientName.trim(),
-    age: age != null ? age : null,
+    age: ageNum,
     sex: sex || null,
     departmentId,
   };

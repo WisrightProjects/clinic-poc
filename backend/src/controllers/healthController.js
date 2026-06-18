@@ -6,7 +6,7 @@ async function check(_req, res) {
     await db.query('SELECT 1');
     dbOk = true;
   } catch (_err) {}
-  if (!dbOk) return res.status(503).json({ status: 'error', db: false });
+  if (!dbOk) return res.status(503).json({ error: { code: 'DB_UNAVAILABLE', message: 'Database is not reachable' }, db: false });
   res.json({ status: 'ok', db: true });
 }
 
