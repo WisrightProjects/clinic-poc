@@ -28,7 +28,7 @@ export function IntakeQuestionRow({ index, item, onRecord }) {
 
       {/* Question text + transcript preview */}
       <View style={styles.body}>
-        <Text style={styles.question}>{item.question_text}</Text>
+        <Text style={styles.question}>{item.text}</Text>
         {preview ? (
           <Text style={styles.transcript}>{preview}</Text>
         ) : null}

@@ -2,9 +2,11 @@ const { getDefaultConfig } = require('expo/metro-config');
 
 const config = getDefaultConfig(__dirname);
 
-// Force Metro to use compiled lib/ output from react-native-reanimated
-// instead of its TypeScript source (the react-native field in its package.json
-// points to src/index which has broken internal imports in v4.x).
-config.resolver.resolverMainFields = ['main', 'module', 'browser'];
+// NOTE: Do NOT override resolverMainFields. Reanimated 4 / react-native-worklets
+// ship their source via the `react-native` field on purpose, so Metro loads it
+// and the worklets Babel plugin (added by babel-preset-expo) can transform the
+// worklets and emit `__initData`. Forcing `main` (pre-compiled lib/) skips that
+// transform, leaving worklets with a hash but no __initData -> runtime crash in
+// valueUnpacker ("Cannot read property 'code' of undefined").
 
 module.exports = config;
