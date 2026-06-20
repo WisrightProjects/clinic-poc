@@ -7,7 +7,6 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 
 const NAVY = '#1a3050';
 const TEAL = '#0a8f8f';
-const TEAL_DIM = '#e6f7f7';
 
 export function IntakeQuestionRow({ index, item, onRecord }) {
   const preview =
@@ -34,11 +33,13 @@ export function IntakeQuestionRow({ index, item, onRecord }) {
         ) : null}
       </View>
 
-      {/* Record / Done affordance */}
+      {/* Record (pending) / Retake (answered). Both open the recording screen;
+          the backend replaces the existing answer on re-upload (CLINIC-004 AC9),
+          so Retake makes "Edit Answers" actually editable. */}
       {item.answered ? (
-        <View style={styles.doneChip}>
-          <Text style={styles.doneChipText}>Done</Text>
-        </View>
+        <TouchableOpacity style={styles.retakeBtn} onPress={onRecord} activeOpacity={0.75}>
+          <Text style={styles.retakeBtnText}>Retake</Text>
+        </TouchableOpacity>
       ) : (
         <TouchableOpacity style={styles.recordBtn} onPress={onRecord} activeOpacity={0.75}>
           <Text style={styles.recordBtnText}>Record</Text>
@@ -80,11 +81,13 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
   },
   recordBtnText: { color: '#ffffff', fontSize: 13, fontWeight: '600' },
-  doneChip: {
-    backgroundColor: TEAL_DIM,
+  retakeBtn: {
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: TEAL,
     borderRadius: 6,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingVertical: 7,
   },
-  doneChipText: { color: TEAL, fontSize: 13, fontWeight: '600' },
+  retakeBtnText: { color: TEAL, fontSize: 13, fontWeight: '600' },
 });
