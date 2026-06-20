@@ -4,8 +4,10 @@
 // null placeholders until those stories are implemented.
 
 import React from 'react';
+import { Text, TouchableOpacity } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SettingsStack } from './SettingsStack';
+import HomeScreen from '../screens/HomeScreen';
 import NewPatientScreen from '../screens/NewPatientScreen';
 import QuestionListScreen from '../screens/QuestionListScreen';
 
@@ -18,13 +20,30 @@ const Stack = createNativeStackNavigator();
 export function AppNavigator() {
   return (
     <Stack.Navigator
-      initialRouteName="Settings"
+      initialRouteName="Home"
       screenOptions={{
         headerStyle: { backgroundColor: '#1a3050' },
         headerTintColor: '#ffffff',
         headerTitleStyle: { fontWeight: '700' },
       }}
     >
+      {/* Home / patient queue — attender landing screen (links into CLINIC-003) */}
+      <Stack.Screen
+        name="Home"
+        component={HomeScreen}
+        options={({ navigation }) => ({
+          title: 'ClinicAI',
+          headerRight: () => (
+            <TouchableOpacity
+              onPress={() => navigation.navigate('Settings')}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Text style={{ color: '#ffffff', fontSize: 20 }}>⚙</Text>
+            </TouchableOpacity>
+          ),
+        })}
+      />
+
       {/* CLINIC-002 — settings / question template setup */}
       <Stack.Screen
         name="Settings"

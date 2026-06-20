@@ -25,3 +25,14 @@ export function createVisit(body) {
 export function getVisitDetail(id) {
   return apiClient.get(`/visits/${id}`).then((r) => r.data);
 }
+
+/**
+ * Fetch the patient queue — all visits, ordered by token number.
+ * @param {string} [status]  Optional visit_status filter (e.g. 'waiting')
+ * @returns {Promise<Array>} Visit rows (id, token_number, patient_name, status, …)
+ */
+export function getVisits(status) {
+  return apiClient
+    .get('/visits', { params: status ? { status } : undefined })
+    .then((r) => r.data);
+}
