@@ -19,6 +19,14 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "ClinicAI needs microphone access to record patient answers."
+        }
+      ]
+    ]
   }
 }

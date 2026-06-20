@@ -10,9 +10,9 @@ import { SettingsStack } from './SettingsStack';
 import HomeScreen from '../screens/HomeScreen';
 import NewPatientScreen from '../screens/NewPatientScreen';
 import QuestionListScreen from '../screens/QuestionListScreen';
+import RecordingScreen from '../screens/RecordingScreen';
 
-// Forward declarations — replaced by CLINIC-004 and CLINIC-005 respectively
-const RecordingPlaceholder = () => null;
+// Forward declaration — replaced by CLINIC-005
 const ReviewPlaceholder = () => null;
 
 const Stack = createNativeStackNavigator();
@@ -65,11 +65,11 @@ export function AppNavigator() {
         options={{ title: 'Patient Intake' }}
       />
 
-      {/* CLINIC-004 placeholder — voice recording */}
+      {/* CLINIC-004 — voice recording */}
       <Stack.Screen
         name="Recording"
-        component={RecordingPlaceholder}
-        options={{ headerShown: false }}
+        component={RecordingScreen}
+        options={{ title: 'Record Answer' }}
       />
 
       {/* CLINIC-005 placeholder — attender review */}

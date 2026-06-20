@@ -77,7 +77,13 @@ export default function QuestionListScreen() {
             index={index + 1}
             item={item}
             onRecord={() =>
-              navigation.navigate('Recording', { visitId, questionId: item.id })
+              navigation.navigate('Recording', {
+                visitId,
+                questionId: item.id,
+                questionText: item.text,
+                index: index + 1,
+                total,
+              })
             }
           />
         )}
