@@ -12,8 +12,8 @@ import {
   ScrollView,
   StyleSheet,
   ActivityIndicator,
-  SafeAreaView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Picker } from '@react-native-picker/picker';
 import { useNavigation } from '@react-navigation/native';
 import { createVisit } from '../api/visitApi';
@@ -93,7 +93,7 @@ export default function NewPatientScreen() {
   }, [validate, patientName, age, sex, departmentId, navigation]);
 
   return (
-    <SafeAreaView style={styles.flex}>
+    <SafeAreaView style={styles.flex} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.form} keyboardShouldPersistTaps="handled">
         <Text style={styles.heading}>New Patient</Text>
 

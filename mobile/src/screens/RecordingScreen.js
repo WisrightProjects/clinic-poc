@@ -12,9 +12,11 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   StyleSheet,
-  SafeAreaView,
   Linking,
 } from 'react-native';
+// safe-area-context SafeAreaView applies the Android bottom inset so the Record /
+// Stop & Save button isn't hidden behind the system navigation bar.
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAudioRecorder } from '../hooks/useAudioRecorder';
 import { uploadAnswer } from '../api/answerApi';
@@ -59,7 +61,7 @@ export default function RecordingScreen() {
   // --- Permission denied (AC2) ---
   if (rec.status === 'denied') {
     return (
-      <SafeAreaView style={styles.flex}>
+      <SafeAreaView style={styles.flex} edges={['bottom']}>
         <View style={styles.centered}>
           <Text style={styles.bigIcon}>🎙️</Text>
           <Text style={styles.title}>Microphone access needed</Text>
@@ -80,7 +82,7 @@ export default function RecordingScreen() {
   const isRecording = rec.status === 'recording';
 
   return (
-    <SafeAreaView style={styles.flex}>
+    <SafeAreaView style={styles.flex} edges={['bottom']}>
       <View style={styles.questionCard}>
         {index && total ? (
           <Text style={styles.qMeta}>

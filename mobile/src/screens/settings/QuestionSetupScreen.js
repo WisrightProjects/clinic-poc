@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Pressable, ActivityIndicator, SafeAreaView } from 'react-native';
+import { View, Text, Pressable, ActivityIndicator } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import DraggableFlatList from 'react-native-draggable-flatlist';
 import { useQuestionTemplate } from '../../hooks/useQuestionTemplate';
 import { DepartmentPicker } from '../../components/DepartmentPicker';

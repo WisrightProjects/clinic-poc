@@ -10,8 +10,10 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
 } from 'react-native';
+// safe-area-context SafeAreaView applies the Android bottom inset so the
+// "Send to Doctor" footer isn't hidden behind the system navigation bar.
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useQuestionList } from '../hooks/useQuestionList';
 import { PatientHeader } from '../components/PatientHeader';
@@ -53,7 +55,7 @@ export default function QuestionListScreen() {
   // AC8: no active template for this department
   if (total === 0 && !loading) {
     return (
-      <SafeAreaView style={styles.flex}>
+      <SafeAreaView style={styles.flex} edges={['bottom']}>
         {visit && <PatientHeader name={visit.patient_name} token={visit.token_number} />}
         <View style={styles.centered}>
           <Text style={styles.emptyTitle}>No questions configured</Text>
@@ -66,7 +68,7 @@ export default function QuestionListScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.flex}>
+    <SafeAreaView style={styles.flex} edges={['bottom']}>
       {visit && <PatientHeader name={visit.patient_name} token={visit.token_number} />}
       <ProgressBar answered={answeredCount} total={total} percent={percent} />
       <FlatList

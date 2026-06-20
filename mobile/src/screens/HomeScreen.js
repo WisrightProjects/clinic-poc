@@ -12,8 +12,10 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
 } from 'react-native';
+// Use the safe-area-context SafeAreaView (not RN's deprecated one) so the bottom
+// inset is applied on Android — otherwise the footer button hides behind the nav bar.
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useVisitQueue } from '../hooks/useVisitQueue';
 
@@ -62,7 +64,7 @@ export default function HomeScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.flex}>
+    <SafeAreaView style={styles.flex} edges={['bottom']}>
       <View style={styles.header}>
         <Text style={styles.heading}>Today's Patients</Text>
         <Text style={styles.subheading}>
