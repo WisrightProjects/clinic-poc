@@ -11,9 +11,8 @@ import HomeScreen from '../screens/HomeScreen';
 import NewPatientScreen from '../screens/NewPatientScreen';
 import QuestionListScreen from '../screens/QuestionListScreen';
 import RecordingScreen from '../screens/RecordingScreen';
-
-// Forward declaration — replaced by CLINIC-005
-const ReviewPlaceholder = () => null;
+import ReviewSubmitScreen from '../screens/ReviewSubmitScreen';
+import SentScreen from '../screens/SentScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -72,10 +71,17 @@ export function AppNavigator() {
         options={{ title: 'Record Answer' }}
       />
 
-      {/* CLINIC-005 placeholder — attender review */}
+      {/* CLINIC-005 — attender review & submit */}
       <Stack.Screen
         name="Review"
-        component={ReviewPlaceholder}
+        component={ReviewSubmitScreen}
+        options={{ title: 'Review & Submit' }}
+      />
+
+      {/* CLINIC-005 — sent confirmation */}
+      <Stack.Screen
+        name="Sent"
+        component={SentScreen}
         options={{ headerShown: false }}
       />
     </Stack.Navigator>

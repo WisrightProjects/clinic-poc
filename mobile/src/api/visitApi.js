@@ -36,3 +36,13 @@ export function getVisits(status) {
     .get('/visits', { params: status ? { status } : undefined })
     .then((r) => r.data);
 }
+
+/**
+ * Submit a fully-answered visit for summarisation. Guarded (409 if incomplete)
+ * and idempotent (re-submit returns the existing summary, no duplicate).
+ * @param {string|number} id  Visit id
+ * @returns {Promise<{ status: string, summary: Object }>} The stored summary row
+ */
+export function submitVisit(id) {
+  return apiClient.post(`/visits/${id}/submit`).then((r) => r.data);
+}

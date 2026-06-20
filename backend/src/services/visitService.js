@@ -36,13 +36,24 @@ async function updateStatus(id, newStatus) {
 async function submit(visitId) {
   const visit = await visitRepository.findById(visitId);
   if (!visit) throw new AppError('NOT_FOUND', 'Visit not found', 404);
-  statusEngine.assertTransition(visit.status, 'summarised');
-  const existing = await summaryRepository.findByVisitId(visitId);
-  if (!existing) {
-    const summaryText = await summaryService.generate(visitId);
-    await summaryRepository.create(visitId, summaryText, 'mock');
+
+  // AC5: idempotent — an already-summarised/done visit returns its existing
+  // summary without re-asserting the transition or inserting a duplicate row.
+  if (visit.status === 'summarised' || visit.status === 'done') {
+    const existing = await summaryRepository.findByVisitId(visitId);
+    if (existing) return existing;
   }
-  return visitRepository.updateStatus(visitId, 'summarised');
+
+  // AC3/AC12: only an 'answered' visit may summarise; statusEngine 409s otherwise.
+  statusEngine.assertTransition(visit.status, 'summarised');
+
+  let summary = await summaryRepository.findByVisitId(visitId);
+  if (!summary) {
+    const summaryText = await summaryService.generate(visitId);
+    summary = await summaryRepository.create(visitId, summaryText, 'mock');
+  }
+  await visitRepository.updateStatus(visitId, 'summarised');
+  return summary; // return the summary row so the client can render it without a reload
 }
 
 async function maybeAdvance(visitId) {

@@ -22,8 +22,8 @@ async function updateStatus(req, res) {
 }
 
 async function submit(req, res) {
-  const visit = await visitService.submit(req.params.id);
-  res.json(visit);
+  const summary = await visitService.submit(req.params.id);
+  res.json({ status: 'summarised', summary });
 }
 
 module.exports = { create, list, getById, updateStatus, submit };
