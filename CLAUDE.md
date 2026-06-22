@@ -120,8 +120,17 @@ No real auth. Role travels in the `x-role: attender|doctor` header; `utils/roleG
 - **sarvam** (paid) → `utils/stt/sarvamClient.js`, needs `SARVAM_API_KEY`.
 
 There is **no STT mock** — a provider must be running to transcribe; if none responds, the answer
-is saved with `transcript_status='failed'` (handled in `answerService`, no crash). Summary
-generation is still stubbed (`services/summaryService.js`); `USE_MOCK_SUMMARY` is the only mock flag left.
+is saved with `transcript_status='failed'` (handled in `answerService`, no crash).
+
+`services/summaryService.js` dispatches on `SUMMARY_PROVIDER` (`mock` | `ollama`, default `mock`):
+- **mock** → one canned paragraph (no LLM call).
+- **ollama** (free, open-source) → `utils/summary/ollamaClient.js` builds a prompt from the visit's
+  real Q&A (`utils/summary/prompt.js`) and calls a local Ollama server (`OLLAMA_URL`, `OLLAMA_MODEL`);
+  output language via `SUMMARY_LANGUAGE` (default English, even from Tamil answers).
+
+`generated_by` on the `summaries` row is the provider name; a provider error falls back to the canned
+text marked `mock-fallback` so submit never breaks. Paid providers (`claude`/`sarvam` LLM) plug into
+the same `summaryService` switch later (see `docs/stories/CLINIC-007`).
 
 ## Database
 

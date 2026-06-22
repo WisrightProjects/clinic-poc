@@ -27,7 +27,9 @@ export async function uploadAnswer(visitId, questionId, fileUri) {
 
   const res = await apiClient.post(`/visits/${visitId}/answers`, form, {
     headers: { 'Content-Type': 'multipart/form-data' }, // RN appends the boundary
-    timeout: 30000, // audio upload can be slower than the default 10s
+    // Upload + synchronous STT can be slow on a CPU box under load (Whisper + LLM
+    // sharing cores), so allow generous headroom before the client gives up.
+    timeout: 120000,
   });
   return res.data;
 }

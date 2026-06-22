@@ -49,8 +49,8 @@ async function submit(visitId) {
 
   let summary = await summaryRepository.findByVisitId(visitId);
   if (!summary) {
-    const summaryText = await summaryService.generate(visitId);
-    summary = await summaryRepository.create(visitId, summaryText, 'mock');
+    const { summaryText, generatedBy } = await summaryService.generate(visitId);
+    summary = await summaryRepository.create(visitId, summaryText, generatedBy);
   }
   await visitRepository.updateStatus(visitId, 'summarised');
   return summary; // return the summary row so the client can render it without a reload
