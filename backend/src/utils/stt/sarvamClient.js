@@ -4,10 +4,6 @@ const FormData = require('form-data');
 const config = require('../../config');
 
 async function transcribe(filePath) {
-  if (config.useMockStt) {
-    return 'Mock transcript: patient reported symptoms for testing purposes.';
-  }
-
   if (!config.sarvamApiKey) {
     throw new Error('SARVAM_API_KEY is not configured');
   }
