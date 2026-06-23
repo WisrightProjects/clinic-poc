@@ -44,7 +44,7 @@ export function getVisits(status) {
  * @returns {Promise<{ status: string, summary: Object }>} The stored summary row
  */
 export function submitVisit(id) {
-  // Submit triggers synchronous AI summary generation (Ollama LLM), which is slow
-  // on a CPU box, so allow generous headroom beyond the 10s default.
+  // Submit triggers synchronous AI summary generation (Kimi LLM API), which can be
+  // slow under load, so allow generous headroom beyond the 10s default.
   return apiClient.post(`/visits/${id}/submit`, undefined, { timeout: 120000 }).then((r) => r.data);
 }

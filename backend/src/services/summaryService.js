@@ -2,7 +2,7 @@ const config = require('../config');
 const visitRepository = require('../repositories/visitRepository');
 const answerRepository = require('../repositories/answerRepository');
 const templateRepository = require('../repositories/templateRepository');
-const ollamaClient = require('../utils/summary/ollamaClient');
+const kimiClient = require('../utils/summary/kimiClient');
 
 // Kept for the 'mock' provider and as the fallback when a real provider errors.
 const MOCK_SUMMARY =
@@ -28,16 +28,20 @@ async function generate(visitId) {
 
   const { visit, qa } = await buildQA(visitId);
   try {
-    let summaryText;
     switch (config.summaryProvider) {
-      // 'claude' / 'sarvam' (paid LLMs) plug in here later — same shape as ollamaClient.
-      case 'ollama':
+      // 'claude' / 'sarvam' (paid LLMs) plug in here later — same shape as kimiClient.
+      case 'kimi': {
+        const summaryText = await kimiClient.summarise(visit, qa, config.summaryLanguage);
+        return { summaryText, generatedBy: 'kimi' };
+      }
       default:
-        summaryText = await ollamaClient.summarise(visit, qa, config.summaryLanguage);
+        // Unknown/blank provider — degrade to safe canned text instead of crashing.
+        return { summaryText: MOCK_SUMMARY, generatedBy: 'mock' };
     }
-    return { summaryText, generatedBy: config.summaryProvider };
-  } catch (_err) {
+  } catch (err) {
     // Provider unreachable/errored — never break submit; store a marked fallback.
+    // Log so a misconfigured provider is visible (otherwise the canned text looks real).
+    console.error(`[summary] provider "${config.summaryProvider}" failed, using fallback:`, err.message);
     return { summaryText: MOCK_SUMMARY, generatedBy: 'mock-fallback' };
   }
 }

@@ -9,6 +9,8 @@
 **Status:** Ready for Development
 **Depends On:** CLINIC-001 (`summaries` table, `POST /api/visits/:id/submit`, status engine), CLINIC-005 (submit flow + attender preview), CLINIC-006 (doctor dashboard AI Summary card). Reuses the provider-switch pattern introduced for STT (`STT_PROVIDER`, commit `6dbbe1e`).
 
+> **Update (2026-06-23):** Ollama removed; **Kimi (Moonshot AI)** is now the active paid provider, called over an OpenAI-compatible Chat Completions API (`KIMI_BASE_URL`/`KIMI_API_KEY`/`KIMI_MODEL`). The `SUMMARY_PROVIDER` switch and provider-agnostic seam are unchanged — only the concrete free-LLM implementation was dropped. Sections below describing the Ollama path are retained as the original point-in-time spec.
+
 ---
 
 ## Story Overview
@@ -38,10 +40,10 @@ With this story, the summary reads Ravi's actual answers and produces, e.g.: *"5
 
 ### Solution
 Apply the **same provider-switch pattern** already proven for STT:
-- `SUMMARY_PROVIDER = mock | ollama | claude` (default `mock`, so nothing breaks until configured).
+- `SUMMARY_PROVIDER = mock | ollama | kimi` (default `mock`, so nothing breaks until configured). `claude` remains a possible future drop-in via the same switch.
 - `summaryService.generate()` becomes a thin dispatcher that **loads the visit's real Q&A** (questions + transcripts) and hands it to the selected provider.
 - **Open-source provider (Ollama)** — a local LLM (e.g. `qwen2.5`/`llama3.1`) called over HTTP; free, runs on a server.
-- **Paid provider (Claude)** — Anthropic API; higher quality, excellent Tamil comprehension, summarises Tamil answers into clean English.
+- **Paid provider (Kimi / Moonshot AI)** — the team's purchased model, called over an OpenAI-compatible Chat Completions API (`KIMI_BASE_URL`/`KIMI_API_KEY`/`KIMI_MODEL`); higher quality. Trade-off: patient Q&A leaves the box to an external API.
 - Output is **English by default** regardless of the answer language (configurable), which also addresses the parked "Tamil vs English on the doctor screen" question.
 - `generated_by` becomes **dynamic** (the provider name), so the dashboard truthfully shows `generated · ollama` / `claude` / `mock`.
 - No mobile, route, controller, schema, or doctor-web change — the API contract (`{ visit, template, answers, summary }`) is unchanged.

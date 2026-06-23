@@ -122,15 +122,18 @@ No real auth. Role travels in the `x-role: attender|doctor` header; `utils/roleG
 There is **no STT mock** — a provider must be running to transcribe; if none responds, the answer
 is saved with `transcript_status='failed'` (handled in `answerService`, no crash).
 
-`services/summaryService.js` dispatches on `SUMMARY_PROVIDER` (`mock` | `ollama`, default `mock`):
-- **mock** → one canned paragraph (no LLM call).
-- **ollama** (free, open-source) → `utils/summary/ollamaClient.js` builds a prompt from the visit's
-  real Q&A (`utils/summary/prompt.js`) and calls a local Ollama server (`OLLAMA_URL`, `OLLAMA_MODEL`);
-  output language via `SUMMARY_LANGUAGE` (default English, even from Tamil answers).
+`services/summaryService.js` dispatches on `SUMMARY_PROVIDER` (`mock` | `kimi`, default `mock`):
+- **mock** → one canned paragraph (no LLM call). Also the safe default for any unknown/blank provider.
+- **kimi** (paid, Moonshot AI) → `utils/summary/kimiClient.js` builds a prompt from the visit's real
+  Q&A (`utils/summary/prompt.js`) and POSTs to an OpenAI-compatible Chat Completions endpoint
+  (`KIMI_BASE_URL` ending in `/v1`, `KIMI_API_KEY`, `KIMI_MODEL`); output language via
+  `SUMMARY_LANGUAGE` (default English, even from Tamil answers). Note: this sends patient Q&A to an
+  external API.
 
 `generated_by` on the `summaries` row is the provider name; a provider error falls back to the canned
-text marked `mock-fallback` so submit never breaks. Paid providers (`claude`/`sarvam` LLM) plug into
-the same `summaryService` switch later (see `docs/stories/CLINIC-007`).
+text marked `mock-fallback` (and logs the cause) so submit never breaks. Other LLMs (`claude`/`sarvam`)
+plug into the same `summaryService` switch later (see `docs/stories/CLINIC-007`). The earlier free Ollama
+provider was removed once Kimi became the team's chosen engine.
 
 ## Database
 
