@@ -47,6 +47,19 @@ async function submit(visitId) {
   // AC3/AC12: only an 'answered' visit may summarise; statusEngine 409s otherwise.
   statusEngine.assertTransition(visit.status, 'summarised');
 
+  // Transcription runs in the background (see answerService), so an answer may still
+  // be 'pending' when the attender taps Send. Block summarisation until every answer
+  // has resolved (done/failed) so the AI summary is never built on a missing transcript.
+  // 'failed' is terminal (not a transcript we can wait for), so it does not block.
+  const answers = await answerRepository.findByVisitId(visitId);
+  if (answers.some(a => a.transcript_status === 'pending')) {
+    throw new AppError(
+      'TRANSCRIPTION_PENDING',
+      'Transcription is still finishing. Please wait a moment and send again.',
+      409
+    );
+  }
+
   let summary = await summaryRepository.findByVisitId(visitId);
   if (!summary) {
     const { summaryText, generatedBy } = await summaryService.generate(visitId);

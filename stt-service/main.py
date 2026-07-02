@@ -49,7 +49,17 @@ async def transcribe(file: UploadFile = File(...), language: str = Form(None)):
             tmp.write(await file.read())
             tmp_path = tmp.name
 
-        segments, info = model.transcribe(tmp_path, language=language or None)
+        # vad_filter drops silent/near-silent regions before decoding. Without it,
+        # Whisper (especially the "small" model) hallucinates training-data phrases on
+        # silence — most infamously "Thank you for watching!". condition_on_previous_text
+        # is disabled so one segment's guess can't bias the next into a repetition loop.
+        segments, info = model.transcribe(
+            tmp_path,
+            language=language or None,
+            vad_filter=True,
+            vad_parameters=dict(min_silence_duration_ms=500),
+            condition_on_previous_text=False,
+        )
         text = " ".join(segment.text.strip() for segment in segments).strip()
         return {"transcript": text, "language": info.language}
     finally:

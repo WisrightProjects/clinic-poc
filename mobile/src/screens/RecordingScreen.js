@@ -19,7 +19,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAudioRecorder } from '../hooks/useAudioRecorder';
-import { uploadAnswer } from '../api/answerApi';
+import { uploadAnswer, waitForAnswerTranscript } from '../api/answerApi';
 import { Waveform } from '../components/Waveform';
 import { RecordTimer } from '../components/RecordTimer';
 
@@ -41,7 +41,11 @@ export default function RecordingScreen() {
       setUploading(true);
       setUploadError(null);
       try {
-        await uploadAnswer(visitId, questionId, fileUri); // synchronous transcribe on server
+        await uploadAnswer(visitId, questionId, fileUri); // returns fast; server transcribes in background
+        // Hold the loader until the transcript is ready, so the list shows it
+        // immediately on return instead of blank-until-manual-refresh. Polls with
+        // light GETs (no held connection), and times out so it can't hang forever.
+        await waitForAnswerTranscript(visitId, questionId);
         navigation.goBack(); // list reloads on focus → shows transcript + Done
       } catch (err) {
         // AC6/AC10: keep the local file, surface a retry action
