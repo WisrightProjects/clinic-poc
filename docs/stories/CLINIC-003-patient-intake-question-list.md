@@ -505,3 +505,218 @@ Wraps `createVisit` with a single-flight guard so a double-tap or retry-after-ti
 | **Login as** | Attender role — no real auth; the app sends `X-Role: attender` header on every `/api` call |
 | **Test Data** | Seeded **General** department with an **active** `question_template` of 5 questions (CLINIC-002 seed); for resume test, a seeded visit in status `answering` with 2 of 5 `answers` populated; for empty-state test, a department with no active template |
 | **Non-testable ACs** | AC1 (collision-free concurrency) — verify via backend integration/load test, not UI; AC5 (status → 'answering') — depends on CLINIC-004 answer POST, verify via API + DB; AC11 (role header) — inspect network request headers, not visible in UI; AC12 (derive from answers not status) — verify via crafted DB state + API, not directly visible |
+
+---
+
+## Pipeline Log
+
+### Review — 2026-06-08 13:20 — Verdict: READY WITH NOTES
+
+## Story Review: CLINIC-003 — Patient Intake & Question List
+
+**Verdict:** READY WITH NOTES
+
+---
+
+### Dependencies
+
+- **CLINIC-001**: IMPLEMENTED — Full backend scaffold confirmed. `backend/src/{controllers,services,repositories,routes,utils,config}` all exist. `POST /api/visits` and `GET /api/visits/:id` are registered in `backend/src/routes/index.js` lines 20 and 22. `pg_advisory_xact_lock` token assignment exists in `visitRepository.createWithToken` (lines 39–65).
+- **CLINIC-002**: IMPLEMENTED — `mobile/src/screens/settings/QuestionSetupScreen.js`, `mobile/src/api/templates.api.js`, `mobile/src/hooks/useQuestionTemplate.js`, and `templateRepository.findActiveByDepartmentId` all exist. `question_templates` + `questions` tables and seeds are in place.
+
+---
+
+### Blockers
+
+None — both hard dependencies are implemented and the backend endpoints this story consumes already exist. Development can start immediately, but the implementer must read the notes below before writing a single line of code.
+
+---
+
+### File plan (verified against codebase)
+
+**BACKEND — corrected status:**
+
+| Story says | Actual status | Correct action |
+|---|---|---|
+| `backend/src/repositories/visitRepository.js` — NEW | **ALREADY EXISTS** (67 lines, fully implemented with `createWithToken`, `findById`, `list`, `updateStatus`) | **SKIP** — do not recreate. |
+| `backend/src/services/visitService.js` — NEW | **ALREADY EXISTS** (66 lines; has `create`, `getById`, `list`, `updateStatus`, `submit`, `maybeAdvance`) | **SKIP** — do not recreate. |
+| `backend/src/controllers/visitController.js` — NEW | **ALREADY EXISTS** (29 lines; has `create`, `list`, `getById`, `updateStatus`, `submit`) | **SKIP** — do not recreate. |
+| `backend/src/routes/visitRoutes.js` — Modify | **Does not exist as a standalone file.** Routes are inline in `backend/src/routes/index.js`. `POST /api/visits` (line 20) and `GET /api/visits/:id` (line 22) are already registered. | **SKIP** — routes exist. |
+| `backend/src/utils/visitValidation.js` — NEW | **Does NOT exist** (only `questionValidation.js` exists) | **CREATE** — this is the one genuinely new backend file. |
+
+**MOBILE — all paths must use `mobile/` not `attender-app/`:**
+
+- CREATE: `mobile/src/services/visitApi.js`
+- CREATE: `mobile/src/hooks/useQuestionList.js`
+- CREATE: `mobile/src/screens/NewPatientScreen.js`
+- CREATE: `mobile/src/screens/QuestionListScreen.js`
+- CREATE: `mobile/src/components/IntakeQuestionRow.js` (**renamed** — see risks)
+- CREATE: `mobile/src/components/ProgressBar.js`
+- CREATE: `mobile/src/components/SendToDoctorButton.js`
+- CREATE: `mobile/src/components/PatientHeader.js`
+- CREATE: `mobile/src/utils/retry.js`
+- MODIFY: `mobile/App.js` — introduce a root navigator (currently hardwires `SettingsStack` directly; no `AppNavigator.js` exists)
+- CREATE: `mobile/src/navigation/AppNavigator.js` — the story says "Modify" but this file does not exist; it must be created, then `App.js` updated to import it
+- DO NOT TOUCH: `mobile/src/components/QuestionRow.js` (owned by CLINIC-002 / QuestionSetupScreen)
+- DO NOT TOUCH: `mobile/src/navigation/SettingsStack.js` (owned by CLINIC-002)
+
+---
+
+### Reference drift
+
+- **Story throughout** references `attender-app/src/…` → **drifted**: the mobile directory is `mobile/`. Every path in the File Summary table and all task descriptions must be read with `mobile/` substituted for `attender-app/`.
+- **Task 1.1 / File Summary** marks `visitRepository.js`, `visitService.js`, `visitController.js` as NEW → **drifted**: all three already exist and are fully implemented. The story's pseudocode in Tasks 1.1–1.3 describes the actual implementation accurately (token lock key `20240001`, `pg_advisory_xact_lock`, advisory lock scope), confirming intent matches reality.
+- **Task 1.3 describes `getVisitDetail` returning** `{ visit, template, questions, answers }` with a top-level `questions` key → **drifted**: the real `visitService.getById` returns `{ visit, template, answers, summary }`. Questions are embedded inside `template.questions` (set by `templateRepository.findActiveByDepartmentId`). The `useQuestionList` hook must read `data.template?.questions ?? []`, not `data.questions`.
+- **Task 1.2 token query** uses `created_at::date = CURRENT_DATE` → **drifted (minor)**: actual implementation uses a dedicated `visit_date` column (`WHERE visit_date = CURRENT_DATE`). The AC is satisfied; only the code snippet in the story is slightly off.
+- **UI Test Setup — App URL** lists port `3000` → the existing `mobile/src/api/client.js` defaults to port `4000` (`http://10.0.2.2:4000/api`). Implementer should match the port the backend actually binds (check `backend/src/config/index.js` or `.env`).
+- **Task 3.1** says "Modify `attender-app/src/navigation/AppNavigator.js`" → **drifted**: `AppNavigator.js` does not exist. `App.js` is the correct file to modify, and `AppNavigator.js` must be created fresh.
+
+---
+
+### Acceptance criteria notes
+
+- **Unit-testable (pure logic, no running app):** AC3 (progress math), AC4 (gate logic), AC9 (client-side field validation), AC12 (answers-not-status derivation in `useQuestionList`)
+- **Needs running app (Expo + backend):** AC2 (question list loads), AC6 (resume in-progress), AC7 (navigation to recording screen), AC8 (empty state for missing template), AC10 (offline/retry banner)
+- **Manual / network-tab / DB-only:** AC1 (token collision — requires concurrent load test), AC5 (status → 'answering' — triggered by CLINIC-004 answer POST, not this screen), AC11 (role header — inspect axios request in Expo debugger)
+
+All ACs are testable as written. AC5 is correctly flagged as out-of-scope for this screen; it is satisfied automatically by `visitService.maybeAdvance` which is already wired into `answerService` (CLINIC-004's concern).
+
+---
+
+### Risks & notes for the implementer
+
+1. **`mobile/src/components/QuestionRow.js` name collision (HIGH).** A `QuestionRow` component already exists at that path — it is the drag-handle editor row for the CLINIC-002 settings screen. If the implementer creates a new `QuestionRow.js` at the same path it will overwrite the CLINIC-002 component and break `QuestionSetupScreen`. Name the new component `IntakeQuestionRow.js` (or `VisitQuestionRow.js`) and place it at `mobile/src/components/IntakeQuestionRow.js`. Import it by that name in `QuestionListScreen`.
+
+2. **`GET /api/visits/:id` response shape mismatch (HIGH).** `visitService.getById` returns `{ visit, template, answers, summary }` where `template` is `{ ...template_row, questions: [...] }`. The story's `useQuestionList` pseudocode reads `data.questions` — that key does not exist. The hook must be written as: `const questions = data?.template?.questions ?? [];` and `const answers = data?.answers ?? [];`. When `template` is null (AC8 empty state), `questions` correctly becomes `[]`.
+
+3. **`App.js` must be modified — no `AppNavigator.js` exists.** The current `App.js` renders `<SettingsStack />` directly inside `<NavigationContainer>`. To add the intake flow, the implementer must create `mobile/src/navigation/AppNavigator.js` (a tab or stack navigator containing both `SettingsStack` and the new intake screens) and update `App.js` to render `<AppNavigator />` instead. This is a structural change to the app entry point — plan for it.
+
+4. **`visitApi.js` must use axios, not raw `fetch`.** The project already has `mobile/src/api/client.js` — an axios instance with `x-role: attender` header and base URL pre-configured. The story's pseudocode uses `fetch`; the implementer must instead export functions that call `apiClient.post('/visits', body)` and `apiClient.get(\`/visits/${id}\`)` from the existing `client.js`. This satisfies AC11 automatically (header is set on the shared client).
+
+5. **`visitValidation.js` on the backend is the only genuinely new backend file.** The story allocates significant implementation time (Tasks 1.1–1.5, 5 hours) to backend work that is already done. That time should be reallocated to mobile work (navigation restructuring, component naming, `useQuestionList` shape fix).
+
+6. **`visitService.create` has minimal validation** (only checks `patientName` and `departmentId` are truthy — no age range, no sex enum check). `visitValidation.js` should add the full checks described in Task 1.4 (age 0–120, sex in `['M','F','O']`) and be called from `visitService.create`, replacing the inline guard on lines 10–13.
+
+7. **`roleGuard` is applied globally** (`router.use(roleGuard)` at line 15 of `routes/index.js`) — `GET /api/visits/:id` already requires a role header. The story's AC11 is implicitly enforced server-side; no extra wiring needed.
+
+8. **`visit_date` column dependency.** `visitRepository.createWithToken` inserts `visit_date = CURRENT_DATE`. Verify the migration for the `visits` table includes this column; if CLINIC-001 was implemented without it the INSERT will fail. Check `db/migrations/` before testing token assignment.
+
+9. **`react-native-gesture-handler` and `react-native-screens` are already in `package.json`** — no new dependencies needed for navigation. However the AGENTS.md note in `mobile/` explicitly warns to read Expo v56 docs before writing code (`https://docs.expo.dev/versions/v56.0.0/`). Verify `@react-navigation` API against that version before coding the new navigator — navigation APIs changed between v6 and v7 (the project already uses v7: `@react-navigation/native-stack ^7.x`).
+
+10. **`useFocusEffect` reload (Task 3.2)** is critical for the resume AC (AC6) and for reflecting a newly saved answer when returning from the CLINIC-004 recording screen. It should be included in the initial `QuestionListScreen` build, not treated as a follow-up modification.
+
+---
+
+## Pipeline Log
+
+### Implementation — 2026-06-08 13:44
+
+## Implementation Report: CLINIC-003
+
+### Files created
+- `backend/src/utils/visitValidation.js` — validates new-visit input (patientName required, departmentId required, age 0–120, sex M/F/O); throws AppError(VALIDATION_ERROR, 400) with per-field errors object (~38 lines)
+- `mobile/src/api/visitApi.js` — axios wrappers for POST /visits (createVisit) and GET /visits/:id (getVisitDetail); uses shared apiClient from client.js (~28 lines)
+- `mobile/src/utils/retry.js` — withSingleFlight HOF: concurrent callers share one in-flight promise, resets after settle (~30 lines)
+- `mobile/src/navigation/AppNavigator.js` — root native stack navigator; registers Settings (SettingsStack), NewPatient, QuestionList, and null placeholders for Recording (CLINIC-004) and Review (CLINIC-005); initial route is Settings (~55 lines)
+- `mobile/src/hooks/useQuestionList.js` — fetches getVisitDetail, derives per-question view model; questions read from data.template.questions (not data.questions); progress derived from answers array not visit.status (AC12); includes useFocusEffect reload (~68 lines)
+- `mobile/src/components/IntakeQuestionRow.js` — intake question row with numbered/checkmark badge, question text, transcript preview (60-char truncation), Record button / Done chip; navy+teal styling matching clinic-flow.html M-01 (~80 lines)
+- `mobile/src/components/ProgressBar.js` — "X of N answered · Y%" label and filled track; switches to "✓ Complete" when fully answered (~38 lines)
+- `mobile/src/components/PatientHeader.js` — patient name + Token badge on navy background (~35 lines)
+- `mobile/src/components/SendToDoctorButton.js` — teal button, dimmed+non-interactive when disabled, shows "Answer all questions to continue" helper text (AC4) (~42 lines)
+- `mobile/src/screens/QuestionListScreen.js` — presentational intake screen; ActivityIndicator loading, error+Retry, empty-state (no template, AC8), PatientHeader+ProgressBar+FlatList+SendToDoctorButton; navigates to Recording/Review (~120 lines)
+- `mobile/src/screens/NewPatientScreen.js` — new patient form (name, age, sex, department picker); client-side validation before API call (AC9); createVisit wrapped with withSingleFlight (AC10); navigate to QuestionList on success with visitId; retry banner on network/5xx preserving field values (~138 lines)
+
+### Files modified
+- `backend/src/services/visitService.js` — replaced inline `if (!patientName || !departmentId)` guard in `create()` with `validateNewVisit()` call; added require for visitValidation at top
+- `mobile/App.js` — replaced `SettingsStack` import and usage with `AppNavigator`; NavigationContainer and GestureHandlerRootView unchanged
+
+### Contracts preserved
+- `mobile/src/components/QuestionRow.js` — not touched (CLINIC-002 owned)
+- `mobile/src/navigation/SettingsStack.js` — not touched (CLINIC-002 owned)
+- `backend/src/repositories/visitRepository.js` — not touched (exists from CLINIC-001)
+- `backend/src/controllers/visitController.js` — not touched (exists from CLINIC-001)
+- `backend/src/routes/index.js` — not touched (routes already registered from CLINIC-001)
+- GET /api/visits/:id response shape: hook reads `data.template.questions` and `data.answers` verbatim as confirmed by visitService.getById
+- visitController.create returns the visit row directly (not wrapped); NewPatientScreen reads `visit.id` for navigation
+
+### Deviations from the story
+- Story task descriptions reference `attender-app/src/…` paths — all files placed under `mobile/src/…` per reviewer correction
+- Story pseudocode for `useQuestionList` reads `data.questions` — corrected to `data.template?.questions ?? []` per reviewer note (HIGH risk item 2)
+- `AppNavigator.js` created as a new file (story said "Modify") and `App.js` updated to import it, per reviewer note (risk item 3)
+- Story Task 2.1 pseudocode uses raw `fetch` — implemented with axios `apiClient` per reviewer note (risk item 4)
+- Backend Tasks 1.1–1.3, 1.5 skipped — visitRepository, visitService, visitController, routes all already exist from CLINIC-001 per reviewer file plan
+- `visitApi.js` placed at `mobile/src/api/visitApi.js` (not `mobile/src/services/visitApi.js`) to match the project's existing api/ convention (client.js and templates.api.js live there)
+
+### Build/typecheck status
+- No TypeScript in this project (plain JS + Expo); no build command available without a running emulator
+- All imports verified by cross-checking exported names against source files: `apiClient` from client.js, `SettingsStack` from SettingsStack.js, `getDepartments` from templates.api.js
+- `@react-navigation/native-stack ^7.16.0` confirmed in package.json; `createNativeStackNavigator` API used consistently with existing SettingsStack.js pattern
+
+### Notes for the tester
+- Backend: `USE_MOCK_STT=true USE_MOCK_SUMMARY=true` for offline demo; backend binds port 4000 (mobile client.js default)
+- Mobile: `cd mobile && expo start --android`; emulator host is `http://10.0.2.2:4000/api` (default in client.js)
+- App starts on Settings screen (CLINIC-002 unchanged); tap Android back or add a "New Patient" entry point to reach NewPatientScreen
+- AC1 (token collision) requires a concurrent load test against the backend — not testable via UI
+- AC5 (status → answering) is triggered by CLINIC-004 answer POST — not exercised by this screen
+- AC11 (x-role header) is set on the shared axios instance in client.js — inspect via Expo network debugger
+- Recording and Review screens are null placeholders; navigation will succeed but render a blank screen until CLINIC-004/005 are implemented
+
+### Security Audit — 2026-06-08 13:52 — Verdict: FINDINGS (0 critical/high)
+
+## Security Audit: CLINIC-003
+
+**Verdict:** FINDINGS
+
+### Critical / High
+- None.
+
+### Medium / Low
+- [backend/src/controllers/visitController.js:14-16 + backend/src/repositories/visitRepository.js:12-14] (Medium) [A04 Insecure Design / STRIDE: Information disclosure] `GET /api/visits/:id` passes `req.params.id` straight to `SELECT * FROM visits WHERE id = $1` with no type/format check. SQL injection is NOT possible (parameterized $1), but if the `visits.id` column is an integer/uuid type, a non-conforming `:id` (e.g. `/api/visits/abc`) makes Postgres raise a type-cast error that flows to the generic error handler. `errorHandler` (utils/errors.js:9-13) returns `err.message` verbatim with HTTP 500 — leaking raw Postgres error text (column types, internal phrasing) to the client. Fix: validate/coerce `id` in the controller or service (reject non-matching with a 400 `VALIDATION_ERROR`) and ensure the error handler does not echo raw driver messages for 500s. (PARTIALLY PRE-EXISTING: repo/controller predate this story, but this story is the first to wire the mobile client to exercise this path.)
+- [backend/src/utils/visitValidation.js:15-17 + backend/src/repositories/visitRepository.js:53-56] (Medium) [A04 Insecure Design / STRIDE: Tampering] `departmentId` is only checked for `!= null` in validation; it is never verified to be an integer or to reference an existing department. A client can POST `departmentId: "1; whatever"` (string) or a non-existent id. SQL is parameterized so no injection, but a non-existent FK either throws a raw Postgres FK-violation 500 (info disclosure via the same error-handler path) or, if no FK constraint exists, creates an orphan visit. Fix: coerce `departmentId` to an integer and reject non-integers with 400; rely on a DB FK constraint plus a friendly mapped error for missing departments.
+- [mobile/src/utils/retry.js:14-27 + mobile/src/screens/NewPatientScreen.js:27,80] (Medium) [A04 Insecure Design — duplicate-resource / STRIDE: Tampering] `withSingleFlight` only de-dupes *concurrent* calls — it nulls `inFlight` as soon as the promise settles. The retry banner (NewPatientScreen.js:102 calls `handleSubmit` again) fires *after* the first call has settled (failed), so the guard provides no protection against the exact AC10 scenario it was written for: a create that times out at the client (10s axios timeout, client.js:11) but *succeeds* server-side, then is retried, yields a SECOND visit and a duplicate token. True idempotency needs a client-generated idempotency key sent to the backend and de-duped there. Fix: generate a UUID per form submission, send it as an idempotency key, and have the backend return the existing visit on replay. (Note: this is a data-integrity/UX bug as much as a security one; flagging because it defeats the stated duplicate-prevention control.)
+- [backend/src/utils/roleGuard.js:5-10 + mobile/src/api/client.js:9] (Low) [A01 Broken Access Control / A07 Identification & Auth Failures / STRIDE: Spoofing + Elevation of privilege] Authorization is a self-asserted `x-role` header with no authentication behind it. `GET /api/visits/:id` and `POST /api/visits` are reachable by anyone who sends `x-role: attender` or `x-role: doctor`; patient PII (name, age, sex, transcripts) is exposed to any unauthenticated caller on the network. This is the documented POC auth model (CLAUDE.md / AC11), so it is accepted-by-design for this phase — but it must be tracked as a hard blocker before any real-patient / production use. No fix required this story; do NOT ship this auth model to production.
+- [mobile/src/screens/QuestionListScreen.js:44 / NewPatientScreen.js:85] (Low) [A09 Logging/Monitoring — minor] Error rendering reads `error?.response?.data?.error?.message` and falls back to `error.message`. Safe (no raw HTML injection — React Native `<Text>` does not interpret markup), but surfacing backend `message` strings directly to the UI can echo the raw Postgres text described above once it reaches the client. Mitigated entirely by fixing the two backend items. No standalone fix needed.
+
+### Reviewed and acceptable
+- [backend/src/repositories/visitRepository.js:3-65] All visit SQL (`create`, `createWithToken`, `findById`, `list`, `updateStatus`) uses parameterized queries (`$1..$5`, `ANY($1::visit_status[])`). No string concatenation into SQL anywhere in the diff. No injection path. The `pg_advisory_xact_lock` + `MAX(token_number)+1` token allocation is concurrency-safe (server-side serialization).
+- [mobile/src/components/IntakeQuestionRow.js:31-33, PatientHeader.js:13-15] Attacker-influenceable text (patient_name, question_text, transcript) is rendered via React Native `<Text>` children, which do not interpret HTML/markup. No `dangerouslySetInnerHTML` / `innerHTML` equivalent exists in RN. Transcript is length-clamped to 60 chars. No XSS path.
+- [mobile/src/api/client.js:1-12] No hardcoded secrets/API keys. Base URL is an emulator-loopback default (`10.0.2.2:4000`) overridable via `EXPO_PUBLIC_API_URL`; not a baked-in production host or credential. Sarvam/AI keys live server-side only (CLAUDE.md), not in the mobile build.
+- [mobile/App.js, AppNavigator.js] Navigation wiring only; Recording/Review are `() => null` placeholders. No new entry point handling untrusted input. No deep-link / URL-param surface added.
+- [mobile/src/hooks/useQuestionList.js:43-60] Consumes API JSON with safe optional-chaining/defaults (`data?.template?.questions ?? []`); no unvalidated shape assumption that could crash on hostile payloads. Progress math is division-guarded (`total > 0`).
+- No new third-party dependencies introduced by this story (uses existing axios, @react-navigation, @react-native-picker). No dependency-supply-chain risk added.
+
+### Pre-existing (not introduced by this story)
+- The `x-role` no-auth model and the raw-error-message passthrough in `errorHandler` predate CLINIC-003. They are listed above because this story is the first to expose the visit-detail/PII path to the mobile client and so newly activates that attack surface — track, do not necessarily fix within this story.
+
+---
+
+### Test — Round 1 — 2026-06-08 15:10 — PASS
+
+## Test Report: CLINIC-003
+
+**Overall:** PASS
+
+### Per-AC results
+- AC1: NOT AUTOMATED — run a concurrent load test (e.g. 10 simultaneous POST /api/visits) against the backend and verify no two rows share the same token_number for the same visit_date.
+- AC2: NOT AUTOMATED — open a visit on the running Expo app; verify the question list renders in order_index order with answered/pending state per the seed data.
+- AC3: PASS
+- AC4: PASS
+- AC5: NOT AUTOMATED — triggered by CLINIC-004 POST /api/visits/:id/answers; verify via DB query after first answer is saved that visit.status = 'answering'.
+- AC6: NOT AUTOMATED — with a seeded visit in status 'answering' with 2 of 5 answers, reopen the visit on the running app and verify "2 of 5 answered · 40%" and prior transcripts are shown.
+- AC7: NOT AUTOMATED — tap a pending question's Record affordance on the running app and confirm navigation to the recording screen (CLINIC-004 placeholder).
+- AC8: NOT AUTOMATED — open a visit whose department has no active template on the running app; verify the empty-state message is shown and Send to Doctor is hidden/disabled.
+- AC9: PASS
+- AC10: NOT AUTOMATED — disable the network on the device/emulator, tap Start Visit, verify a retry banner appears and field values are preserved; tap Retry and verify no duplicate visit is created.
+- AC11: NOT AUTOMATED — in the Expo network debugger (or Charles Proxy), confirm every /api call from this screen includes the header X-Role: attender.
+- AC12: PASS
+
+### Test files written
+- `D:\Projects\Clinic POC\clinic-poc\backend\src\__tests__\visitValidation.test.js` — covers AC9 (server-side validation: blank name, missing dept, age out of range, invalid sex, error shape/httpStatus/code, multi-field errors)
+- `D:\Projects\Clinic POC\clinic-poc\__tests__\clinic003-progress-and-gate.test.js` — covers AC3 (progress math: answeredCount, percent, allAnswered across 0/partial/full/rounding), AC4 (SendToDoctorButton disabled=!allAnswered logic), AC9 (client-side validate() closure from NewPatientScreen), AC12 (progress from answers array not visit.status, wrong data.questions path is safely ignored, duplicate answer deduplication)
+
+### Failures
+None.
+
+### Suite output summary
+- Backend: 21 passed, 0 failed — `cd backend && npx jest --no-coverage`
+- Root (mobile pure logic): 36 passed, 0 failed — `cd . && npx jest --no-coverage`
+- Total: 57 passed, 0 failed
