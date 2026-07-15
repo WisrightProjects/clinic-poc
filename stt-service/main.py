@@ -16,6 +16,7 @@ Config (env vars):
     WHISPER_MODEL          model size: tiny | base | small | medium | large-v3  (default: small)
     WHISPER_DEVICE         cpu | cuda                                           (default: cpu)
     WHISPER_COMPUTE_TYPE   int8 | int8_float16 | float16 | float32             (default: int8)
+    WHISPER_NUM_WORKERS    concurrent transcriptions (default: 2) — see below
 """
 
 import os
@@ -27,11 +28,18 @@ from faster_whisper import WhisperModel
 MODEL_SIZE = os.getenv("WHISPER_MODEL", "small")
 DEVICE = os.getenv("WHISPER_DEVICE", "cpu")
 COMPUTE_TYPE = os.getenv("WHISPER_COMPUTE_TYPE", "int8")
+# A single model instance serialises concurrent transcribe() calls. num_workers > 1
+# lets two attenders' answers transcribe in parallel, at the cost of extra RAM per
+# worker (small/int8 ≈ 1-2 GB each). Raise only if the box has the memory.
+NUM_WORKERS = int(os.getenv("WHISPER_NUM_WORKERS", "2"))
 
 app = FastAPI(title="ClinicAI STT", version="1.0.0")
 
-# Loaded once; downloads the model on first run and caches it.
-model = WhisperModel(MODEL_SIZE, device=DEVICE, compute_type=COMPUTE_TYPE)
+# Loaded once at import. The model is baked into the image at build time (see
+# Dockerfile), so this resolves from the local cache and never hits the network.
+model = WhisperModel(
+    MODEL_SIZE, device=DEVICE, compute_type=COMPUTE_TYPE, num_workers=NUM_WORKERS
+)
 
 
 @app.get("/health")
@@ -40,13 +48,19 @@ def health():
 
 
 @app.post("/transcribe")
-async def transcribe(file: UploadFile = File(...), language: str = Form(None)):
-    """Transcribe an uploaded audio file. `language` is optional (None => auto-detect)."""
+def transcribe(file: UploadFile = File(...), language: str = Form(None)):
+    """Transcribe an uploaded audio file. `language` is optional (None => auto-detect).
+
+    Deliberately a sync `def`, not `async def`: model.transcribe() is blocking CPU work,
+    and inside an async handler it would stall the whole event loop — serialising every
+    request and starving /health while a transcription runs. FastAPI runs sync handlers
+    in a threadpool, so the loop stays responsive and num_workers gives real parallelism.
+    """
     suffix = os.path.splitext(file.filename or "")[1] or ".m4a"
     tmp_path = None
     try:
         with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
-            tmp.write(await file.read())
+            tmp.write(file.file.read())
             tmp_path = tmp.name
 
         # vad_filter drops silent/near-silent regions before decoding. Without it,

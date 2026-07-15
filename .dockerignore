@@ -1,0 +1,19 @@
+# Root build context (used by backend/Dockerfile, which needs both backend/ and db/).
+# Keep the image lean and never ship host-built native modules or secrets.
+**/node_modules
+**/.env
+**/npm-debug.log
+.git
+.gitignore
+
+# Not part of the backend image.
+mobile/
+frontend/
+stt-service/
+docs/
+scripts/
+storage/
+**/uploads
+*.html
+*.md
+docker-compose*.yml

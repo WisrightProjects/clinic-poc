@@ -14,7 +14,9 @@ services:
     environment:
       POSTGRES_DB: clinic_poc
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      # Set POSTGRES_PASSWORD in Coolify (mark it a Secret). Falls back to 'postgres'
+      # for local `docker compose up` only — never ship the default to production.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     volumes:
       - clinic-db:/var/lib/postgresql/data
     ports:
@@ -26,28 +28,47 @@ services:
       retries: 10
 
   whisper:
-    build: ./stt-service
+    build:
+      context: ./stt-service
+      # The weights are baked into the image, so the model is chosen at BUILD time.
+      # Bump to medium/large-v3 for more accuracy (needs more RAM) and rebuild.
+      args:
+        WHISPER_MODEL: small
+        WHISPER_COMPUTE_TYPE: int8
     environment:
-      WHISPER_MODEL: small # bump to medium/large-v3 for more accuracy (needs more RAM)
-      WHISPER_DEVICE: cpu
-      WHISPER_COMPUTE_TYPE: int8
-    volumes:
-      - whisper-models:/root/.cache/huggingface
+      WHISPER_NUM_WORKERS: "2" # concurrent transcriptions; each worker costs RAM
+    # NO published port. The sidecar has no authentication — the backend reaches it on
+    # the private compose network at http://whisper:8000 and nothing else can. Never
+    # expose 8000 publicly. (docker-compose.stt.yml does publish it, for local dev only.)
     restart: unless-stopped
 
   backend:
-    build: ./backend
+    build:
+      # Root context: server.js requires ../../db/run-migrations, which lives outside
+      # backend/. A ./backend context omits it and the container crashloops on boot.
+      context: .
+      dockerfile: backend/Dockerfile
     environment:
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/clinic_poc
+      # Same POSTGRES_PASSWORD as the postgres service — keep the two in sync.
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/clinic_poc
       STT_PROVIDER: whisper
       WHISPER_URL: http://whisper:8000
       STT_LANGUAGE: auto
-      USE_MOCK_SUMMARY: "true"
-      CORS_ORIGINS: http://localhost:8080,http://localhost:8081
+      # Doctor-web origin(s), comma-separated. The mobile app calls the backend directly,
+      # so if phones hit it cross-origin add that host here too. Set the real domain in Coolify.
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080,http://localhost:8081}
+      # Summaries: 'mock' = canned text (no LLM). For real AI summaries set SUMMARY_PROVIDER=kimi
+      # and provide KIMI_API_KEY (+ optional KIMI_BASE_URL / KIMI_MODEL / SUMMARY_LANGUAGE) in Coolify.
+      SUMMARY_PROVIDER: ${SUMMARY_PROVIDER:-mock}
+      KIMI_API_KEY: ${KIMI_API_KEY:-}
       AUDIO_DIR: /app/uploads
       PORT: "4000"
     depends_on:
       postgres:
+        condition: service_healthy
+      whisper:
+        # Gate on the sidecar's healthcheck: the model takes ~30-60s to load, and until
+        # it does every transcription would be saved as transcript_status='failed'.
         condition: service_healthy
     ports:
       - "4000:4000"
@@ -63,4 +84,3 @@ services:
 
 volumes:
   clinic-db:
-  whisper-models:
