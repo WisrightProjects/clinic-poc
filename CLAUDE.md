@@ -27,7 +27,7 @@ The repo is a **monorepo with four independently-installed Node projects** plus 
 Bring up Postgres, then run each app from its own directory. Order matters: backend first (everything depends on it).
 
 ```bash
-# 0. Postgres must be running with a `clinic_poc` database.
+# 0. Postgres must be running with a `doctor_attender` database.
 #    Connection comes from backend/.env (DATABASE_URL). Copy backend/.env.example -> backend/.env.
 
 # 1. Backend (port 4000). Runs pending migrations on boot automatically.
