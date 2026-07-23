@@ -49,8 +49,11 @@ services:
       context: .
       dockerfile: backend/Dockerfile
     environment:
-      # Same POSTGRES_PASSWORD as the postgres service — keep the two in sync.
-      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/doctor_attender
+      # Set DATABASE_URL in Coolify (mark it a Secret) to point at an external Postgres.
+      # It must include the database name, e.g. postgresql://user:pass@host:5432/doctor_attender
+      # — a URL ending at the port connects to no named database and the backend will fail.
+      # When unset, falls back to the bundled postgres service for local `docker compose up`.
+      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/doctor_attender}
       STT_PROVIDER: whisper
       WHISPER_URL: http://whisper:8000
       STT_LANGUAGE: auto
@@ -58,9 +61,13 @@ services:
       # so if phones hit it cross-origin add that host here too. Set the real domain in Coolify.
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080,http://localhost:8081}
       # Summaries: 'mock' = canned text (no LLM). For real AI summaries set SUMMARY_PROVIDER=kimi
-      # and provide KIMI_API_KEY (+ optional KIMI_BASE_URL / KIMI_MODEL / SUMMARY_LANGUAGE) in Coolify.
+      # and KIMI_API_KEY in Coolify. Every knob below must be listed here to reach the
+      # container — an env var Coolify sets but compose does not declare is silently dropped.
       SUMMARY_PROVIDER: ${SUMMARY_PROVIDER:-mock}
       KIMI_API_KEY: ${KIMI_API_KEY:-}
+      KIMI_BASE_URL: ${KIMI_BASE_URL:-https://api.moonshot.ai/v1}
+      KIMI_MODEL: ${KIMI_MODEL:-moonshot-v1-8k}
+      SUMMARY_LANGUAGE: ${SUMMARY_LANGUAGE:-English}
       AUDIO_DIR: /app/uploads
       PORT: "4000"
     depends_on:
