@@ -6,8 +6,9 @@
 # Then: doctor web -> http://localhost:8080 , backend -> http://localhost:4000
 # (The mobile Expo app runs separately and points at http://<host>:4000/api.)
 #
-# Note: the backend runs migrations on boot but NOT seeds. To load demo data, run
-# `npm run seed` from the repo root against this DB (DATABASE_URL on host port 5433).
+# Note: the backend runs migrations on boot but NOT seeds. To load demo data, exec into
+# the postgres container, or add a host port mapping in a local override file — no service
+# publishes a host port here, so the reverse proxy is the only way in.
 services:
   postgres:
     image: postgres:16
@@ -19,8 +20,11 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     volumes:
       - clinic-db:/var/lib/postgresql/data
-    ports:
-      - "5433:5432" # host 5433 -> avoids clashing with a local Postgres on 5432
+    # No published port. The backend reaches it on the private compose network at
+    # postgres:5432; publishing it would expose the database on the host's public IP.
+    # For local psql/seeding, add a port mapping in a local override file, not here.
+    expose:
+      - "5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d doctor_attender"]
       interval: 5s
@@ -77,16 +81,18 @@ services:
         # Gate on the sidecar's healthcheck: the model takes ~30-60s to load, and until
         # it does every transcription would be saved as transcript_status='failed'.
         condition: service_healthy
-    ports:
-      - "4000:4000"
+    # Reachable through the reverse proxy on its own domain, not a host port. Binding
+    # host ports here collides with anything else already using them on the server.
+    expose:
+      - "4000"
     restart: unless-stopped
 
   frontend:
     build: ./frontend
     depends_on:
       - backend
-    ports:
-      - "8080:80"
+    expose:
+      - "80"
     restart: unless-stopped
 
 volumes:
