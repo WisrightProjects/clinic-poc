@@ -2,9 +2,28 @@
 // Selection is owned by the page and preserved across polls (AC3).
 import StatusChip from './StatusChip'
 
+// Clinic name and doctor are static placeholders — the POC has no clinic entity
+// and no doctor login to populate them (auth is just the x-role header). The date
+// is real (today), formatted like the mockup ("Tuesday, 13 May 2026").
+const CLINIC_NAME = 'CarePoint Clinic'
+const DOCTOR_LINE = 'Dr. S. Ramesh · General'
+
 export default function QueueRail({ visits, selectedId, onSelect, isLoading, error, onRetry }) {
+  const today = new Date().toLocaleDateString('en-GB', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })
+
   return (
     <aside className="rail">
+      <div className="rail-clinic">
+        <div className="rail-clinic-name">{CLINIC_NAME}</div>
+        <div className="rail-clinic-date">{today}</div>
+        <div className="rail-clinic-doc">{DOCTOR_LINE}</div>
+      </div>
+
       <div className="rail-head">
         <span className="rail-title">Queue</span>
         <span className="rail-count">{visits.length}</span>
