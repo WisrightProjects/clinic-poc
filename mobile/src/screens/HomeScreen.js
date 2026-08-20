@@ -1,14 +1,18 @@
 // Purpose: Home / Patient Queue screen — the attender's landing screen.
-// Shows today's visits (tap a row to resume its intake) and a "New Patient"
-// button to start a fresh registration. This is the hub that links into the
-// CLINIC-003 flow. Settings (question template) is reachable via the header gear
-// configured in AppNavigator. Data comes from GET /visits via useVisitQueue.
+// Shows visits grouped by date, newest day first (tap a row to resume its
+// intake), and a "New Patient" button to start a fresh registration. This is the
+// hub that links into the CLINIC-003 flow. Settings (question template) is
+// reachable via the header gear configured in AppNavigator. Data comes from
+// GET /visits via useVisitQueue.
+//
+// Tokens restart at 1 each day, so a flat list showed the same token number
+// repeating with no context; grouping by visit_date makes each day read 1, 2, 3…
 
 import React from 'react';
 import {
   View,
   Text,
-  FlatList,
+  SectionList,
   ActivityIndicator,
   TouchableOpacity,
   StyleSheet,
@@ -31,6 +35,43 @@ const STATUS_STYLE = {
   done: { bg: '#e6ffed', fg: '#38a169', label: 'Done' },
 };
 
+// Local calendar day as YYYY-MM-DD, to flag "Today" without a timezone shift.
+function todayKey() {
+  const d = new Date();
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+function formatDate(key) {
+  if (!key || key === 'unknown') return 'No date';
+  const [y, m, d] = key.split('-').map(Number);
+  const dt = new Date(y, m - 1, d); // local construction — no tz shift
+  return dt.toLocaleDateString('en-GB', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+}
+
+// Bucket visits by visit_date (date part only), newest day first. Within a day,
+// order by token so it reads 1, 2, 3… Shape matches SectionList's sections prop.
+function buildSections(visits) {
+  const buckets = new Map();
+  for (const v of visits) {
+    const key = (v.visit_date || '').slice(0, 10) || 'unknown';
+    if (!buckets.has(key)) buckets.set(key, []);
+    buckets.get(key).push(v);
+  }
+  return [...buckets.entries()]
+    .sort((a, b) => (a[0] < b[0] ? 1 : a[0] > b[0] ? -1 : 0))
+    .map(([key, items]) => ({
+      key,
+      title: formatDate(key),
+      data: [...items].sort((x, y) => (x.token_number ?? 0) - (y.token_number ?? 0)),
+    }));
+}
+
 function StatusPill({ status }) {
   const s = STATUS_STYLE[status] ?? { bg: '#eceff3', fg: '#6b7c93', label: status ?? '—' };
   return (
@@ -43,6 +84,8 @@ function StatusPill({ status }) {
 export default function HomeScreen() {
   const navigation = useNavigation();
   const { visits, loading, error, reload } = useVisitQueue();
+  const today = todayKey();
+  const sections = buildSections(visits);
 
   const renderRow = ({ item }) => (
     <TouchableOpacity
@@ -50,7 +93,7 @@ export default function HomeScreen() {
       activeOpacity={0.7}
       onPress={() => navigation.navigate('QuestionList', { visitId: item.id })}
     >
-      <View style={styles.tokenBadge}>
+      <View style={[styles.tokenBadge, item.token_number === 1 && styles.tokenBadgeFirst]}>
         <Text style={styles.tokenText}>{item.token_number}</Text>
       </View>
       <View style={styles.rowBody}>
@@ -63,10 +106,22 @@ export default function HomeScreen() {
     </TouchableOpacity>
   );
 
+  const renderSectionHeader = ({ section }) => (
+    <View style={styles.sectionHdr}>
+      <Text style={styles.sectionDate}>{section.title}</Text>
+      {section.key === today ? (
+        <View style={styles.todayPill}>
+          <Text style={styles.todayPillText}>TODAY</Text>
+        </View>
+      ) : null}
+      <Text style={styles.sectionCount}>{section.data.length}</Text>
+    </View>
+  );
+
   return (
     <SafeAreaView style={styles.flex} edges={['bottom']}>
       <View style={styles.header}>
-        <Text style={styles.heading}>Today's Patients</Text>
+        <Text style={styles.heading}>Patient Queue</Text>
         <Text style={styles.subheading}>
           {visits.length} {visits.length === 1 ? 'patient' : 'patients'} in queue
         </Text>
@@ -91,10 +146,12 @@ export default function HomeScreen() {
           <Text style={styles.emptyBody}>Tap “New Patient” below to register the first visit.</Text>
         </View>
       ) : (
-        <FlatList
-          data={visits}
+        <SectionList
+          sections={sections}
           keyExtractor={(item) => String(item.id)}
           renderItem={renderRow}
+          renderSectionHeader={renderSectionHeader}
+          stickySectionHeadersEnabled
           contentContainerStyle={styles.listContent}
         />
       )}
@@ -119,6 +176,35 @@ const styles = StyleSheet.create({
   subheading: { fontSize: 13, color: '#6b7c93', marginTop: 2 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   listContent: { paddingHorizontal: 16, paddingBottom: 12 },
+  sectionHdr: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#eef4f4',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    marginTop: 12,
+  },
+  sectionDate: { fontSize: 13, fontWeight: '700', color: NAVY },
+  todayPill: {
+    backgroundColor: TEAL,
+    borderRadius: 20,
+    paddingHorizontal: 8,
+    paddingVertical: 1,
+    marginLeft: 8,
+  },
+  todayPillText: { color: '#ffffff', fontSize: 9, fontWeight: '800', letterSpacing: 0.5 },
+  sectionCount: {
+    marginLeft: 'auto',
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#6b7c93',
+    backgroundColor: '#ffffff',
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 1,
+    overflow: 'hidden',
+  },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -139,6 +225,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 12,
   },
+  // Day's first patient — teal marks the "reset to 1" point of each date.
+  tokenBadgeFirst: { backgroundColor: TEAL },
   tokenText: { color: '#ffffff', fontSize: 16, fontWeight: '800' },
   rowBody: { flex: 1 },
   patientName: { fontSize: 16, fontWeight: '600', color: NAVY },
