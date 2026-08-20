@@ -53,8 +53,18 @@ export default function DoctorDashboardPage() {
   const detail = useVisitDetail(selectedId)
   const selected = queue.find((v) => v.id === selectedId) ?? null
 
-  const seenToday = queue.filter((v) => v.status === 'done').length
-  const remaining = queue.filter((v) => isActionable(v.status)).length
+  // "Seen today" / "Remaining" are day stats, so scope them to today's visits.
+  // The queue holds every date (tokens restart daily), so without this filter
+  // these counted all-time done/actionable and mislabelled them as today.
+  const today = (() => {
+    const d = new Date()
+    const p = (n) => String(n).padStart(2, '0')
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+  })()
+  const todaysVisits = queue.filter((v) => (v.visit_date || '').slice(0, 10) === today)
+
+  const seenToday = todaysVisits.filter((v) => v.status === 'done').length
+  const remaining = todaysVisits.filter((v) => isActionable(v.status)).length
   const answeredCount = detail.qa.filter((q) => q.transcript && q.transcript.trim()).length
 
   const canMarkDone = selected && selected.status === 'summarised'
