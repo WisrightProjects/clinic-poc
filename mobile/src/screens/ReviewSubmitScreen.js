@@ -80,6 +80,11 @@ export default function ReviewSubmitScreen() {
   }
 
   const sending = submitState === 'sending';
+  // Once the intake has been sent, the visit is 'summarised' (or 'done' after the
+  // doctor closes it). Lock Send so it can't be fired again — the summary already
+  // exists and re-sending would not regenerate it. (Re-enabling on edit is a
+  // separate, backend-touching change we deliberately scoped out.)
+  const alreadySent = visit?.status === 'summarised' || visit?.status === 'done';
 
   return (
     <SafeAreaView style={styles.flex} edges={['bottom']}>
@@ -121,7 +126,9 @@ export default function ReviewSubmitScreen() {
 
       <View style={styles.footer}>
         {submitError ? <Text style={styles.footerError}>{submitError}</Text> : null}
-        {!allAnswered ? (
+        {alreadySent ? (
+          <Text style={styles.footerSent}>✓ This intake has been sent to the doctor</Text>
+        ) : !allAnswered ? (
           <Text style={styles.footerHint}>Answer all questions before sending</Text>
         ) : null}
 
@@ -133,16 +140,16 @@ export default function ReviewSubmitScreen() {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.sendBtn, (!allAnswered || sending) && styles.sendBtnDisabled]}
+          style={[styles.sendBtn, (!allAnswered || sending || alreadySent) && styles.sendBtnDisabled]}
           onPress={onSend}
-          disabled={!allAnswered || sending}
+          disabled={!allAnswered || sending || alreadySent}
           activeOpacity={0.85}
         >
           {sending ? (
             <ActivityIndicator color="#ffffff" />
           ) : (
             <Text style={styles.sendBtnText}>
-              {submitError ? 'Retry Send' : 'Confirm & Send to Doctor'}
+              {alreadySent ? 'Sent to Doctor ✓' : submitError ? 'Retry Send' : 'Confirm & Send to Doctor'}
             </Text>
           )}
         </TouchableOpacity>
@@ -206,6 +213,7 @@ const styles = StyleSheet.create({
   },
   footerError: { color: '#c0392b', fontSize: 13, textAlign: 'center', marginBottom: 8 },
   footerHint: { color: '#b26a00', fontSize: 13, textAlign: 'center', marginBottom: 8 },
+  footerSent: { color: '#2f855a', fontSize: 13, fontWeight: '600', textAlign: 'center', marginBottom: 8 },
   editBtn: { alignItems: 'center', paddingVertical: 10, marginBottom: 6 },
   editBtnText: { color: NAVY, fontSize: 15, fontWeight: '700' },
   sendBtn: {

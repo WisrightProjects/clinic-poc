@@ -17,6 +17,15 @@ export const styles = StyleSheet.create({
     paddingBottom: 16,
     paddingHorizontal: 16,
   },
+  backBtn: {
+    alignSelf: 'flex-start',
+    marginBottom: 10,
+  },
+  backText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
   headerLabel: {
     color: '#8ab0cc',
     fontSize: 12,

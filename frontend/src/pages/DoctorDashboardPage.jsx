@@ -150,6 +150,8 @@ export default function DoctorDashboardPage() {
           ) : null}
         </main>
       </div>
+
+      <footer className="app-credit">Developed by Wisright Technologies</footer>
     </div>
   )
 }
