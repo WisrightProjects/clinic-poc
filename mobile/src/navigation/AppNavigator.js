@@ -31,7 +31,7 @@ export function AppNavigator() {
         name="Home"
         component={HomeScreen}
         options={({ navigation }) => ({
-          title: 'ClinicAI',
+          title: 'ClinicAI - Attender View',
           headerRight: () => (
             <TouchableOpacity
               onPress={() => navigation.navigate('Settings')}
