@@ -70,6 +70,19 @@ function shortDate(key) {
   return new Date(y, m - 1, d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
 }
 
+// Intake progress for the answered/total badge. `idle` = nothing recorded,
+// `done` = every template question answered, `live` = partway. Counts come from
+// GET /visits (answered_count / total_questions).
+function progress(v) {
+  const answered = v.answered_count ?? 0
+  const total = v.total_questions ?? 0
+  const state = answered <= 0 ? 'idle' : answered >= total ? 'done' : 'live'
+  // Fill reaches 100% only when actually complete; floor while partial so a
+  // near-complete ratio (e.g. 199/200) can't fill the bar a question early.
+  const pct = total <= 0 ? 0 : state === 'done' ? 100 : Math.min(99, Math.floor((answered / total) * 100))
+  return { answered, total, pct, state }
+}
+
 // Recent days read as "Today"/"Yesterday" (with the date kept alongside); older
 // days keep their full date.
 function groupLabel(key, today, yesterday) {
@@ -144,17 +157,30 @@ export default function QueueRail({ visits, selectedId, onSelect, isLoading, err
                 </button>
                 {open ? (
                   <ul className="rail-list">
-                    {g.items.map((v) => (
-                      <li
-                        key={v.id}
-                        className={`rail-item${v.id === selectedId ? ' rail-item--sel' : ''}`}
-                        onClick={() => onSelect(v.id)}
-                      >
-                        <span className="rail-token">{v.token_number}</span>
-                        <span className="rail-name">{v.patient_name}</span>
-                        <StatusChip status={v.status} />
-                      </li>
-                    ))}
+                    {g.items.map((v) => {
+                      const p = progress(v)
+                      return (
+                        <li
+                          key={v.id}
+                          className={`rail-item${v.id === selectedId ? ' rail-item--sel' : ''}`}
+                          onClick={() => onSelect(v.id)}
+                        >
+                          <span className="rail-token">{v.token_number}</span>
+                          <div className="rail-body">
+                            <span className="rail-name">{v.patient_name}</span>
+                            {p.total > 0 ? (
+                              <span className="rail-prog" data-state={p.state}>
+                                <span className="rail-prog-track">
+                                  <span className="rail-prog-fill" style={{ width: `${p.pct}%` }} />
+                                </span>
+                                <span className="rail-prog-num">{p.answered}/{p.total}</span>
+                              </span>
+                            ) : null}
+                          </div>
+                          <StatusChip status={v.status} />
+                        </li>
+                      )
+                    })}
                   </ul>
                 ) : null}
               </section>

@@ -14,15 +14,35 @@ async function findById(id) {
   return rows[0] || null;
 }
 
+// Each queue row carries intake progress so the client can show "answered/total"
+// without a per-visit fetch:
+//   answered_count  = recorded answer rows for the visit (matches maybeAdvance)
+//   total_questions = questions in the department's active template (0 if none).
+//                     A department is expected to have exactly one active template;
+//                     if more than one is ever active, the lowest id wins.
+// Counts are cast ::int so pg returns numbers, not bigint strings.
+const PROGRESS_COLUMNS = `
+  (SELECT COUNT(*)::int FROM answers a WHERE a.visit_id = v.id) AS answered_count,
+  (SELECT COUNT(*)::int FROM questions q
+     WHERE q.template_id = (
+       SELECT t.id FROM question_templates t
+        WHERE t.department_id = v.department_id AND t.is_active
+        ORDER BY t.id LIMIT 1)) AS total_questions`;
+
 async function list(statusFilter) {
   if (statusFilter && statusFilter.length > 0) {
     const { rows } = await db.query(
-      `SELECT * FROM visits WHERE status = ANY($1::visit_status[]) ORDER BY token_number`,
+      `SELECT v.*, ${PROGRESS_COLUMNS}
+         FROM visits v
+        WHERE v.status = ANY($1::visit_status[])
+        ORDER BY v.token_number`,
       [statusFilter]
     );
     return rows;
   }
-  const { rows } = await db.query('SELECT * FROM visits ORDER BY token_number');
+  const { rows } = await db.query(
+    `SELECT v.*, ${PROGRESS_COLUMNS} FROM visits v ORDER BY v.token_number`
+  );
   return rows;
 }
 

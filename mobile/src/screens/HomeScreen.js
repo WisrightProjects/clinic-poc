@@ -102,6 +102,36 @@ function StatusPill({ status }) {
   );
 }
 
+// Intake progress for the answered/total badge. `idle` = nothing recorded,
+// `done` = every template question answered, `live` = partway. Counts come from
+// GET /visits (answered_count / total_questions).
+function progress(v) {
+  const answered = v.answered_count ?? 0;
+  const total = v.total_questions ?? 0;
+  const state = answered <= 0 ? 'idle' : answered >= total ? 'done' : 'live';
+  // Fill reaches 100% only when actually complete; floor while partial so a
+  // near-complete ratio (e.g. 199/200) can't fill the bar a question early.
+  const pct = total <= 0 ? 0 : state === 'done' ? 100 : Math.min(99, Math.floor((answered / total) * 100));
+  return { answered, total, pct, state };
+}
+
+// A slim fill + "answered/total", in the row's subtitle slot. Colour tracks the
+// state; the badge is hidden entirely when the template has no questions.
+function ProgressBadge({ visit }) {
+  const { answered, total, pct, state } = progress(visit);
+  if (total <= 0) return null;
+  const fill = state === 'idle' ? '#b8c2d0' : state === 'done' ? '#2f855a' : TEAL;
+  const num = state === 'live' ? TEAL : state === 'done' ? '#2f855a' : '#6b7c93';
+  return (
+    <View style={styles.progRow}>
+      <View style={styles.progTrack}>
+        <View style={[styles.progFill, { width: `${pct}%`, backgroundColor: fill }]} />
+      </View>
+      <Text style={[styles.progNum, { color: num }]}>{answered}/{total} answered</Text>
+    </View>
+  );
+}
+
 export default function HomeScreen() {
   const navigation = useNavigation();
   const { visits, loading, error, reload } = useVisitQueue();
@@ -152,7 +182,7 @@ export default function HomeScreen() {
         <Text style={styles.patientName} numberOfLines={1}>
           {item.patient_name}
         </Text>
-        <Text style={styles.tokenLabel}>Token {item.token_number}</Text>
+        <ProgressBadge visit={item} />
       </View>
       <StatusPill status={item.status} />
     </TouchableOpacity>
@@ -274,9 +304,12 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   tokenText: { color: '#ffffff', fontSize: 16, fontWeight: '800' },
-  rowBody: { flex: 1 },
+  rowBody: { flex: 1, minWidth: 0 },
   patientName: { fontSize: 16, fontWeight: '600', color: NAVY },
-  tokenLabel: { fontSize: 12, color: '#6b7c93', marginTop: 2 },
+  progRow: { flexDirection: 'row', alignItems: 'center', marginTop: 5 },
+  progTrack: { width: 60, height: 5, borderRadius: 3, backgroundColor: '#dde4ec', overflow: 'hidden', marginRight: 8 },
+  progFill: { height: '100%', borderRadius: 3 },
+  progNum: { fontSize: 12, fontWeight: '700' },
   pill: { borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4 },
   pillText: { fontSize: 12, fontWeight: '700' },
   errorText: { fontSize: 15, color: '#c0392b', textAlign: 'center', marginBottom: 16 },
