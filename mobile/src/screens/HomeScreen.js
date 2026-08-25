@@ -8,7 +8,7 @@
 // Tokens restart at 1 each day, so a flat list showed the same token number
 // repeating with no context; grouping by visit_date makes each day read 1, 2, 3…
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -35,11 +35,19 @@ const STATUS_STYLE = {
   done: { bg: '#e6ffed', fg: '#38a169', label: 'Done' },
 };
 
-// Local calendar day as YYYY-MM-DD, to flag "Today" without a timezone shift.
-function todayKey() {
-  const d = new Date();
+// Local calendar day as YYYY-MM-DD, so "Today"/"Yesterday" match the wall clock
+// without a timezone shift.
+function dayKey(d) {
   const p = (n) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+function todayKey() {
+  return dayKey(new Date());
+}
+function yesterdayKey() {
+  const d = new Date();
+  d.setDate(d.getDate() - 1); // JS rolls month/year back correctly
+  return dayKey(d);
 }
 
 function formatDate(key) {
@@ -54,6 +62,14 @@ function formatDate(key) {
   });
 }
 
+// Compact "25 Aug" — appended to Today/Yesterday so the actual calendar date is
+// still visible (otherwise the relative label hides which day it resolves to,
+// and the Home header shows no date of its own).
+function shortDate(key) {
+  const [y, m, d] = key.split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+}
+
 // Bucket visits by visit_date (date part only), newest day first. Within a day,
 // order by token so it reads 1, 2, 3… Shape matches SectionList's sections prop.
 function buildSections(visits) {
@@ -64,7 +80,12 @@ function buildSections(visits) {
     buckets.get(key).push(v);
   }
   return [...buckets.entries()]
-    .sort((a, b) => (a[0] < b[0] ? 1 : a[0] > b[0] ? -1 : 0))
+    .sort((a, b) => {
+      if (a[0] === b[0]) return 0;
+      if (a[0] === 'unknown') return 1; // undated always last, whatever it sorts as
+      if (b[0] === 'unknown') return -1;
+      return a[0] < b[0] ? 1 : -1; // real dates newest first
+    })
     .map(([key, items]) => ({
       key,
       title: formatDate(key),
@@ -85,7 +106,38 @@ export default function HomeScreen() {
   const navigation = useNavigation();
   const { visits, loading, error, reload } = useVisitQueue();
   const today = todayKey();
-  const sections = buildSections(visits);
+  const yesterday = yesterdayKey();
+
+  // A day is open by default if it's Today or Yesterday. Computed live each
+  // render (not seeded once), so it stays correct across a midnight boundary —
+  // the new day's section opens on its own instead of staying collapsed.
+  const defaultOpen = (key) => key === today || key === yesterday;
+
+  // Track only the user's explicit toggles (key -> open?), layered over the live
+  // defaults above. Keeps the caret functional on every day (incl. today) with
+  // no effect, and survives focus reloads (re-render, not remount).
+  const [userToggled, setUserToggled] = useState({});
+  const isOpen = (key) => (key in userToggled ? userToggled[key] : defaultOpen(key));
+  const toggle = (key) =>
+    setUserToggled((prev) => {
+      const currentlyOpen = key in prev ? prev[key] : defaultOpen(key);
+      return { ...prev, [key]: !currentlyOpen };
+    });
+
+  // Collapsed sections keep their header but render no rows (data: []). `count`
+  // carries the real total so the header badge still shows it while collapsed.
+  // Today/Yesterday keep the date alongside the relative label (see shortDate).
+  const sections = buildSections(visits).map((s) => ({
+    key: s.key,
+    title:
+      s.key === today
+        ? `Today · ${shortDate(s.key)}`
+        : s.key === yesterday
+        ? `Yesterday · ${shortDate(s.key)}`
+        : s.title,
+    count: s.data.length,
+    data: isOpen(s.key) ? s.data : [],
+  }));
 
   const renderRow = ({ item }) => (
     <TouchableOpacity
@@ -93,7 +145,7 @@ export default function HomeScreen() {
       activeOpacity={0.7}
       onPress={() => navigation.navigate('QuestionList', { visitId: item.id })}
     >
-      <View style={[styles.tokenBadge, item.token_number === 1 && styles.tokenBadgeFirst]}>
+      <View style={styles.tokenBadge}>
         <Text style={styles.tokenText}>{item.token_number}</Text>
       </View>
       <View style={styles.rowBody}>
@@ -106,17 +158,20 @@ export default function HomeScreen() {
     </TouchableOpacity>
   );
 
-  const renderSectionHeader = ({ section }) => (
-    <View style={styles.sectionHdr}>
-      <Text style={styles.sectionDate}>{section.title}</Text>
-      {section.key === today ? (
-        <View style={styles.todayPill}>
-          <Text style={styles.todayPillText}>TODAY</Text>
-        </View>
-      ) : null}
-      <Text style={styles.sectionCount}>{section.data.length}</Text>
-    </View>
-  );
+  const renderSectionHeader = ({ section }) => {
+    const open = isOpen(section.key);
+    return (
+      <TouchableOpacity
+        style={styles.sectionHdr}
+        activeOpacity={0.7}
+        onPress={() => toggle(section.key)}
+      >
+        <Text style={styles.sectionCaret}>{open ? '▾' : '▸'}</Text>
+        <Text style={styles.sectionDate}>{section.title}</Text>
+        <Text style={styles.sectionCount}>{section.count}</Text>
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.flex} edges={['bottom']}>
@@ -185,15 +240,8 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
     marginTop: 12,
   },
+  sectionCaret: { fontSize: 12, color: '#6b7c93', width: 14, marginRight: 6 },
   sectionDate: { fontSize: 13, fontWeight: '700', color: NAVY },
-  todayPill: {
-    backgroundColor: TEAL,
-    borderRadius: 20,
-    paddingHorizontal: 8,
-    paddingVertical: 1,
-    marginLeft: 8,
-  },
-  todayPillText: { color: '#ffffff', fontSize: 9, fontWeight: '800', letterSpacing: 0.5 },
   sectionCount: {
     marginLeft: 'auto',
     fontSize: 12,
@@ -225,8 +273,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 12,
   },
-  // Day's first patient — teal marks the "reset to 1" point of each date.
-  tokenBadgeFirst: { backgroundColor: TEAL },
   tokenText: { color: '#ffffff', fontSize: 16, fontWeight: '800' },
   rowBody: { flex: 1 },
   patientName: { fontSize: 16, fontWeight: '600', color: NAVY },

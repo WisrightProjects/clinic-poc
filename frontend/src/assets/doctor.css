@@ -60,17 +60,21 @@ html, body, #root {
 /* Date grouping. Each day is its own section; the header sticks while scrolling
    so you always know which day (and token series) you're looking at. */
 .rail-groups { display: flex; flex-direction: column; }
+/* Section header doubles as the collapse toggle, so it's a full-width button. */
 .rail-group-hdr {
   position: sticky; top: 0; z-index: 1;
+  width: 100%; text-align: left; font-family: inherit; cursor: pointer;
   display: flex; align-items: center; gap: 8px;
   padding: 8px 16px;
-  background: #eef4f4; border-bottom: 1px solid var(--line);
+  background: #eef4f4; border: 0; border-bottom: 1px solid var(--line);
 }
+.rail-group-hdr:hover { background: #e6eeee; }
+.rail-group-caret {
+  font-size: 10px; color: var(--muted); line-height: 1;
+  transition: transform 0.15s ease; transform: rotate(0deg);
+}
+.rail-group-caret--open { transform: rotate(90deg); }
 .rail-group-date { font-size: 12px; font-weight: 700; color: var(--navy); letter-spacing: 0.2px; }
-.rail-group-today {
-  font-size: 9.5px; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase;
-  color: #fff; background: var(--teal); border-radius: 20px; padding: 1px 8px;
-}
 .rail-group-count {
   margin-left: auto; background: #fff; border: 1px solid var(--line);
   border-radius: 10px; padding: 0 8px; font-size: 11px; font-weight: 700; color: var(--muted);
@@ -88,8 +92,6 @@ html, body, #root {
   width: 26px; height: 26px; border-radius: 13px; background: var(--navy); color: #fff;
   display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; flex-shrink: 0;
 }
-/* Day's first patient — teal marks the "reset to 1" point of each date. */
-.rail-token--first { background: var(--teal); }
 .rail-name { flex: 1; font-size: 14px; font-weight: 600; color: var(--navy); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rail-msg { padding: 24px 16px; color: var(--muted); font-size: 14px; text-align: center; }
 .rail-msg--error { color: #c0392b; }
