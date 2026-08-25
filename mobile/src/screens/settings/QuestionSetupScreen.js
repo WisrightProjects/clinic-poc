@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, Pressable, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import DraggableFlatList from 'react-native-draggable-flatlist';
 import { useQuestionTemplate } from '../../hooks/useQuestionTemplate';
 import { DepartmentPicker } from '../../components/DepartmentPicker';
@@ -9,6 +10,7 @@ import { showToast } from '../../utils/toast';
 import { styles } from '../../styles/questionSetup.styles';
 
 export default function QuestionSetupScreen() {
+  const navigation = useNavigation();
   const [departmentId, setDepartmentId] = useState(null);
   const {
     questions,
@@ -38,6 +40,13 @@ export default function QuestionSetupScreen() {
   return (
     <SafeAreaView style={styles.screen}>
       <View style={styles.header}>
+        <Pressable
+          onPress={() => navigation.goBack()}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          style={styles.backBtn}
+        >
+          <Text style={styles.backText}>‹  Back</Text>
+        </Pressable>
         <Text style={styles.headerLabel}>Configuration</Text>
         <Text style={styles.headerTitle}>Question Template</Text>
       </View>
