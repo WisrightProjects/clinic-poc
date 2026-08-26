@@ -106,6 +106,11 @@ export default function QueueRail({ visits, selectedId, onSelect, isLoading, err
   const today = todayKey()
   const yesterday = yesterdayKey()
 
+  // The count badge reflects TODAY's queue only — tokens reset daily, so an
+  // all-days total isn't a meaningful "queue size". Older days still show in the
+  // rail (collapsed); only the header number is scoped to today.
+  const todayCount = visits.filter((v) => (v.visit_date || '').slice(0, 10) === today).length
+
   // A day is open by default if it's Today, Yesterday, or holds the selected
   // patient (the page auto-selects the first actionable visit, which may sit in
   // an older day — we keep that row visible). This is computed live each render,
@@ -134,8 +139,8 @@ export default function QueueRail({ visits, selectedId, onSelect, isLoading, err
       </div>
 
       <div className="rail-head">
-        <span className="rail-title">Queue</span>
-        <span className="rail-count">{visits.length}</span>
+        <span className="rail-title">Today's Queue</span>
+        <span className="rail-count">{todayCount}</span>
       </div>
 
       {isLoading ? (
