@@ -29,10 +29,21 @@ const PROGRESS_COLUMNS = `
         WHERE t.department_id = v.department_id AND t.is_active
         ORDER BY t.id LIMIT 1)) AS total_questions`;
 
+// A short excerpt of the visit's AI summary, so the queue row can show a
+// two-line preview without a per-visit fetch. Only submitted visits
+// (summarised/done) have a summary; others come back null. Truncated to keep
+// the list payload small — the client clamps it to two lines anyway.
+const SUMMARY_COLUMN = `
+  (SELECT LEFT(s.summary_text, 240)
+     FROM summaries s
+    WHERE s.visit_id = v.id
+    ORDER BY s.created_at DESC
+    LIMIT 1) AS summary_excerpt`;
+
 async function list(statusFilter) {
   if (statusFilter && statusFilter.length > 0) {
     const { rows } = await db.query(
-      `SELECT v.*, ${PROGRESS_COLUMNS}
+      `SELECT v.*, ${PROGRESS_COLUMNS}, ${SUMMARY_COLUMN}
          FROM visits v
         WHERE v.status = ANY($1::visit_status[])
         ORDER BY v.token_number`,
@@ -41,7 +52,7 @@ async function list(statusFilter) {
     return rows;
   }
   const { rows } = await db.query(
-    `SELECT v.*, ${PROGRESS_COLUMNS} FROM visits v ORDER BY v.token_number`
+    `SELECT v.*, ${PROGRESS_COLUMNS}, ${SUMMARY_COLUMN} FROM visits v ORDER BY v.token_number`
   );
   return rows;
 }

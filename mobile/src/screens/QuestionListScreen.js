@@ -103,13 +103,16 @@ const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: '#f5f8fa' },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   errorText: { fontSize: 15, color: '#c0392b', textAlign: 'center', marginBottom: 16 },
+  // Recovery action = teal text-link (matches web .link-btn), not a filled button.
+  // minHeight keeps a >=44dp tap target even without a filled background.
   retryBtn: {
-    backgroundColor: NAVY,
-    borderRadius: 6,
-    paddingHorizontal: 24,
-    paddingVertical: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  retryText: { color: '#ffffff', fontSize: 14, fontWeight: '600' },
+  retryText: { color: '#0a8f8f', fontSize: 15, fontWeight: '700' },
   emptyTitle: { fontSize: 17, fontWeight: '700', color: NAVY, marginBottom: 8 },
   emptyBody: { fontSize: 14, color: '#6b7c93', textAlign: 'center' },
 });

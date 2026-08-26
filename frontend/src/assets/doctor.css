@@ -92,6 +92,11 @@ html, body, #root {
   width: 26px; height: 26px; border-radius: 13px; background: var(--navy); color: #fff;
   display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; flex-shrink: 0;
 }
+/* Token colour by workflow stage: completed grey, ongoing blue, upcoming yellow.
+   Yellow uses dark text (white-on-yellow fails contrast). */
+.rail-token[data-token="done"]    { background: #d3dae2; color: #5a6b80; }
+.rail-token[data-token="current"] { background: #1a56c4; color: #ffffff; }
+.rail-token[data-token="next"]    { background: #f6b83f; color: #5a4300; }
 .rail-body { flex: 1; min-width: 0; }
 .rail-name { display: block; font-size: 14px; font-weight: 600; color: var(--navy); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 

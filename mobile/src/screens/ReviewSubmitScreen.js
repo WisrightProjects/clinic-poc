@@ -214,8 +214,8 @@ const styles = StyleSheet.create({
   footerError: { color: '#c0392b', fontSize: 13, textAlign: 'center', marginBottom: 8 },
   footerHint: { color: '#b26a00', fontSize: 13, textAlign: 'center', marginBottom: 8 },
   footerSent: { color: '#2f855a', fontSize: 13, fontWeight: '600', textAlign: 'center', marginBottom: 8 },
-  editBtn: { alignItems: 'center', paddingVertical: 10, marginBottom: 6 },
-  editBtnText: { color: NAVY, fontSize: 15, fontWeight: '700' },
+  editBtn: { alignItems: 'center', justifyContent: 'center', paddingVertical: 12, minHeight: 44, marginBottom: 6 },
+  editBtnText: { color: TEAL, fontSize: 15, fontWeight: '700' },
   sendBtn: {
     backgroundColor: TEAL,
     borderRadius: 10,
@@ -224,12 +224,15 @@ const styles = StyleSheet.create({
   },
   sendBtnDisabled: { backgroundColor: '#a9d3d3' },
   sendBtnText: { color: '#ffffff', fontSize: 16, fontWeight: '700' },
+  // Recovery action = teal text-link (matches web .link-btn), not a filled button.
+  // minHeight keeps a >=44dp tap target even without a filled background.
   primaryBtn: {
-    backgroundColor: NAVY,
-    borderRadius: 8,
-    paddingHorizontal: 24,
-    paddingVertical: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginTop: 12,
   },
-  primaryBtnText: { color: '#ffffff', fontSize: 14, fontWeight: '600' },
+  primaryBtnText: { color: TEAL, fontSize: 15, fontWeight: '700' },
 });
