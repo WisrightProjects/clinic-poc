@@ -26,13 +26,16 @@ import { useVisitQueue } from '../hooks/useVisitQueue';
 const NAVY = '#1a3050';
 const TEAL = '#0a8f8f';
 
-// visit_status → pill colour. Keeps the queue scannable at a glance.
+// visit_status → pill colour. Mirrors the doctor web palette exactly
+// (frontend/src/utils/statusMap.js) so both apps read the same tones:
+// waiting grey, answering teal, answered blue, summarised green, done
+// solid-green. Keep these two in sync when either changes.
 const STATUS_STYLE = {
-  waiting: { bg: '#fff4e5', fg: '#b26a00', label: 'Waiting' },
+  waiting: { bg: '#eceff3', fg: '#6b7c93', label: 'Waiting' },
   answering: { bg: '#e6f7f7', fg: TEAL, label: 'Answering' },
   answered: { bg: '#e8f0fe', fg: '#1a56c4', label: 'Answered' },
-  summarised: { bg: '#ede7f6', fg: '#5e35b1', label: 'Summarised' },
-  done: { bg: '#e6ffed', fg: '#38a169', label: 'Done' },
+  summarised: { bg: '#e6ffed', fg: '#2f855a', label: 'Summarised' },
+  done: { bg: '#38a169', fg: '#ffffff', label: 'Done' },
 };
 
 // Local calendar day as YYYY-MM-DD, so "Today"/"Yesterday" match the wall clock
@@ -109,10 +112,7 @@ function progress(v) {
   const answered = v.answered_count ?? 0;
   const total = v.total_questions ?? 0;
   const state = answered <= 0 ? 'idle' : answered >= total ? 'done' : 'live';
-  // Fill reaches 100% only when actually complete; floor while partial so a
-  // near-complete ratio (e.g. 199/200) can't fill the bar a question early.
-  const pct = total <= 0 ? 0 : state === 'done' ? 100 : Math.min(99, Math.floor((answered / total) * 100));
-  return { answered, total, pct, state };
+  return { answered, total, state };
 }
 
 // Token colour by workflow stage (manager request): completed = grey,
@@ -131,21 +131,44 @@ function tokenState(status) {
   return null;
 }
 
-// A slim fill + "answered/total", in the row's subtitle slot. Colour tracks the
-// state; the badge is hidden entirely when the template has no questions.
-function ProgressBadge({ visit }) {
-  const { answered, total, pct, state } = progress(visit);
+// "answered/total" with a status-coloured dot, shown right after the name.
+// Hidden when the template has no questions.
+function InlineProgress({ visit }) {
+  const { answered, total, state } = progress(visit);
   if (total <= 0) return null;
-  const fill = state === 'idle' ? '#b8c2d0' : state === 'done' ? '#2f855a' : TEAL;
-  const num = state === 'live' ? TEAL : state === 'done' ? '#2f855a' : '#6b7c93';
+  const color = state === 'idle' ? '#6b7c93' : state === 'done' ? '#2f855a' : TEAL;
+  const dot = state === 'idle' ? '#b8c2d0' : state === 'done' ? '#2f855a' : TEAL;
   return (
-    <View style={styles.progRow}>
-      <View style={styles.progTrack}>
-        <View style={[styles.progFill, { width: `${pct}%`, backgroundColor: fill }]} />
-      </View>
-      <Text style={[styles.progNum, { color: num }]}>{answered}/{total} answered</Text>
+    <View style={styles.inlineProg}>
+      <View style={[styles.inlineDot, { backgroundColor: dot }]} />
+      <Text style={[styles.inlineProgText, { color }]}>{answered}/{total}</Text>
     </View>
   );
+}
+
+// Short status line shown under the name while there's no summary yet.
+function subtitleHint(status) {
+  if (status === 'waiting') return 'Not started yet';
+  if (status === 'answering' || status === 'answered')
+    return 'Intake in progress — summary appears once submitted';
+  return null;
+}
+
+// Under the name: a two-line AI summary excerpt once the visit is submitted
+// (summarised/done), otherwise a short status hint. The excerpt comes from
+// GET /visits (summary_excerpt); it's null until a summary exists.
+function RowSubtitle({ visit }) {
+  const excerpt = (visit.summary_excerpt || '').trim();
+  if (excerpt) {
+    return (
+      <Text style={styles.summaryText} numberOfLines={2}>
+        <Text style={styles.summaryTag}>Summary  </Text>
+        {excerpt}
+      </Text>
+    );
+  }
+  const hint = subtitleHint(visit.status);
+  return hint ? <Text style={styles.subHint}>{hint}</Text> : null;
 }
 
 export default function HomeScreen() {
@@ -153,6 +176,11 @@ export default function HomeScreen() {
   const { visits, loading, error, reload } = useVisitQueue();
   const today = todayKey();
   const yesterday = yesterdayKey();
+
+  // Header count reflects TODAY's queue only — tokens reset daily, so the total
+  // across all days isn't a meaningful "queue size". Older days still appear in
+  // the list (collapsed), but the count is today's.
+  const todayCount = visits.filter((v) => (v.visit_date || '').slice(0, 10) === today).length;
 
   // A day is open by default if it's Today or Yesterday. Computed live each
   // render (not seeded once), so it stays correct across a midnight boundary —
@@ -197,12 +225,17 @@ export default function HomeScreen() {
           <Text style={[styles.tokenText, tk && { color: tk.fg }]}>{item.token_number}</Text>
         </View>
         <View style={styles.rowBody}>
-          <Text style={styles.patientName} numberOfLines={1}>
-            {item.patient_name}
-          </Text>
-          <ProgressBadge visit={item} />
+          <View style={styles.line1}>
+            <Text style={styles.patientName} numberOfLines={1}>
+              {item.patient_name}
+            </Text>
+            <InlineProgress visit={item} />
+            <View style={styles.statusWrap}>
+              <StatusPill status={item.status} />
+            </View>
+          </View>
+          <RowSubtitle visit={item} />
         </View>
-        <StatusPill status={item.status} />
       </TouchableOpacity>
     );
   };
@@ -227,7 +260,7 @@ export default function HomeScreen() {
       <View style={styles.header}>
         <Text style={styles.heading}>Patient Queue</Text>
         <Text style={styles.subheading}>
-          {visits.length} {visits.length === 1 ? 'patient' : 'patients'} in queue
+          {todayCount} {todayCount === 1 ? 'patient' : 'patients'} in today's queue
         </Text>
       </View>
 
@@ -304,7 +337,7 @@ const styles = StyleSheet.create({
   },
   row: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     backgroundColor: '#ffffff',
     borderRadius: 10,
     paddingHorizontal: 14,
@@ -321,19 +354,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
+    marginTop: 2,
   },
   tokenText: { color: '#ffffff', fontSize: 16, fontWeight: '800' },
   rowBody: { flex: 1, minWidth: 0 },
-  patientName: { fontSize: 16, fontWeight: '600', color: NAVY },
-  progRow: { flexDirection: 'row', alignItems: 'center', marginTop: 5 },
-  progTrack: { width: 60, height: 5, borderRadius: 3, backgroundColor: '#dde4ec', overflow: 'hidden', marginRight: 8 },
-  progFill: { height: '100%', borderRadius: 3 },
-  progNum: { fontSize: 12, fontWeight: '700' },
+  // Top line: name (truncates) + "2/5" right after it + status chip pushed right.
+  line1: { flexDirection: 'row', alignItems: 'center' },
+  patientName: { fontSize: 16, fontWeight: '600', color: NAVY, flexShrink: 1, marginRight: 8 },
+  inlineProg: { flexDirection: 'row', alignItems: 'center', flexShrink: 0 },
+  inlineDot: { width: 7, height: 7, borderRadius: 3.5, marginRight: 5 },
+  inlineProgText: { fontSize: 12, fontWeight: '700' },
+  statusWrap: { marginLeft: 'auto', flexShrink: 0, paddingLeft: 8 },
+  // Two-line AI summary excerpt under the name; status hint when there's none.
+  summaryText: { marginTop: 6, fontSize: 13, lineHeight: 18, color: '#41506b' },
+  summaryTag: { color: TEAL, fontWeight: '700', fontSize: 12 },
+  subHint: { marginTop: 6, fontSize: 12.5, color: '#6b7c93', fontStyle: 'italic' },
   pill: { borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4 },
   pillText: { fontSize: 12, fontWeight: '700' },
   errorText: { fontSize: 15, color: '#c0392b', textAlign: 'center', marginBottom: 16 },
-  retryBtn: { backgroundColor: NAVY, borderRadius: 6, paddingHorizontal: 24, paddingVertical: 10 },
-  retryText: { color: '#ffffff', fontSize: 14, fontWeight: '600' },
+  // Recovery action = teal text-link (matches web .link-btn), not a filled button.
+  // minHeight keeps a >=44dp tap target even without a filled background.
+  retryBtn: { paddingHorizontal: 16, paddingVertical: 12, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  retryText: { color: TEAL, fontSize: 15, fontWeight: '700' },
   emptyTitle: { fontSize: 17, fontWeight: '700', color: NAVY, marginBottom: 8 },
   emptyBody: { fontSize: 14, color: '#6b7c93', textAlign: 'center' },
   footer: {

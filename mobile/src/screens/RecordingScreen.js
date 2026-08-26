@@ -194,14 +194,18 @@ const styles = StyleSheet.create({
   },
   stopSquare: { width: 14, height: 14, borderRadius: 3, backgroundColor: '#ffffff' },
   stopBtnText: { color: '#ffffff', fontSize: 17, fontWeight: '700' },
+  // Recovery actions = text-links (matches web .link-btn): the main action in
+  // teal, the alternative below it in muted grey for hierarchy. minHeight keeps
+  // a >=44dp tap target on both even without a filled background.
   primaryBtn: {
-    backgroundColor: TEAL,
-    borderRadius: 10,
-    paddingVertical: 13,
-    paddingHorizontal: 28,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginTop: 16,
   },
-  primaryBtnText: { color: '#ffffff', fontSize: 15, fontWeight: '700' },
-  secondaryBtn: { paddingVertical: 12, paddingHorizontal: 24, marginTop: 8 },
-  secondaryBtnText: { color: NAVY, fontSize: 14, fontWeight: '600' },
+  primaryBtnText: { color: TEAL, fontSize: 16, fontWeight: '700' },
+  secondaryBtn: { paddingVertical: 12, paddingHorizontal: 24, minHeight: 44, alignItems: 'center', justifyContent: 'center', marginTop: 4 },
+  secondaryBtnText: { color: '#6b7c93', fontSize: 14, fontWeight: '600' },
 });

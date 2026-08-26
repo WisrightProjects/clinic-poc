@@ -208,7 +208,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   errorBannerText: { color: '#c0392b', fontSize: 13, flex: 1 },
-  retryLink: { color: NAVY, fontWeight: '700', marginLeft: 10, fontSize: 13 },
+  retryLink: { color: TEAL, fontWeight: '700', marginLeft: 10, fontSize: 13 },
   submitBtn: {
     backgroundColor: TEAL,
     borderRadius: 8,
