@@ -115,6 +115,22 @@ function progress(v) {
   return { answered, total, pct, state };
 }
 
+// Token colour by workflow stage (manager request): completed = grey,
+// ongoing (anywhere in the flow) = blue, upcoming (not started) = yellow.
+// Yellow uses dark text (white-on-yellow fails contrast). Unknown statuses
+// keep the default navy badge.
+const TOKEN_STYLE = {
+  done: { bg: '#d3dae2', fg: '#5a6b80' },
+  current: { bg: '#1a56c4', fg: '#ffffff' },
+  next: { bg: '#f6b83f', fg: '#5a4300' },
+};
+function tokenState(status) {
+  if (status === 'done') return 'done';
+  if (status === 'waiting') return 'next';
+  if (status === 'answering' || status === 'answered' || status === 'summarised') return 'current';
+  return null;
+}
+
 // A slim fill + "answered/total", in the row's subtitle slot. Colour tracks the
 // state; the badge is hidden entirely when the template has no questions.
 function ProgressBadge({ visit }) {
@@ -169,24 +185,27 @@ export default function HomeScreen() {
     data: isOpen(s.key) ? s.data : [],
   }));
 
-  const renderRow = ({ item }) => (
-    <TouchableOpacity
-      style={styles.row}
-      activeOpacity={0.7}
-      onPress={() => navigation.navigate('QuestionList', { visitId: item.id })}
-    >
-      <View style={styles.tokenBadge}>
-        <Text style={styles.tokenText}>{item.token_number}</Text>
-      </View>
-      <View style={styles.rowBody}>
-        <Text style={styles.patientName} numberOfLines={1}>
-          {item.patient_name}
-        </Text>
-        <ProgressBadge visit={item} />
-      </View>
-      <StatusPill status={item.status} />
-    </TouchableOpacity>
-  );
+  const renderRow = ({ item }) => {
+    const tk = TOKEN_STYLE[tokenState(item.status)];
+    return (
+      <TouchableOpacity
+        style={styles.row}
+        activeOpacity={0.7}
+        onPress={() => navigation.navigate('QuestionList', { visitId: item.id })}
+      >
+        <View style={[styles.tokenBadge, tk && { backgroundColor: tk.bg }]}>
+          <Text style={[styles.tokenText, tk && { color: tk.fg }]}>{item.token_number}</Text>
+        </View>
+        <View style={styles.rowBody}>
+          <Text style={styles.patientName} numberOfLines={1}>
+            {item.patient_name}
+          </Text>
+          <ProgressBadge visit={item} />
+        </View>
+        <StatusPill status={item.status} />
+      </TouchableOpacity>
+    );
+  };
 
   const renderSectionHeader = ({ section }) => {
     const open = isOpen(section.key);

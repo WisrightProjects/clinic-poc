@@ -83,6 +83,16 @@ function progress(v) {
   return { answered, total, pct, state }
 }
 
+// Token colour by workflow stage (manager request): completed = grey,
+// ongoing (anywhere in the flow) = blue, upcoming (not started) = yellow.
+// Unknown statuses fall through to the default navy badge.
+function tokenState(status) {
+  if (status === 'done') return 'done'
+  if (status === 'waiting') return 'next'
+  if (status === 'answering' || status === 'answered' || status === 'summarised') return 'current'
+  return null
+}
+
 // Recent days read as "Today"/"Yesterday" (with the date kept alongside); older
 // days keep their full date.
 function groupLabel(key, today, yesterday) {
@@ -165,7 +175,7 @@ export default function QueueRail({ visits, selectedId, onSelect, isLoading, err
                           className={`rail-item${v.id === selectedId ? ' rail-item--sel' : ''}`}
                           onClick={() => onSelect(v.id)}
                         >
-                          <span className="rail-token">{v.token_number}</span>
+                          <span className="rail-token" data-token={tokenState(v.status) || undefined}>{v.token_number}</span>
                           <div className="rail-body">
                             <span className="rail-name">{v.patient_name}</span>
                             {p.total > 0 ? (
