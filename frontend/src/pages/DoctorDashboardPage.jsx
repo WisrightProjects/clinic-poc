@@ -151,7 +151,9 @@ export default function DoctorDashboardPage() {
         </main>
       </div>
 
-      <footer className="app-credit">Developed by Wisright Technologies</footer>
+      <footer className="app-credit">
+        © {new Date().getFullYear()} Wisright Technologies. All rights reserved. · Developed by Wisright Technologies
+      </footer>
     </div>
   )
 }
