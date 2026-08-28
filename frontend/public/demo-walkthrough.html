@@ -1,0 +1,904 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ClinicAI Demo Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Karla:wght@400;500;600;700&display=swap">
+
+<style>
+  :root {
+    --ground: #F5F8FA;
+    --surface: #FFFFFF;
+    --ink: #1A3050;
+    --body: #41506B;
+    --muted: #6B7C93;
+    --rule: #E1E8EF;
+    --primary: #0A8F8F;
+    --primary-soft: #E4F5F5;
+    --amber: #9A6410;
+    --amber-soft: #FBF1E2;
+    --amber-rule: #EBD9BC;
+    --done: #2F855A;
+    --shadow: 0 1px 2px rgba(26,48,80,.05), 0 8px 24px -16px rgba(26,48,80,.20);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0C1420;
+      --surface: #14202F;
+      --ink: #EAF1F7;
+      --body: #AEBED0;
+      --muted: #8393A7;
+      --rule: #23303F;
+      --primary: #45C7C7;
+      --primary-soft: #10262A;
+      --amber: #E0B472;
+      --amber-soft: #2A1D12;
+      --amber-rule: #45301B;
+      --done: #5FC79F;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px -16px rgba(0,0,0,.6);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground: #0C1420;
+    --surface: #14202F;
+    --ink: #EAF1F7;
+    --body: #AEBED0;
+    --muted: #8393A7;
+    --rule: #23303F;
+    --primary: #45C7C7;
+    --primary-soft: #10262A;
+    --amber: #E0B472;
+    --amber-soft: #2A1D12;
+    --amber-rule: #45301B;
+    --done: #5FC79F;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px -16px rgba(0,0,0,.6);
+  }
+
+  * { box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; scroll-padding-top: 96px; }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    * { transition: none !important; animation: none !important; }
+  }
+
+  body {
+    background: var(--ground);
+    color: var(--body);
+    font-family: "Karla", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    margin: 0;
+    padding: 0 24px 120px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 780px; margin: 0 auto; }
+
+  /* ---------- sticky progress bar ---------- */
+
+  .hud {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    margin: 0 -24px 0;
+    padding: 0 24px;
+    background: color-mix(in srgb, var(--ground) 88%, transparent);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--rule);
+  }
+  .hud-inner {
+    max-width: 780px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 0;
+  }
+  .hud-label {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  .hud-label b { color: var(--primary); }
+  .track {
+    flex: 1;
+    height: 4px;
+    border-radius: 999px;
+    background: var(--rule);
+    overflow: hidden;
+  }
+  .fill {
+    height: 100%;
+    width: 0%;
+    background: var(--primary);
+    border-radius: 999px;
+    transition: width .35s ease;
+  }
+  .btn {
+    font-family: inherit;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--body);
+    background: transparent;
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    padding: 5px 14px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .btn:hover { border-color: var(--primary); color: var(--primary); }
+  .btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+  /* ---------- masthead ---------- */
+
+  .masthead { padding: 64px 0 40px; }
+
+  .eyebrow {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--primary);
+    margin: 0 0 20px;
+  }
+
+  h1 {
+    font-family: "Newsreader", Georgia, serif;
+    font-weight: 500;
+    font-size: clamp(38px, 7vw, 56px);
+    line-height: 1.08;
+    letter-spacing: -.015em;
+    color: var(--ink);
+    text-wrap: balance;
+    margin: 0 0 18px;
+  }
+
+  .standfirst {
+    font-family: "Newsreader", Georgia, serif;
+    font-size: 20px;
+    line-height: 1.5;
+    color: var(--body);
+    max-width: 56ch;
+    margin: 0 0 32px;
+  }
+
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 28px;
+    padding-top: 24px;
+    border-top: 1px solid var(--rule);
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .meta b { color: var(--ink); font-weight: 600; }
+
+  /* ---------- callout ---------- */
+
+  .callout {
+    background: var(--primary-soft);
+    border-radius: 4px;
+    padding: 24px 26px;
+    margin: 44px 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .callout h2 {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--primary);
+    margin: 0;
+  }
+  .callout p {
+    margin: 0;
+    color: var(--ink);
+    font-size: 15px;
+    max-width: 62ch;
+  }
+
+  /* ---------- the sequence ---------- */
+
+  .stops { margin-top: 56px; }
+
+  .stop {
+    display: grid;
+    grid-template-columns: 56px 1fr;
+    gap: 0 20px;
+    padding-bottom: 40px;
+  }
+
+  .spine {
+    grid-row: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .num {
+    font-family: "Newsreader", Georgia, serif;
+    font-size: 26px;
+    line-height: 1;
+    color: var(--primary);
+    font-variant-numeric: tabular-nums;
+    padding-top: 4px;
+    transition: color .3s ease;
+  }
+  .stop.complete .num { color: var(--done); }
+
+  .thread { width: 1px; flex: 1; background: var(--rule); min-height: 20px; }
+  .stop:last-of-type .thread { background: transparent; }
+
+  .stop-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    width: 100%;
+    background: none;
+    border: 0;
+    padding: 0 0 8px;
+    margin: 0;
+    cursor: pointer;
+    text-align: left;
+    font-family: inherit;
+    color: inherit;
+  }
+  .stop-head:focus-visible { outline: 2px solid var(--primary); outline-offset: 4px; }
+
+  .stop-head h3 {
+    font-family: "Newsreader", Georgia, serif;
+    font-weight: 500;
+    font-size: 27px;
+    line-height: 1.2;
+    color: var(--ink);
+    margin: 0;
+    letter-spacing: -.01em;
+  }
+  .stop-head .titlerow { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+
+  .appchip {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--primary);
+    background: var(--primary-soft);
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    padding: 3px 10px;
+    white-space: nowrap;
+    position: relative;
+    top: -2px;
+  }
+  .appchip.web { color: var(--ink); }
+
+  .tally {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .06em;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .stop.complete .tally { color: var(--done); }
+
+  .lede {
+    margin: 0 0 18px;
+    max-width: 60ch;
+    font-size: 15.5px;
+  }
+
+  .panel { overflow: hidden; }
+  .stop.collapsed .panel { display: none; }
+
+  .items {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 0 28px;
+  }
+
+  .items li { margin: 0; }
+
+  .check {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 7px 0;
+    font-size: 15px;
+    color: var(--body);
+    cursor: pointer;
+    user-select: none;
+  }
+  .check input {
+    appearance: none;
+    -webkit-appearance: none;
+    flex: none;
+    width: 16px;
+    height: 16px;
+    margin: 4px 0 0;
+    border: 1.5px solid var(--rule);
+    border-radius: 3px;
+    background: var(--surface);
+    cursor: pointer;
+    position: relative;
+    transition: background .15s ease, border-color .15s ease;
+  }
+  .check input:hover { border-color: var(--primary); }
+  .check input:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+  .check input:checked {
+    background: var(--done);
+    border-color: var(--done);
+  }
+  .check input:checked::after {
+    content: "";
+    position: absolute;
+    left: 4.5px;
+    top: 1px;
+    width: 4px;
+    height: 8px;
+    border: solid var(--surface);
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+  }
+  .check input:checked ~ span {
+    color: var(--muted);
+    text-decoration: line-through;
+    text-decoration-thickness: 1px;
+    text-decoration-color: var(--rule);
+  }
+  .check b { color: var(--ink); font-weight: 600; }
+  .check input:checked ~ span b { color: var(--muted); font-weight: 500; }
+
+  /* flagged item - shown, but not part of the demo checklist */
+  .flagged {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 7px 0 7px 26px;
+    font-size: 15px;
+    color: var(--muted);
+    position: relative;
+  }
+  .flagged::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 11px;
+    width: 16px;
+    height: 16px;
+    border: 1.5px solid var(--rule);
+    border-radius: 3px;
+    background: var(--ground);
+    opacity: .85;
+  }
+  .flagged::after {
+    content: "";
+    position: absolute;
+    left: 3.5px;
+    top: 18px;
+    width: 9px;
+    height: 1.5px;
+    border-radius: 1px;
+    background: var(--rule);
+  }
+  .flagged .tag {
+    flex: none;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--amber);
+    background: var(--amber-soft);
+    border: 1px solid var(--amber-rule);
+    border-radius: 3px;
+    padding: 2px 7px;
+    margin-top: 3px;
+    white-space: nowrap;
+  }
+  .flagged b { color: var(--body); font-weight: 600; }
+
+  /* ---------- token colour legend ---------- */
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 18px;
+    margin: 4px 0 18px;
+    padding: 14px 16px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+  }
+  .legend-item { display: flex; align-items: center; gap: 9px; font-size: 13.5px; color: var(--body); }
+  .legend-item b { color: var(--ink); font-weight: 700; }
+  .tok {
+    flex: none;
+    width: 26px;
+    height: 26px;
+    border-radius: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    font-family: "Karla", sans-serif;
+  }
+  .tok.done { background: #D3DAE2; color: #5A6B80; }
+  .tok.current { background: #1A56C4; color: #FFFFFF; }
+  .tok.next { background: #F6B83F; color: #5A4300; }
+
+  /* ---------- preview-only ---------- */
+
+  .preview {
+    margin-top: 24px;
+    border: 1px solid var(--amber-rule);
+    background: var(--amber-soft);
+    border-radius: 6px;
+    padding: 30px 30px 34px;
+  }
+  .preview .eyebrow { color: var(--amber); }
+  .preview h2 {
+    font-family: "Newsreader", Georgia, serif;
+    font-weight: 500;
+    font-size: 29px;
+    color: var(--ink);
+    margin: 0 0 10px;
+    letter-spacing: -.01em;
+  }
+  .preview > p { margin: 0 0 24px; max-width: 60ch; font-size: 15.5px; }
+
+  .previewlist { list-style: none; margin: 0; padding: 0; }
+  .previewlist li { border-top: 1px solid var(--amber-rule); }
+  .previewlist li:first-child { border-top: none; }
+
+  .pv-head {
+    width: 100%;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    background: none;
+    border: 0;
+    padding: 15px 0;
+    cursor: pointer;
+    text-align: left;
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--ink);
+  }
+  .pv-head:focus-visible { outline: 2px solid var(--amber); outline-offset: -2px; }
+  .pv-head .caret {
+    flex: none;
+    font-size: 11px;
+    color: var(--amber);
+    font-weight: 700;
+    transition: transform .2s ease;
+  }
+  .previewlist li.open .pv-head .caret { transform: rotate(90deg); }
+
+  .pv-body {
+    display: none;
+    padding: 0 0 16px;
+    font-size: 15px;
+    max-width: 62ch;
+    font-weight: 400;
+    color: var(--body);
+  }
+  .previewlist li.open .pv-body { display: block; }
+
+  /* ---------- whats new / footer ---------- */
+
+  .newbuild {
+    margin-top: 44px;
+    padding-top: 30px;
+    border-top: 2px solid var(--ink);
+  }
+  .newbuild h2 {
+    font-family: "Newsreader", Georgia, serif;
+    font-weight: 500;
+    font-size: 24px;
+    color: var(--ink);
+    margin: 0 0 12px;
+  }
+  .plain { list-style: none; padding: 0; margin: 0; }
+  .plain li {
+    position: relative;
+    padding: 6px 0 6px 18px;
+    font-size: 15px;
+  }
+  .plain li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 15px;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--primary);
+    opacity: .65;
+  }
+  .plain b { color: var(--ink); font-weight: 600; }
+
+  footer {
+    margin-top: 52px;
+    padding-top: 22px;
+    border-top: 1px solid var(--rule);
+    font-size: 13.5px;
+    color: var(--muted);
+    max-width: 62ch;
+  }
+
+  .colophon {
+    margin-top: 48px;
+    padding-top: 24px;
+    border-top: 1px solid var(--rule);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px 24px;
+  }
+  .wordmark {
+    font-family: "Newsreader", Georgia, serif;
+    font-size: 19px;
+    font-weight: 600;
+    letter-spacing: .01em;
+    color: var(--primary);
+    margin: 0;
+  }
+  .wordmark span {
+    display: block;
+    font-family: "Karla", sans-serif;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+  .copyright {
+    font-size: 12.5px;
+    color: var(--muted);
+    margin: 0;
+    text-align: right;
+  }
+
+  @media (max-width: 480px) {
+    .colophon { flex-direction: column; align-items: flex-start; }
+    .copyright { text-align: left; }
+  }
+
+  @media (max-width: 560px) {
+    .stop { grid-template-columns: 34px 1fr; gap: 0 14px; }
+    .num { font-size: 21px; }
+    .preview { padding: 24px 20px 26px; }
+    .hud-label { font-size: 11px; }
+  }
+
+  @media print {
+    .hud { display: none; }
+    .stop.collapsed .panel { display: block; }
+    .previewlist .pv-body { display: block; }
+    body { padding-bottom: 0; }
+  }
+</style>
+</head>
+<body>
+
+<div class="hud">
+  <div class="hud-inner">
+    <span class="hud-label"><b id="pct">0%</b> &nbsp;<span id="counts">0 of 0 shown</span></span>
+    <span class="track"><span class="fill" id="fill"></span></span>
+    <button class="btn" id="reset" type="button">Start over</button>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <p class="eyebrow">WisRight Technologies &middot; for ClinicAI</p>
+    <h1>Demo of ClinicAI &mdash; Patient Intake &amp; Voice Transcription</h1>
+    <p class="standfirst">ClinicAI has two parts. An <b>attender</b> uses the Android app to register each patient and record their spoken answers; the app transcribes them and writes an AI summary. A <b>doctor</b> then reviews that summary and the full Q&amp;A on the web dashboard. Work through the six steps below in order &mdash; they follow one patient from the front desk to the doctor. Tick each one off as you try it.</p>
+    <div class="meta">
+      <span><b>Stage</b> Proof of concept</span>
+      <span><b>Attender app</b> Android</span>
+      <span><b>Doctor dashboard</b> Web browser</span>
+      <span><b>Languages</b> Tamil &amp; English</span>
+      <span><b>Takes about</b> 15 minutes</span>
+    </div>
+  </header>
+
+  <section class="callout">
+    <h2>Before you begin</h2>
+    <p><b>This is a proof of concept, not the finished product.</b> It is built to show the whole journey working end to end &mdash; register a patient, record answers by voice, transcribe them, summarise, and review. Some parts run on stand-ins for now; those are marked clearly in each step and gathered again at the end.</p>
+    <p><b>The two parts talk to the same backend.</b> A patient you register in the app appears in the doctor's queue on the web, and sending an intake to the doctor is what makes it show up for review. Keep both open side by side to see this.</p>
+    <p><b>Speech-to-text and the AI summary are the two "AI" pieces.</b> Transcription needs its small language service running behind the scenes. The written summary is <b>live</b> &mdash; a paid AI engine (Kimi) reads the patient's real answers and writes a genuine summary, sending the answers to an external provider to do so. Both are explained in Step 3 and Step 4, and again at the end.</p>
+    <p style="font-size:13.5px;color:var(--body);border-top:1px solid var(--rule);padding-top:14px;margin-top:2px;">Anything with an open tick box is ready for you to try now. Anything marked <b>Stand-in</b>, <b>Needs service</b> or <b>Not yet</b> has a greyed-out box that cannot be ticked &mdash; please read it before you try that part of the screen.</p>
+  </section>
+
+  <div class="stops" id="stops">
+
+    <!-- 1 -->
+    <section class="stop">
+      <div class="spine"><span class="num">1</span><span class="thread"></span></div>
+      <div>
+        <button class="stop-head" type="button">
+          <span class="titlerow"><h3>Set up the questions</h3><span class="appchip">Attender app &middot; Settings</span></span>
+          <span class="tally"></span>
+        </button>
+        <div class="panel">
+          <p class="lede">Each department has its own short list of intake questions. Open the gear icon (&#9881;) at the top right of the home screen to see and edit the active template before you start taking patients.</p>
+          <ul class="items">
+            <li><label class="check"><input type="checkbox"><span>Open <b>Settings</b> from the gear icon (top right of Home)</span></label></li>
+            <li><label class="check"><input type="checkbox"><span>View the <b>active question template</b> for a department</span></label></li>
+            <li><label class="check"><input type="checkbox"><span><b>Edit the questions</b> &mdash; wording and order</span></label></li>
+            <li><label class="check"><input type="checkbox"><span><b>Save</b> the template &mdash; it is kept and used for new patients</span></label></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2 -->
+    <section class="stop">
+      <div class="spine"><span class="num">2</span><span class="thread"></span></div>
+      <div>
+        <button class="stop-head" type="button">
+          <span class="titlerow"><h3>Register a patient</h3><span class="appchip">Attender app &middot; New Patient</span></span>
+          <span class="tally"></span>
+        </button>
+        <div class="panel">
+          <p class="lede">From Home, tap to add a new patient. Fill in their details and start the visit. Behind the scenes the patient gets a <b>token number</b> for the day &mdash; you will see it on the queue in step&nbsp;5. Tokens restart at 1 each day, so the same numbers reappear tomorrow; that is intended.</p>
+          <ul class="items">
+            <li><label class="check"><input type="checkbox"><span>Enter <b>name</b>, <b>age</b>, <b>sex</b> and <b>department</b></span></label></li>
+            <li><label class="check"><input type="checkbox"><span><b>Start Visit</b> &mdash; the intake question list opens</span></label></li>
+            <li><label class="check"><input type="checkbox"><span>Try leaving name or department blank &mdash; it <b>warns you</b> before saving</span></label></li>
+            <li><label class="check"><input type="checkbox"><span>Age must be between <b>0 and 120</b></span></label></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3 -->
+    <section class="stop">
+      <div class="spine"><span class="num">3</span><span class="thread"></span></div>
+      <div>
+        <button class="stop-head" type="button">
+          <span class="titlerow"><h3>Record the answers by voice</h3><span class="appchip">Attender app &middot; Recording</span></span>
+          <span class="tally"></span>
+        </button>
+        <div class="panel">
+          <p class="lede">The intake screen lists every question with a progress bar (for example <b>2 / 5</b>). Tap a question to open the recorder, capture the patient's spoken answer, and save it. The app uploads the audio and writes back the transcript.</p>
+          <ul class="items">
+            <li><label class="check"><input type="checkbox"><span>Open a question and tap <b>Record</b> &mdash; a live waveform and timer show it is listening</span></label></li>
+            <li><label class="check"><input type="checkbox"><span><b>Stop &amp; Save</b> &mdash; the answer uploads and you return to the list</span></label></li>
+            <li><label class="check"><input type="checkbox"><span>The answered question now shows a <b>tick and its transcript</b>, and the progress count goes up</span></label></li>
+            <li><label class="check"><input type="checkbox"><span>Leave and come back &mdash; the screen <b>reloads your answers</b> so you can resume mid-way</span></label></li>
+            <li><label class="check"><input type="checkbox"><span>Deny the microphone once to see the <b>Open Settings / Try Again</b> recovery screen</span></label></li>
+          </ul>
+          <ul class="items">
+            <li class="flagged"><span class="tag">Needs service</span><span><b>Transcription (speech-to-text)</b> runs on a small free language service that must be switched on behind the scenes. When it is running, spoken Tamil or English is turned into text automatically. If it is not running, the answer still <b>saves safely</b> and is shown as <em>transcription failed</em> &mdash; nothing is lost and the app does not crash. A paid engine (Sarvam) can be used instead for higher accuracy.</span></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4 -->
+    <section class="stop">
+      <div class="spine"><span class="num">4</span><span class="thread"></span></div>
+      <div>
+        <button class="stop-head" type="button">
+          <span class="titlerow"><h3>Review &amp; send to the doctor</h3><span class="appchip">Attender app &middot; Review</span></span>
+          <span class="tally"></span>
+        </button>
+        <div class="panel">
+          <p class="lede">Once every question is answered, review the whole intake on one screen &mdash; each question with its transcript, plus an <b>AI-generated summary</b> &mdash; then send it to the doctor. Sending is what makes the patient appear in the doctor's queue for review.</p>
+          <ul class="items">
+            <li><label class="check"><input type="checkbox"><span>Read back <b>every question and its transcript</b> in one list</span></label></li>
+            <li><label class="check"><input type="checkbox"><span>Use <b>Edit Answers</b> to go back and re-record any question</span></label></li>
+            <li><label class="check"><input type="checkbox"><span><b>Confirm &amp; Send to Doctor</b> &mdash; the intake is submitted and the AI reads the patient's real answers and writes the summary</span></label></li>
+            <li><label class="check"><input type="checkbox"><span>The summary is written in <b>English</b> even when the answers were spoken in Tamil</span></label></li>
+            <li><label class="check"><input type="checkbox"><span>After sending, the button <b>locks</b> so the same intake cannot be sent twice</span></label></li>
+          </ul>
+          <ul class="items">
+            <li class="flagged"><span class="tag">Live AI &middot; paid</span><span><b>The summary is generated by a real AI engine (Kimi) from the actual Q&amp;A</b> &mdash; it is different for every patient, not a fixed sample. This is a <b>paid</b> service and it <b>sends the patient's answers to an external AI provider</b> to write the summary.</span></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5 -->
+    <section class="stop">
+      <div class="spine"><span class="num">5</span><span class="thread"></span></div>
+      <div>
+        <button class="stop-head" type="button">
+          <span class="titlerow"><h3>The day's queue</h3><span class="appchip">Attender app &middot; Home</span></span>
+          <span class="tally"></span>
+        </button>
+        <div class="panel">
+          <p class="lede">Home is the attender's landing screen &mdash; today's patients in a list, with each one's stage shown by the colour of its token. The count at the top is <b>today's queue</b>, not an all-time total.</p>
+          <div class="legend">
+            <span class="legend-item"><span class="tok done">3</span><span><b>Grey</b> &mdash; completed</span></span>
+            <span class="legend-item"><span class="tok current">4</span><span><b>Blue</b> &mdash; in progress now</span></span>
+            <span class="legend-item"><span class="tok next">5</span><span><b>Yellow</b> &mdash; waiting / up next</span></span>
+          </div>
+          <ul class="items">
+            <li><label class="check"><input type="checkbox"><span>The header count shows <b>today's queue</b> only</span></label></li>
+            <li><label class="check"><input type="checkbox"><span>Each patient's <b>token is coloured by stage</b> (grey / blue / yellow above)</span></label></li>
+            <li><label class="check"><input type="checkbox"><span>Beside each name: a <b>status pill</b> in words (Waiting / Answering / Answered / Summarised / Done) and a <b>2 / 5</b> figure showing how many questions are answered so far</span></label></li>
+            <li><label class="check"><input type="checkbox"><span>After a patient is <b>sent to the doctor</b> (Step 4), their row shows a <b>two-line preview of the AI summary</b> under the name; before that it shows a short status hint instead</span></label></li>
+            <li><label class="check"><input type="checkbox"><span>Tap a patient to <b>reopen their intake</b> and carry on where you left off</span></label></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6 -->
+    <section class="stop">
+      <div class="spine"><span class="num">6</span><span class="thread"></span></div>
+      <div>
+        <button class="stop-head" type="button">
+          <span class="titlerow"><h3>The doctor's dashboard</h3><span class="appchip web">Doctor web &middot; browser</span></span>
+          <span class="tally"></span>
+        </button>
+        <div class="panel">
+          <p class="lede">Open the doctor dashboard in a web browser. The patients you sent in the app appear here in today's queue, using the <b>same token colours</b>. Pick a patient to read their summary and full Q&amp;A, then mark them done.</p>
+          <ul class="items">
+            <li><label class="check"><input type="checkbox"><span>See <b>today's queue</b> down the left, coloured by stage</span></label></li>
+            <li><label class="check"><input type="checkbox"><span>Select a patient to open their <b>name, token and details</b></span></label></li>
+            <li><label class="check"><input type="checkbox"><span>Read the <b>AI summary card</b> and the <b>full question-and-answer transcript</b></span></label></li>
+            <li><label class="check"><input type="checkbox"><span>The stats row shows <b>Seen today</b>, <b>Remaining</b> and the selected patient's <b>Q&amp;A count</b></span></label></li>
+            <li><label class="check"><input type="checkbox"><span><b>Mark Done</b> &mdash; enabled once a patient is summarised; the dashboard moves you to the next one</span></label></li>
+          </ul>
+          <ul class="items">
+            <li class="flagged"><span class="tag">Not yet</span><span><b>"Currently with the doctor"</b> is not shown. The dashboard tracks waiting &rarr; in progress &rarr; done, but there is no separate "being seen right now" stage yet &mdash; a doctor picking a patient on screen is not recorded. We can add this if it is wanted.</span></li>
+            <li class="flagged"><span class="tag">Stand-in</span><span><b>Sign-in and roles.</b> There is no real login yet &mdash; the app is fixed as the attender and the dashboard as the doctor. Proper accounts and permissions come with the production build.</span></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <section class="preview">
+    <p class="eyebrow">Running on stand-ins &middot; for the production build</p>
+    <h2>What is a stand-in right now</h2>
+    <p>These pieces are wired through the whole journey so you can see the flow end to end, but they run on a placeholder for the demo. Each is a known, planned swap for the production build. Tap a row to read where it stands.</p>
+    <ul class="previewlist">
+      <li>
+        <button class="pv-head" type="button"><span>AI summary &mdash; live engine</span><span class="caret">&#9654;</span></button>
+        <div class="pv-body">The summary shown to the attender and doctor is written live by the real AI engine (Kimi) from the patient's actual answers, so it is different for every patient. It is a paid service and sends the answers to an external AI provider.</div>
+      </li>
+      <li>
+        <button class="pv-head" type="button"><span>Speech-to-text service</span><span class="caret">&#9654;</span></button>
+        <div class="pv-body">Transcription runs on a small free language service (Whisper) that has to be switched on behind the scenes. With it running, spoken Tamil and English become text automatically. With it off, answers still save and are marked "transcription failed" so nothing is lost. A paid engine (Sarvam) is the higher-accuracy alternative.</div>
+      </li>
+      <li>
+        <button class="pv-head" type="button"><span>Sign-in and user roles</span><span class="caret">&#9654;</span></button>
+        <div class="pv-body">No real login yet. The app is fixed as "attender" and the dashboard as "doctor". Real accounts, passwords and permissions are part of the production build.</div>
+      </li>
+      <li>
+        <button class="pv-head" type="button"><span>Alerts on the phone</span><span class="caret">&#9654;</span></button>
+        <div class="pv-body">There are no push notifications in this build. The attender and doctor see new items by opening or refreshing their screen. Alerts can be added later.</div>
+      </li>
+      <li>
+        <button class="pv-head" type="button"><span>iPhone version</span><span class="caret">&#9654;</span></button>
+        <div class="pv-body">The attender app is Android-first for the proof of concept. An iPhone build follows once an Apple developer account and sign-off are in place. The doctor dashboard is a website and already works on any browser.</div>
+      </li>
+    </ul>
+  </section>
+
+  <section class="newbuild">
+    <h2>New in this build</h2>
+    <ul class="plain">
+      <li><b>Token colours by stage</b> &mdash; grey for completed, blue for in progress, yellow for waiting &mdash; in both the app and the dashboard</li>
+      <li>The app's <b>colours and buttons now match the web dashboard</b>, so the two feel like one product</li>
+      <li>The queue count is now scoped to <b>today's patients</b>, not the all-time total</li>
+      <li>Each queue row shows a <b>two-line summary preview</b> and a <b>2 / 5 progress</b> figure beside the name</li>
+      <li>The doctor's <b>Seen today / Remaining / Q&amp;A</b> stats, and a corrected visit date, so the day's figures are right</li>
+    </ul>
+  </section>
+
+  <footer>
+    Proof-of-concept build. It shows the full journey &mdash; register, record, transcribe, summarise, review &mdash; working end to end. The written summary runs on the live AI engine; speech-to-text needs its language service running behind the scenes. Your ticks are saved in this browser, so you can close this page and pick up where you left off. Please send us your notes as you go.
+  </footer>
+
+  <div class="colophon">
+    <p class="wordmark">WisRight Technologies<span>Design &amp; Development</span></p>
+    <p class="copyright">&copy; 2026 WisRight Technologies. All rights reserved.<br>Prepared for ClinicAI. Confidential.</p>
+  </div>
+
+</div>
+
+<script>
+(function () {
+  var KEY = 'clinicai-demo-walkthrough-v1';
+  var boxes = Array.prototype.slice.call(document.querySelectorAll('.items input[type=checkbox]'));
+  var stops = Array.prototype.slice.call(document.querySelectorAll('.stop'));
+  var fill = document.getElementById('fill');
+  var pct = document.getElementById('pct');
+  var counts = document.getElementById('counts');
+
+  boxes.forEach(function (box, i) { box.dataset.idx = i; });
+
+  function load() {
+    var raw;
+    try { raw = window.localStorage.getItem(KEY); } catch (e) { return; }
+    if (!raw) return;
+    raw.split(',').forEach(function (i) {
+      var box = boxes[Number(i)];
+      if (box) box.checked = true;
+    });
+  }
+
+  function save() {
+    var on = boxes.filter(function (b) { return b.checked; })
+                  .map(function (b) { return b.dataset.idx; });
+    try { window.localStorage.setItem(KEY, on.join(',')); } catch (e) { /* private mode */ }
+  }
+
+  function render() {
+    var done = boxes.filter(function (b) { return b.checked; }).length;
+    var total = boxes.length;
+    var share = total ? Math.round((done / total) * 100) : 0;
+    fill.style.width = share + '%';
+    pct.textContent = share + '%';
+    counts.textContent = done + ' of ' + total + ' shown';
+
+    stops.forEach(function (stop) {
+      var own = stop.querySelectorAll('.items input[type=checkbox]');
+      var hit = stop.querySelectorAll('.items input[type=checkbox]:checked');
+      stop.querySelector('.tally').textContent = hit.length + ' / ' + own.length;
+      stop.classList.toggle('complete', own.length > 0 && hit.length === own.length);
+    });
+  }
+
+  boxes.forEach(function (box) {
+    box.addEventListener('change', function () { save(); render(); });
+  });
+
+  document.querySelectorAll('.stop-head').forEach(function (head) {
+    head.addEventListener('click', function () {
+      head.closest('.stop').classList.toggle('collapsed');
+    });
+  });
+
+  document.querySelectorAll('.pv-head').forEach(function (head) {
+    head.addEventListener('click', function () {
+      head.parentNode.classList.toggle('open');
+    });
+  });
+
+  document.getElementById('reset').addEventListener('click', function () {
+    boxes.forEach(function (b) { b.checked = false; });
+    stops.forEach(function (s) { s.classList.remove('collapsed'); });
+    save();
+    render();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
+  load();
+  render();
+})();
+</script>
+
+</body>
+</html>
