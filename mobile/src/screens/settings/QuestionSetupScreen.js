@@ -54,17 +54,30 @@ export default function QuestionSetupScreen() {
       <DepartmentPicker value={departmentId} onChange={setDepartmentId} />
 
       {status === 'loading' ? (
-        <ActivityIndicator style={{ marginTop: 40 }} color="#1a3050" />
-      ) : questions.length === 0 ? (
-        <Text style={styles.emptyState}>
-          No questions yet — add your first question
-        </Text>
+        <View style={styles.listArea}>
+          <ActivityIndicator style={{ marginTop: 40 }} color="#1a3050" />
+        </View>
       ) : (
+        // containerStyle bounds the list to the space left on screen so it scrolls;
+        // without it the list grows to its full content height and pushes
+        // "Add Question" / "Save Template" off-screen on long templates.
         <DraggableFlatList
           data={questions}
           keyExtractor={(q) => q.key}
           onDragEnd={({ data }) => reorder(data)}
+          containerStyle={styles.listArea}
           contentContainerStyle={styles.listContent}
+          keyboardShouldPersistTaps="handled"
+          ListEmptyComponent={
+            <Text style={styles.emptyState}>
+              No questions yet — add your first question
+            </Text>
+          }
+          ListFooterComponent={
+            <Pressable style={styles.addQ} onPress={addQuestion}>
+              <Text style={styles.addQText}>+ Add Question</Text>
+            </Pressable>
+          }
           renderItem={({ item, getIndex, drag, isActive }) => (
             <QuestionRow
               index={getIndex()}
@@ -76,10 +89,6 @@ export default function QuestionSetupScreen() {
           )}
         />
       )}
-
-      <Pressable style={styles.addQ} onPress={addQuestion}>
-        <Text style={styles.addQText}>+ Add Question</Text>
-      </Pressable>
 
       <Pressable
         disabled={!canSave || isBusy}
