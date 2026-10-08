@@ -38,6 +38,9 @@ export const styles = StyleSheet.create({
     fontWeight: '700',
     marginTop: 2,
   },
+  listArea: {
+    flex: 1,
+  },
   listContent: {
     paddingHorizontal: 12,
     paddingTop: 12,
@@ -116,7 +119,6 @@ export const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 12,
     alignItems: 'center',
-    marginHorizontal: 12,
     marginTop: 4,
     marginBottom: 8,
   },
@@ -130,7 +132,8 @@ export const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 14,
     marginHorizontal: 12,
-    marginBottom: 24,
+    marginTop: 8,
+    marginBottom: 16,
     alignItems: 'center',
   },
   saveBtnDisabled: {
