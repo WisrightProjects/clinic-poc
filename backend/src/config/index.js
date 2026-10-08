@@ -17,7 +17,10 @@ module.exports = {
   // Kimi (Moonshot AI) — paid, OpenAI-compatible. Base URL must end in /v1, e.g. https://api.moonshot.ai/v1
   kimiApiKey: process.env.KIMI_API_KEY || null,
   kimiBaseUrl: process.env.KIMI_BASE_URL || 'https://api.moonshot.ai/v1',
-  kimiModel: process.env.KIMI_MODEL || 'moonshot-v1-8k',
+  kimiModel: process.env.KIMI_MODEL || 'kimi-k2.6',
+  // 'disabled' (default) or 'enabled'. Thinking mode spends ~1,000+ hidden reasoning tokens per
+  // summary (~45s vs ~4s), which pushed 15-17 question intakes past the 60s timeout.
+  kimiThinking: process.env.KIMI_THINKING === 'enabled' ? 'enabled' : 'disabled',
   audioDir: process.env.AUDIO_DIR || path.join(__dirname, '../../../storage/audio'),
   corsOrigins: (process.env.CORS_ORIGINS || 'http://localhost:5173,http://localhost:8081').split(','),
 };

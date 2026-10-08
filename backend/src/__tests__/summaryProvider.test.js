@@ -29,6 +29,20 @@ describe('buildSummaryPrompt', () => {
     expect(buildSummaryPrompt(visit, qa, 'Tamil')).toContain('in Tamil');
   });
 
+  test('tells the model to keep uncertainty instead of stating it as fact', () => {
+    const p = buildSummaryPrompt(visit, qa);
+    expect(p).toContain("Keep the patient's uncertainty");
+    expect(p).toContain('never as a confirmed fact');
+  });
+
+  test('tells the model not to add diagnoses the patient did not state', () => {
+    expect(buildSummaryPrompt(visit, qa)).toContain('Do not add diagnoses');
+  });
+
+  test('tells the model to keep important negatives', () => {
+    expect(buildSummaryPrompt(visit, qa)).toContain('Include important negatives');
+  });
+
   test('handles unknown demographics and empty Q&A without throwing', () => {
     const p = buildSummaryPrompt({}, []);
     expect(p).toContain('Patient: unknown');
