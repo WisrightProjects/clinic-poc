@@ -70,7 +70,8 @@ services:
       SUMMARY_PROVIDER: ${SUMMARY_PROVIDER:-mock}
       KIMI_API_KEY: ${KIMI_API_KEY:-}
       KIMI_BASE_URL: ${KIMI_BASE_URL:-https://api.moonshot.ai/v1}
-      KIMI_MODEL: ${KIMI_MODEL:-moonshot-v1-8k}
+      KIMI_MODEL: ${KIMI_MODEL:-kimi-k2.6}
+      KIMI_THINKING: ${KIMI_THINKING:-disabled}
       SUMMARY_LANGUAGE: ${SUMMARY_LANGUAGE:-English}
       AUDIO_DIR: /app/uploads
       PORT: "4000"

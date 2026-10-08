@@ -12,6 +12,9 @@ function buildSummaryPrompt(visit, qa, language = 'English') {
   return [
     `You are a clinical scribe. Summarise the patient intake below into 2-4 concise sentences in ${language} for a doctor.`,
     `Use ONLY the information given; do not invent findings. If an answer is empty, ignore it.`,
+    `Keep the patient's uncertainty: if they say "I think", "not sure" or "I don't know", write it as possible or unknown, never as a confirmed fact.`,
+    `Do not add diagnoses, types or medical terms the patient did not state (for example write "thyroid problem on tablets", not "hypothyroidism").`,
+    `Include important negatives the patient reported (for example no allergies, no smoking).`,
     ``,
     `Patient: ${who || 'unknown'}`,
     ``,
