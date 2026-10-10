@@ -35,7 +35,12 @@ async function getById(clinicId, id) {
   return { visit, template, answers, summary };
 }
 
+// The doctor's "mark done" action. Other statuses are set by the intake flow itself
+// (answers, submit), so 'summarised' can never be set here without a summary.
 async function updateStatus(clinicId, id, newStatus) {
+  if (newStatus !== 'done') {
+    throw new AppError('INVALID_TRANSITION', 'Only marking a visit done is allowed here', 409);
+  }
   const visit = await findVisit(clinicId, id);
   statusEngine.assertTransition(visit.status, newStatus);
   return visitRepository.updateStatus(id, newStatus);
@@ -76,15 +81,20 @@ async function submit(clinicId, visitId) {
   return summary; // return the summary row so the client can render it without a reload
 }
 
-// Takes the visit and template the caller already loaded (clinic-scoped).
+// Takes the visit and template the caller already loaded (clinic-scoped). The first
+// answer moves waiting -> answering; the same call continues to 'answered' when that
+// answer was the last one (e.g. a one-question template).
 async function maybeAdvance(visit, template) {
-  if (visit.status === 'waiting') {
+  let status = visit.status;
+  if (status === 'waiting') {
+    statusEngine.assertTransition(status, 'answering');
     await visitRepository.updateStatus(visit.id, 'answering');
-    return;
+    status = 'answering';
   }
-  if (visit.status === 'answering' && template) {
+  if (status === 'answering' && template) {
     const answeredCount = await answerRepository.countByVisitId(visit.id);
     if (answeredCount >= template.questions.length) {
+      statusEngine.assertTransition(status, 'answered');
       await visitRepository.updateStatus(visit.id, 'answered');
     }
   }

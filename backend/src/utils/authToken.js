@@ -29,8 +29,15 @@ function bearerToken(header) {
   return match ? match[1] : null;
 }
 
+// True when the token (iat, seconds) predates the user's last password change, so a
+// password reset signs out every existing device. iat has whole-second precision: a
+// login in the same second as the change still counts as after it.
+function issuedBeforePasswordChange(iat, passwordChangedAt) {
+  return iat < Math.floor(new Date(passwordChangedAt).getTime() / 1000);
+}
+
 function unauthenticated(message = 'Invalid session, please sign in again') {
   return new AppError('UNAUTHENTICATED', message, 401);
 }
 
-module.exports = { signToken, verifyToken, bearerToken, unauthenticated };
+module.exports = { signToken, verifyToken, bearerToken, unauthenticated, issuedBeforePasswordChange };

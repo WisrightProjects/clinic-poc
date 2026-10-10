@@ -3,7 +3,7 @@
 // The user loader is passed in as a plain function instead of hitting the DB.
 
 const jwt = require('jsonwebtoken');
-const { signToken, verifyToken, bearerToken, unauthenticated } = require('../utils/authToken');
+const { signToken, verifyToken, bearerToken, unauthenticated, issuedBeforePasswordChange } = require('../utils/authToken');
 const { createAuthenticate, requireRole } = require('../utils/auth');
 const { normalizeMobile } = require('../utils/mobile');
 
@@ -53,6 +53,21 @@ describe('signToken / verifyToken', () => {
 
   test('AC3: missing token is rejected', () => {
     expect(() => verifyToken(null, SECRET)).toThrow(expect.objectContaining({ code: 'UNAUTHENTICATED' }));
+  });
+});
+
+describe('issuedBeforePasswordChange (password reset signs out old devices)', () => {
+  const changedAt = new Date('2026-10-10T10:00:00.500Z');
+  const changedSec = Math.floor(changedAt.getTime() / 1000);
+  test('a token issued before the change is rejected', () => {
+    expect(issuedBeforePasswordChange(changedSec - 1, changedAt)).toBe(true);
+  });
+  test('a token issued in the same second or later is accepted', () => {
+    expect(issuedBeforePasswordChange(changedSec, changedAt)).toBe(false);
+    expect(issuedBeforePasswordChange(changedSec + 60, changedAt)).toBe(false);
+  });
+  test('accepts the ISO string form pg may return', () => {
+    expect(issuedBeforePasswordChange(changedSec - 1, changedAt.toISOString())).toBe(true);
   });
 });
 

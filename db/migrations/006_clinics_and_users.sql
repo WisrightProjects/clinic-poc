@@ -22,6 +22,9 @@ CREATE TABLE IF NOT EXISTS users (
   password_hash TEXT NOT NULL,
   role          TEXT NOT NULL CHECK (role IN ('doctor', 'attender')),
   is_active     BOOLEAN NOT NULL DEFAULT true,
+  -- Tokens issued before this are rejected, so resetting a password signs out every
+  -- device (e.g. a lost clinic phone). Set it to now() whenever password_hash changes.
+  password_changed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

@@ -1,7 +1,7 @@
 const bcrypt = require('bcryptjs');
 const config = require('../config');
 const userRepository = require('../repositories/userRepository');
-const { signToken, verifyToken, unauthenticated } = require('../utils/authToken');
+const { signToken, verifyToken, unauthenticated, issuedBeforePasswordChange } = require('../utils/authToken');
 const { normalizeMobile } = require('../utils/mobile');
 const { AppError } = require('../utils/errors');
 
@@ -32,11 +32,14 @@ async function login(mobile, password) {
 }
 
 // Used by the authenticate middleware on every request: verifies the token and loads
-// the user fresh, so deactivation takes effect immediately. Throws 401.
+// the user fresh, so deactivation takes effect immediately. A token issued before the
+// password was last changed is rejected, so a password reset signs out old devices.
+// Throws 401.
 async function authenticateToken(token) {
-  const userId = Number(verifyToken(token, config.jwtSecret).sub);
+  const { sub, iat } = verifyToken(token, config.jwtSecret);
+  const userId = Number(sub);
   const row = Number.isInteger(userId) ? await userRepository.findById(userId) : null;
-  if (!row) throw unauthenticated();
+  if (!row || issuedBeforePasswordChange(iat, row.password_changed_at)) throw unauthenticated();
   return toSessionUser(row);
 }
 

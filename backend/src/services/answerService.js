@@ -16,6 +16,7 @@ async function recordAnswer(clinicId, visitId, questionId, file) {
   }
   const audioPath = path.relative(config.audioDir, file.path);
   const answer = await answerRepository.upsert(visit.id, questionId, audioPath, 'pending');
+  file.stored = true; // the answer row now references it: errorHandler must not delete it
   // Advance the visit lifecycle now — these are fast DB-only ops that don't depend
   // on the transcript (progress is derived from answer rows, not transcript text).
   await visitService.maybeAdvance(visit, template);

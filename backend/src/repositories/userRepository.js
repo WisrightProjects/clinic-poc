@@ -2,7 +2,7 @@ const db = require('../config/db');
 
 // Only active users are ever returned, so a deactivated user can neither sign in nor
 // use an existing token. password_hash is selected ONLY by findByMobile (login).
-const COLUMNS = 'u.id, u.name, u.role, u.clinic_id, c.name AS clinic_name';
+const COLUMNS = 'u.id, u.name, u.role, u.clinic_id, u.password_changed_at, c.name AS clinic_name';
 const FROM_ACTIVE = 'FROM users u JOIN clinics c ON c.id = u.clinic_id WHERE u.is_active';
 
 async function findByMobile(mobile) {

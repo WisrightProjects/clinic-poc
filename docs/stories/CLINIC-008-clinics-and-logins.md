@@ -307,7 +307,7 @@ Pass `req.user.clinicId` from every controller into the service and repository. 
 
 **File:** `scripts/clinic-admin.mjs` **(NEW)** — reads `backend/.env` like the db runners.
 - `node scripts/clinic-admin.mjs create-clinic "Sri Clinic, Madurai" --doctor "Dr. Ramesh:9876543210" --attender "Priya:9876500000"` → creates the clinic, **copies every active template and its questions** into it, creates the users with random passwords, and prints them once.
-- `node scripts/clinic-admin.mjs reset-password 9876543210` → prints a new password.
+- `node scripts/clinic-admin.mjs reset-password 9876543210` → prints a new password. It must also set `users.password_changed_at = now()`, which signs that user out of every device (older tokens are rejected).
 
 ### Part 7: Tests (0.5 day)
 

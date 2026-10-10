@@ -28,8 +28,7 @@ router.post('/visits', wrap(visitController.create));
 router.get('/visits', wrap(visitController.list));
 router.get('/visits/:id', wrap(visitController.getById));
 router.post('/visits/:id/answers', upload.single('audio'), wrap(answerController.create));
-// Only the doctor web calls this (to mark done). If attenders ever need PATCH
-// transitions, put the allowed role per transition in statusEngine, not here.
+// Doctor marks a visit done (the only status this route sets; see visitService).
 router.patch('/visits/:id/status', requireRole('doctor'), wrap(visitController.updateStatus));
 router.post('/visits/:id/submit', wrap(visitController.submit));
 router.get('/answers/:id/audio', wrap(answerController.audio));
