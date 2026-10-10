@@ -22,12 +22,12 @@ const PROGRESS_COLUMNS = `
         WHERE t.department_id = v.department_id AND t.clinic_id = v.clinic_id AND t.is_active
         ORDER BY t.id LIMIT 1)) AS total_questions`;
 
-// A short excerpt of the visit's AI summary, so the queue row can show a
-// two-line preview without a per-visit fetch. Only submitted visits
-// (summarised/done) have a summary; others come back null. Truncated to keep
-// the list payload small — the client clamps it to two lines anyway.
+// A short excerpt of the visit's summary (the doctor's edit when there is one,
+// CLINIC-012), so the queue row can show a two-line preview without a per-visit
+// fetch. Only submitted visits (summarised/done) have a summary; others come back
+// null. Truncated to keep the list payload small — the client clamps it to two lines.
 const SUMMARY_COLUMN = `
-  (SELECT LEFT(s.summary_text, 240)
+  (SELECT LEFT(COALESCE(s.edited_text, s.summary_text), 240)
      FROM summaries s
     WHERE s.visit_id = v.id
     ORDER BY s.created_at DESC
