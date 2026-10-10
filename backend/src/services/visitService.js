@@ -7,35 +7,40 @@ const summaryService = require('./summaryService');
 const { AppError } = require('../utils/errors');
 const { validateNewVisit } = require('../utils/visitValidation');
 
-async function create({ patientName, age, sex, departmentId }) {
-  const clean = validateNewVisit({ patientName, age, sex, departmentId });
-  return visitRepository.createWithToken(clean);
-}
-
-async function list(statusQuery) {
-  const statusFilter = statusQuery ? statusQuery.split(',').map(s => s.trim()) : [];
-  return visitRepository.list(statusFilter);
-}
-
-async function getById(id) {
-  const visit = await visitRepository.findById(id);
+// Every entry point takes the signed-in user's clinicId (CLINIC-008). A visit from
+// another clinic is NOT_FOUND, exactly like a missing one, so ids can't be probed.
+async function findVisit(clinicId, id) {
+  const visit = await visitRepository.findById(clinicId, id);
   if (!visit) throw new AppError('NOT_FOUND', 'Visit not found', 404);
-  const template = await templateRepository.findActiveByDepartmentId(visit.department_id);
+  return visit;
+}
+
+async function create(clinicId, { patientName, age, sex, departmentId }) {
+  const clean = validateNewVisit({ patientName, age, sex, departmentId });
+  return visitRepository.createWithToken(clinicId, clean);
+}
+
+async function list(clinicId, statusQuery) {
+  const statusFilter = statusQuery ? statusQuery.split(',').map(s => s.trim()) : [];
+  return visitRepository.list(clinicId, statusFilter);
+}
+
+async function getById(clinicId, id) {
+  const visit = await findVisit(clinicId, id);
+  const template = await templateRepository.findActiveByDepartmentId(clinicId, visit.department_id);
   const answers = await answerRepository.findByVisitId(id);
   const summary = await summaryRepository.findByVisitId(id);
   return { visit, template, answers, summary };
 }
 
-async function updateStatus(id, newStatus) {
-  const visit = await visitRepository.findById(id);
-  if (!visit) throw new AppError('NOT_FOUND', 'Visit not found', 404);
+async function updateStatus(clinicId, id, newStatus) {
+  const visit = await findVisit(clinicId, id);
   statusEngine.assertTransition(visit.status, newStatus);
   return visitRepository.updateStatus(id, newStatus);
 }
 
-async function submit(visitId) {
-  const visit = await visitRepository.findById(visitId);
-  if (!visit) throw new AppError('NOT_FOUND', 'Visit not found', 404);
+async function submit(clinicId, visitId) {
+  const visit = await findVisit(clinicId, visitId);
 
   // AC5: idempotent — an already-summarised/done visit returns its existing
   // summary without re-asserting the transition or inserting a duplicate row.
@@ -62,22 +67,22 @@ async function submit(visitId) {
 
   let summary = await summaryRepository.findByVisitId(visitId);
   if (!summary) {
-    const { summaryText, generatedBy } = await summaryService.generate(visitId);
+    const { summaryText, generatedBy } = await summaryService.generate(visit);
     summary = await summaryRepository.create(visitId, summaryText, generatedBy);
   }
   await visitRepository.updateStatus(visitId, 'summarised');
   return summary; // return the summary row so the client can render it without a reload
 }
 
-async function maybeAdvance(visitId) {
-  const visit = await visitRepository.findById(visitId);
+async function maybeAdvance(clinicId, visitId) {
+  const visit = await visitRepository.findById(clinicId, visitId);
   if (!visit) return;
   if (visit.status === 'waiting') {
     await visitRepository.updateStatus(visitId, 'answering');
     return;
   }
   if (visit.status === 'answering') {
-    const template = await templateRepository.findActiveByDepartmentId(visit.department_id);
+    const template = await templateRepository.findActiveByDepartmentId(clinicId, visit.department_id);
     if (!template) return;
     const answeredCount = await answerRepository.countByVisitId(visitId);
     if (answeredCount >= template.questions.length) {
@@ -86,4 +91,4 @@ async function maybeAdvance(visitId) {
   }
 }
 
-module.exports = { create, list, getById, updateStatus, submit, maybeAdvance };
+module.exports = { findVisit, create, list, getById, updateStatus, submit, maybeAdvance };

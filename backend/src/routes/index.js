@@ -32,5 +32,6 @@ router.post('/visits/:id/answers', upload.single('audio'), wrap(answerController
 // transitions, put the allowed role per transition in statusEngine, not here.
 router.patch('/visits/:id/status', requireRole('doctor'), wrap(visitController.updateStatus));
 router.post('/visits/:id/submit', wrap(visitController.submit));
+router.get('/answers/:id/audio', wrap(answerController.audio));
 
 module.exports = router;
