@@ -28,8 +28,10 @@ INSERT INTO questions (template_id, order_index, text)
   ) AS vals(order_index, text)
   WHERE NOT EXISTS (SELECT 1 FROM questions q WHERE q.template_id = t.id);
 
-INSERT INTO visits (token_number, patient_name, age, sex, department_id, status, clinic_id)
-  SELECT v.token_number, v.patient_name, v.age, v.sex, d.id, v.status::visit_status, c.id
+INSERT INTO visits (token_number, patient_name, age, sex, department_id, status, clinic_id,
+                    queue_date, queue_token)
+  SELECT v.token_number, v.patient_name, v.age, v.sex, d.id, v.status::visit_status, c.id,
+         CURRENT_DATE, v.token_number
   FROM (VALUES
     (4,  'Lakshmi Krishnamurthy', 34, 'Female', 'summarised'),
     (5,  'Arun M.',               41, 'Male',   'waiting'),

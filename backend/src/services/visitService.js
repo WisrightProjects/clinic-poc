@@ -3,6 +3,7 @@ const answerRepository = require('../repositories/answerRepository');
 const summaryRepository = require('../repositories/summaryRepository');
 const templateRepository = require('../repositories/templateRepository');
 const reportRepository = require('../repositories/reportRepository');
+const testRequestRepository = require('../repositories/testRequestRepository');
 const statusEngine = require('./statusEngine');
 const summaryService = require('./summaryService');
 const { AppError } = require('../utils/errors');
@@ -28,13 +29,14 @@ async function list(clinicId, statusQuery) {
 
 async function getById(clinicId, id) {
   const visit = await findVisit(clinicId, id);
-  const [template, answers, summary, reports] = await Promise.all([
+  const [template, answers, summary, reports, testRequests] = await Promise.all([
     templateRepository.findActiveForVisit(visit),
     answerRepository.findByVisitId(visit.id),
     summaryRepository.findByVisitId(visit.id),
     reportRepository.findByVisitId(visit.id),
+    testRequestRepository.findByVisitId(visit.id),
   ]);
-  return { visit, template, answers, summary, reports };
+  return { visit, template, answers, summary, reports, test_requests: testRequests };
 }
 
 // The doctor's "mark done" action. Other statuses are set by the intake flow itself
@@ -51,9 +53,15 @@ async function updateStatus(clinicId, id, newStatus) {
 async function submit(clinicId, visitId) {
   const visit = await findVisit(clinicId, visitId);
 
-  // AC5: idempotent — an already-summarised/done visit returns its existing
-  // summary without re-asserting the transition or inserting a duplicate row.
-  if (visit.status === 'summarised' || visit.status === 'done') {
+  // A visit away for tests (CLINIC-014) only comes back through requeue, which gives
+  // it a new place in today's queue — never through submit, summary or not.
+  if (visit.status === 'tests_requested') {
+    throw new AppError('AWAY_FOR_TESTS', 'This patient is away for tests — use Back in queue when they return', 409);
+  }
+
+  // AC5: idempotent — an already-submitted visit returns its existing summary without
+  // re-asserting the transition or inserting a duplicate row.
+  if (statusEngine.isSubmitted(visit.status)) {
     const existing = await summaryRepository.findByVisitId(visitId);
     if (existing) return existing;
   }

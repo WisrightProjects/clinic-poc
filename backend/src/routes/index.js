@@ -11,6 +11,7 @@ const templateController = require('../controllers/templateController');
 const visitController = require('../controllers/visitController');
 const answerController = require('../controllers/answerController');
 const reportController = require('../controllers/reportController');
+const testRequestController = require('../controllers/testRequestController');
 
 const wrap = fn => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
@@ -40,5 +41,9 @@ router.post('/visits/:id/reports', requireRole('attender'), wrap(reportControlle
 router.get('/visits/:id/reports', wrap(reportController.list));
 router.get('/reports/:id/file', wrap(reportController.file));
 router.delete('/reports/:id', requireRole('attender'), wrap(reportController.remove));
+// Tests before consultation (CLINIC-014).
+router.post('/visits/:id/test-request', requireRole('doctor'), wrap(testRequestController.create));
+router.post('/test-requests/:id/acknowledge', requireRole('attender'), wrap(testRequestController.acknowledge));
+router.post('/visits/:id/requeue', requireRole('attender'), wrap(testRequestController.requeue));
 
 module.exports = router;

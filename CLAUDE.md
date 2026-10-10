@@ -104,6 +104,7 @@ config/        index.js (env), db.js (pool), upload.js (multer).
 
 ```
 waiting → answering → answered → summarised → done   (done is terminal)
+                                  summarised ⇄ tests_requested   (CLINIC-014: doctor sends for tests; attender re-queues)
 ```
 
 Never mutate `visits.status` in a repository/service without going through `assertTransition`. The two client apps mirror this state machine (`frontend/src/utils/statusMap.js`, mobile status display) — keep them consistent.
@@ -121,16 +122,18 @@ PATCH /visits/:id/status    POST /visits/:id/submit     (PATCH: doctor only, set
 GET   /answers/:id/audio    (the recording, own clinic only)
 POST  /visits/:id/reports   (attender; multipart field "report", JPEG/PNG/WEBP by content, 10 MB each, 20 per visit — CLINIC-011)
 GET   /visits/:id/reports   GET /reports/:id/file   DELETE /reports/:id (attender)   (add/delete only before submit)
+POST  /visits/:id/test-request { note } (doctor)   POST /test-requests/:id/acknowledge (attender)
+POST  /visits/:id/requeue (attender — end of today's queue)   (CLINIC-014)
 ```
 
-`GET /visits/:id` returns `{ visit, template, answers, summary, reports }` (the shape the doctor web consumes).
+`GET /visits/:id` returns `{ visit, template, answers, summary, reports, test_requests }` (the shape the doctor web consumes). Visits carry `queue_date`/`queue_token` — their place in the queue and **the token the patient is shown and called by** (a patient back from tests gets today's date and a new token at the end) — besides `visit_date`/`token_number`, which only keep the registration day's number. `GET /visits` is ordered by queue place and each row carries `latest_test_request` (same fields as the detail's `test_requests` entries, or null). Status lists live in `statusEngine` (`isSubmitted`, `canEditReports`); multi-statement writes use `repositories/transaction.js` `withTransaction`.
 
 ### Auth and clinics (CLINIC-008)
 
 - **Login:** `POST /auth/login { mobile, password }` (bcrypt) returns `{ token, user: { id, name, role, clinic: { id, name } } }`. Every failure is the same 401 `INVALID_LOGIN`. Mobiles are normalised to 10 digits (`utils/mobile.js`); the DB only stores that form.
 - **Token:** HS256 JWT signed with `JWT_SECRET` (required, ≥ 32 chars, or the backend won't start), `JWT_EXPIRES_IN` default `30d`, carrying **only** `sub` (user id). Clients send `Authorization: Bearer <token>`. The old `x-role` header is ignored.
 - **Every request** reloads the active user (`authService.authenticateToken`) and sets `req.user = { id, name, role, clinicId, clinicName }`. Role and clinic always come from the DB, never the token. Deactivating a user (`is_active=false`) or changing their password (`password_changed_at = now()`) rejects their existing tokens.
-- **Roles:** `requireRole('doctor')` from `utils/auth.js`. Today only `PATCH /visits/:id/status` is doctor-only.
+- **Roles:** `requireRole('doctor' | 'attender')` from `utils/auth.js`, set per route in `routes/index.js` (doctor: mark done, send for tests, and edit summary once CLINIC-012 is merged; attender: reports, informed patient, back in queue).
 - **Clinic scoping:** every service takes `req.user.clinicId`. Load a visit with `visitService.findVisit(clinicId, id)` (another clinic's visit is 404, same as missing) before touching its answers/summary; templates come from `templateRepository.findActiveForVisit(visit)` / `findById(clinicId, id)`. New clinic-scoped routes must do the same. Departments are global.
 - **Demo logins** (seed, local only): doctor `9000000001`, attender `9000000002`, password `demo1234`.
 

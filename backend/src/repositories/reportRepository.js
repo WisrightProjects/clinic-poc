@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const { withTransaction } = require('./transaction');
 
 // file_path stays internal (the API serves files by report id), so it isn't returned.
 const COLUMNS = 'r.id, r.visit_id, r.mime_type, r.size_bytes, r.uploaded_by, r.created_at';
@@ -13,9 +14,7 @@ async function createMany(visitId, userId, files, check) {
     const n = params.length;
     return `($1, $${n - 2}, $${n - 1}, $${n}, $2)`;
   });
-  const client = await db.connect();
-  try {
-    await client.query('BEGIN');
+  return withTransaction(async client => {
     const { rows: [visit] } = await client.query('SELECT status FROM visits WHERE id = $1 FOR UPDATE', [visitId]);
     const { rows: [{ n }] } = await client.query(
       'SELECT COUNT(*)::int AS n FROM visit_reports WHERE visit_id = $1', [visitId]
@@ -26,14 +25,8 @@ async function createMany(visitId, userId, files, check) {
        VALUES ${values.join(', ')} RETURNING ${COLUMNS}`,
       params
     );
-    await client.query('COMMIT');
     return rows;
-  } catch (err) {
-    await client.query('ROLLBACK');
-    throw err;
-  } finally {
-    client.release();
-  }
+  });
 }
 
 async function findByVisitId(visitId) {
