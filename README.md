@@ -11,7 +11,7 @@ doctor reviews the summary and answers on a web dashboard before the consultatio
 | `mobile/` | Attender app (React Native + Expo) |
 | `stt-service/` | Whisper speech-to-text service (Python), port 8000 |
 | `db/` | Database migrations and demo seed data |
-| `docs/stories/` | Feature specs (CLINIC-001 … 007) |
+| `docs/stories/` | Feature specs (CLINIC-001 … 013) |
 
 For architecture and conventions, read [`CLAUDE.md`](CLAUDE.md).
 
