@@ -1,0 +1,849 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ClinicAI Trial Flow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Nunito:wght@400;600;700;800;900&display=swap">
+<style>
+/* Page chrome + attender app (Nunito, as in the mobile app) */
+:root {
+  --page: #eef2f6;
+  --ink: #1a3050;
+  --muted: #5d6f87;
+  --rule: #d5dee8;
+  --navy: #1c2f4f;
+  --teal: #0a8f8f;
+  --teal-soft: #e6f4f4;
+  --surface: #f5f8fa;
+  --card: #ffffff;
+  --line: #e8edf2;
+  --sub: #6b7c93;
+  --amber: #b26a00;
+  --amber-soft: #fff4dc;
+  --red: #c0392b;
+  --red-soft: #fdecea;
+  --green: #2f855a;
+  --green-soft: #e7f5ee;
+  --violet: #5b4bb7;
+  --violet-soft: #eeebfb;
+  --font: "Nunito", "Segoe UI", system-ui, sans-serif;
+  /* Doctor web dashboard theme — mirrors frontend/src/assets/doctor.css */
+  --w-teal: #0a8f8f;
+  --w-navy: #1a3050;
+  --w-bg: #f5f8fa;
+  --w-line: #e8edf2;
+  --w-muted: #6b7c93;
+  --w-font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--ink); font-family: var(--font); font-size: 15px; line-height: 1.5; }
+.wrap { max-width: 1240px; margin: 0 auto; padding: 36px 20px 64px; }
+
+.eyebrow { font-size: 12px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+h1 { margin: 6px 0 8px; font-size: clamp(28px, 4vw, 38px); font-weight: 900; line-height: 1.15; }
+.lede { max-width: 72ch; color: var(--muted); margin: 0; }
+
+.journey { margin: 22px 0 6px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.journey a { text-decoration: none; color: inherit; }
+.chip { display: inline-flex; align-items: center; gap: 6px; background: var(--card); border: 1px solid var(--rule); border-radius: 999px; padding: 6px 12px; font-size: 13px; font-weight: 800; }
+.chip b { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--navy); color: #fff; font-size: 11px; }
+.chip.loop { border-color: var(--amber); background: var(--amber-soft); }
+.chip.loop b { background: var(--amber); }
+.arrow { color: var(--muted); font-weight: 900; }
+.legend { display: flex; flex-wrap: wrap; gap: 14px; margin: 14px 0 0; font-size: 13px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.who { display: inline-block; font-size: 11px; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; border-radius: 6px; padding: 2px 8px; }
+.who.att { background: var(--teal-soft); color: var(--teal); }
+.who.doc { background: var(--violet-soft); color: var(--violet); }
+.who.sys { background: #eef1f5; color: var(--sub); }
+
+.part { margin: 64px 0 4px; padding: 22px 24px; border-radius: 16px; background: var(--navy); color: #fff; }
+.part .eyebrow { color: #8ab0cc; }
+.part h2 { margin: 4px 0 4px; font-size: 26px; font-weight: 900; }
+.part p { margin: 0; color: #c9d7e6; max-width: 75ch; }
+
+.day { margin: 40px 0 8px; display: flex; align-items: baseline; gap: 12px; border-top: 2px solid var(--rule); padding-top: 18px; flex-wrap: wrap; }
+.day h2 { margin: 0; font-size: 22px; font-weight: 900; }
+.day span { color: var(--muted); font-weight: 700; }
+
+.step { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 32px; align-items: center; padding: 28px 0; border-bottom: 1px dashed var(--rule); }
+.step.flip .text { order: 2; }
+.text { min-width: 0; max-width: 44ch; }
+.num { display: inline-grid; place-items: center; min-width: 34px; height: 34px; padding: 0 8px; border-radius: 17px; background: var(--navy); color: #fff; font-weight: 900; margin-bottom: 10px; }
+.num.loop { background: var(--amber); }
+.num.web { background: var(--violet); }
+.num.app { background: var(--teal); }
+.text h3 { margin: 0 0 6px; font-size: 20px; font-weight: 900; text-wrap: balance; }
+.text p { margin: 0 0 10px; color: var(--muted); }
+.text ul { margin: 0 0 10px; padding-left: 18px; color: var(--muted); }
+.text li { margin: 2px 0; }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.story { font-size: 12px; font-weight: 800; color: var(--navy); background: #e3e9f1; border-radius: 6px; padding: 2px 8px; }
+.new { font-size: 11px; font-weight: 900; background: var(--amber-soft); color: var(--amber); border-radius: 6px; padding: 2px 8px; letter-spacing: .04em; }
+
+/* ---------- Attender app phone ---------- */
+.phone { width: 300px; max-width: 100%; border-radius: 34px; padding: 10px; background: #0f1c30; box-shadow: 0 18px 40px rgba(10,20,40,.22); }
+.screen { height: 600px; border-radius: 26px; overflow: hidden; display: flex; flex-direction: column; background: var(--surface); }
+.status { background: var(--navy); color: #fff; font-size: 11px; font-weight: 700; padding: 8px 18px 0; display: flex; justify-content: space-between; }
+.bar { background: var(--navy); color: #fff; padding: 10px 16px 14px; }
+.bar .k { font-size: 10px; letter-spacing: .14em; color: #8ab0cc; font-weight: 800; }
+.bar .t { font-size: 19px; font-weight: 900; line-height: 1.2; }
+.bar .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.token { background: var(--teal); border-radius: 999px; padding: 3px 11px; font-weight: 900; font-size: 12px; white-space: nowrap; }
+.body { flex: 1; overflow: hidden; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.card { background: var(--card); border-radius: 12px; padding: 10px 12px; box-shadow: 0 1px 3px rgba(26,48,80,.08); }
+.lbl { font-size: 11px; font-weight: 800; color: var(--sub); letter-spacing: .04em; text-transform: uppercase; }
+.input { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 9px 11px; font-weight: 700; font-size: 14px; }
+.btn { background: var(--teal); color: #fff; text-align: center; font-weight: 900; border-radius: 11px; padding: 11px; font-size: 14px; }
+.btn.navy { background: var(--navy); }
+.btn.ghost { background: transparent; color: var(--teal); border: 1.5px solid var(--teal); }
+.btn.amber { background: var(--amber); }
+.btn.sm { padding: 6px 10px; font-size: 12px; border-radius: 8px; display: inline-block; }
+.muted { color: var(--sub); font-size: 12.5px; font-weight: 600; }
+.qrow { display: grid; grid-template-columns: 34px minmax(0,1fr) auto; gap: 10px; align-items: center; background: var(--card); border-radius: 12px; padding: 9px 10px; box-shadow: 0 1px 3px rgba(26,48,80,.08); }
+.tk { width: 34px; height: 34px; border-radius: 9px; background: var(--navy); color: #fff; display: grid; place-items: center; font-weight: 900; font-size: 13px; }
+.nm { font-weight: 800; font-size: 14px; line-height: 1.2; min-width: 0; }
+.pill { font-size: 10.5px; font-weight: 900; border-radius: 999px; padding: 3px 8px; white-space: nowrap; }
+.p-wait { background: #eef1f5; color: var(--sub); }
+.p-ans { background: var(--teal-soft); color: var(--teal); }
+.p-sum { background: var(--violet-soft); color: var(--violet); }
+.p-test { background: var(--amber-soft); color: var(--amber); }
+.p-ret { background: var(--green-soft); color: var(--green); }
+.alert { background: var(--amber-soft); border: 1.5px solid var(--amber); border-radius: 12px; padding: 10px 12px; font-size: 13px; }
+.alert b { color: var(--amber); }
+.dispute { border: 1.5px solid var(--red); background: var(--red-soft); }
+.daychip { display: flex; gap: 6px; flex-wrap: wrap; }
+.daychip span { font-size: 12px; font-weight: 800; border-radius: 999px; padding: 4px 10px; background: var(--card); border: 1px solid var(--line); color: var(--sub); }
+.daychip span.on { background: var(--navy); color: #fff; border-color: var(--navy); }
+.seg { display: flex; background: var(--line); border-radius: 10px; padding: 3px; gap: 3px; }
+.seg span { flex: 1; text-align: center; font-weight: 800; font-size: 13px; border-radius: 8px; padding: 7px; color: var(--sub); }
+.seg span.on { background: var(--card); color: var(--teal); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+.thumbs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.thumb { border-radius: 10px; background: var(--card); border: 1px solid var(--line); padding: 6px; font-size: 10.5px; font-weight: 700; color: var(--sub); text-align: center; }
+.doc { height: 62px; border-radius: 6px; background: repeating-linear-gradient(180deg, #fff 0 6px, #e9eef3 6px 7px); border: 1px solid var(--line); margin-bottom: 4px; position: relative; }
+.thumb.bad { border-color: var(--red); background: var(--red-soft); color: var(--red); }
+.thumb.ok .doc::after { content: "✓"; position: absolute; right: 4px; bottom: 2px; color: var(--green); font-weight: 900; }
+.toggle { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; }
+.sw { width: 38px; height: 22px; border-radius: 999px; background: #cfd8e2; position: relative; flex-shrink: 0; }
+.sw::after { content: ""; position: absolute; left: 3px; top: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; }
+.sw.on { background: var(--teal); }
+.sw.on::after { left: 19px; }
+.bigtick { width: 64px; height: 64px; border-radius: 50%; background: var(--green); display: grid; place-items: center; color: #fff; font-size: 28px; margin: 4px auto; }
+textarea.ta { width: 100%; min-height: 70px; font: inherit; font-size: 14px; font-weight: 600; border: 1.5px solid var(--teal); border-radius: 10px; padding: 9px; color: var(--ink); resize: none; background: var(--card); }
+.note { background: var(--amber-soft); border-left: 3px solid var(--amber); border-radius: 6px; padding: 6px 8px; font-size: 12px; }
+.mini-q { display: flex; gap: 8px; align-items: center; background: var(--card); border-radius: 10px; padding: 7px 9px; font-size: 12.5px; font-weight: 700; box-shadow: 0 1px 3px rgba(26,48,80,.08); }
+.mini-q i { font-style: normal; display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 5px; background: var(--navy); color: #fff; font-size: 10.5px; flex-shrink: 0; }
+
+/* ---------- Laptop frame ---------- */
+.laptop { width: 720px; max-width: 100%; }
+.lid { border-radius: 16px 16px 0 0; background: #0f1c30; padding: 12px 12px 0; }
+.lscreen { height: 450px; border-radius: 8px 8px 0 0; overflow: hidden; position: relative; }
+.base { height: 16px; background: #c9d2dd; border-radius: 0 0 16px 16px; margin: 0 -24px; }
+
+/* ---------- Doctor web (doctor.css theme) ---------- */
+.w { height: 100%; display: flex; flex-direction: column; background: var(--w-bg); color: var(--w-navy); font-family: var(--w-font); font-size: 13px; line-height: 1.45; }
+.w-top { background: var(--w-navy); color: #fff; padding: 10px 16px; display: flex; align-items: baseline; gap: 10px; flex-shrink: 0; }
+.w-brand { font-size: 16px; font-weight: 800; letter-spacing: .3px; }
+.w-sub { font-size: 12px; color: #aab8cc; }
+.w-user { margin-left: auto; font-size: 12px; color: #aab8cc; }
+.w-user b { color: #fff; font-weight: 600; }
+.w-layout { flex: 1; display: flex; min-height: 0; }
+.w-rail { width: 210px; flex-shrink: 0; background: #fff; border-right: 1px solid var(--w-line); overflow: hidden; display: flex; flex-direction: column; }
+.w-clinic { background: var(--w-teal); color: #fff; padding: 10px 12px; }
+.w-clinic-name { font-weight: 700; font-size: 13.5px; }
+.w-clinic-date { font-size: 10.5px; opacity: .75; margin-top: 2px; }
+.w-clinic-doc { font-size: 11.5px; font-weight: 600; margin-top: 6px; opacity: .9; }
+.w-railhead { display: flex; align-items: center; justify-content: space-between; padding: 9px 12px; border-bottom: 1px solid var(--w-line); }
+.w-railtitle { font-size: 10.5px; font-weight: 800; letter-spacing: .6px; text-transform: uppercase; color: var(--w-muted); }
+.w-count { background: var(--w-bg); border-radius: 10px; padding: 0 8px; font-size: 11px; font-weight: 700; }
+.w-grp { display: flex; align-items: center; gap: 6px; padding: 6px 12px; background: #eef4f4; border-bottom: 1px solid var(--w-line); font-size: 11px; font-weight: 700; }
+.w-grp .c { font-size: 9px; color: var(--w-muted); }
+.w-grp .n { margin-left: auto; background: #fff; border: 1px solid var(--w-line); border-radius: 10px; padding: 0 7px; font-size: 10px; color: var(--w-muted); }
+.w-grp.tests { background: #fff4dc; color: #8a5a00; }
+.w-item { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--w-line); }
+.w-item.sel { background: #e9f3f3; box-shadow: inset 3px 0 0 var(--w-teal); }
+.w-tok { width: 22px; height: 22px; border-radius: 11px; background: var(--w-navy); color: #fff; display: grid; place-items: center; font-size: 10.5px; font-weight: 800; flex-shrink: 0; }
+.w-tok[data-t="done"] { background: #d3dae2; color: #5a6b80; }
+.w-tok[data-t="current"] { background: #1a56c4; }
+.w-tok[data-t="next"] { background: #f6b83f; color: #5a4300; }
+.w-tok[data-t="test"] { background: #b26a00; }
+.w-tok[data-t="ret"] { background: #2f855a; }
+.w-ib { flex: 1; min-width: 0; }
+.w-name { display: block; font-size: 12.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.w-prog { display: flex; align-items: center; gap: 6px; margin-top: 3px; }
+.w-track { width: 46px; height: 4px; border-radius: 3px; background: #dde4ec; overflow: hidden; }
+.w-fill { height: 100%; background: var(--w-teal); }
+.w-fill.done { background: #2f855a; }
+.w-pn { font-size: 10.5px; font-weight: 700; color: var(--w-muted); font-variant-numeric: tabular-nums; }
+.w-main { flex: 1; min-width: 0; padding: 14px 16px; overflow: hidden; display: flex; flex-direction: column; gap: 10px; }
+.w-dmtop { display: flex; align-items: center; justify-content: space-between; gap: 10px; background: #fff; border: 1px solid var(--w-line); border-radius: 12px; padding: 11px 14px; }
+.w-dmname { font-size: 17px; font-weight: 800; }
+.w-dmsub { font-size: 12px; color: var(--w-muted); margin-top: 1px; }
+.w-chip { border-radius: 11px; padding: 2px 9px; font-size: 10.5px; font-weight: 700; white-space: nowrap; }
+.c-waiting { background: #eceff3; color: #6b7c93; }
+.c-answering { background: #e6f7f7; color: #0a8f8f; }
+.c-answered { background: #e8f0fe; color: #1a56c4; }
+.c-summarised { background: #e6ffed; color: #2f855a; }
+.c-done { background: #38a169; color: #fff; }
+.c-tests { background: #fff4dc; color: #b26a00; }
+.c-returned { background: #2f855a; color: #fff; }
+.c-dispute { background: #fdecea; color: #c0392b; }
+.w-stats { display: flex; gap: 8px; }
+.w-stat { flex: 1; background: #fff; border: 1px solid var(--w-line); border-radius: 10px; padding: 7px 10px; }
+.w-statn { font-size: 18px; font-weight: 800; color: var(--w-teal); font-variant-numeric: tabular-nums; }
+.w-statl { font-size: 10.5px; color: var(--w-muted); }
+.w-sum { background: linear-gradient(135deg, #0a8f8f 0%, #1a3050 100%); border-radius: 12px; padding: 11px 14px; color: #fff; }
+.w-sumhdr { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.w-badge { background: rgba(255,255,255,.2); border-radius: 6px; padding: 2px 8px; font-size: 10px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase; }
+.w-by { font-size: 10.5px; opacity: .8; }
+.w-sumtext { margin: 0; font-size: 13px; line-height: 1.5; }
+.w-sumacts { display: flex; gap: 8px; margin-top: 8px; }
+.w-sumacts span { font-size: 11px; font-weight: 700; background: rgba(255,255,255,.18); border-radius: 6px; padding: 3px 9px; }
+.w-card { background: #fff; border: 1px solid var(--w-line); border-radius: 10px; padding: 9px 12px; }
+.w-ctitle { font-size: 10.5px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase; color: var(--w-muted); margin-bottom: 4px; }
+.w-qa { background: #fff; border: 1px solid var(--w-line); border-radius: 10px; padding: 8px 12px; }
+.w-q { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 700; }
+.w-qn { width: 20px; height: 20px; border-radius: 10px; background: var(--w-bg); display: inline-grid; place-items: center; font-size: 10.5px; font-weight: 800; flex-shrink: 0; }
+.w-a { margin-top: 3px; padding-left: 28px; font-size: 12px; color: #41506b; font-style: italic; }
+.w-actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+.w-btn { background: var(--w-teal); color: #fff; border-radius: 8px; padding: 8px 16px; font-size: 12.5px; font-weight: 700; }
+.w-btn.ghost { background: #fff; color: var(--w-teal); border: 1px solid var(--w-teal); }
+.w-btn.warn { background: #f6b83f; color: #5a4300; }
+.w-credit { flex-shrink: 0; text-align: center; padding: 5px 12px; font-size: 10.5px; color: var(--w-muted); background: #fff; border-top: 1px solid var(--w-line); }
+.w-reports { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.w-rep { background: #fff; border: 1px solid var(--w-line); border-radius: 10px; padding: 6px; font-size: 11px; font-weight: 600; text-align: center; color: var(--w-muted); }
+.w-rep .doc { height: 64px; }
+.w-rep.bad { border-color: #c0392b; background: #fdecea; color: #c0392b; }
+.w-note { background: #fff4dc; border-left: 3px solid #b26a00; border-radius: 6px; padding: 6px 10px; font-size: 12px; }
+.w-edit { width: 100%; min-height: 70px; font: inherit; font-size: 13px; border: 0; border-radius: 8px; padding: 8px; resize: none; color: var(--w-navy); background: #fff; }
+.w-overlay { position: absolute; inset: 0; background: rgba(15,28,48,.45); display: grid; place-items: center; }
+.w-modal { width: 70%; background: #fff; border-radius: 12px; padding: 16px 18px; box-shadow: 0 12px 30px rgba(0,0,0,.25); display: flex; flex-direction: column; gap: 8px; font-family: var(--w-font); color: var(--w-navy); }
+.w-modal h4 { margin: 0; font-size: 15px; font-weight: 800; }
+.w-modal textarea { width: 100%; min-height: 64px; font: inherit; font-size: 13px; border: 1.5px solid var(--w-teal); border-radius: 8px; padding: 8px; resize: none; color: var(--w-navy); }
+.w-loginwrap { flex: 1; display: grid; place-items: center; }
+.w-login { width: 300px; background: #fff; border: 1px solid var(--w-line); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 8px; }
+.w-login h4 { margin: 0; font-size: 18px; font-weight: 800; }
+.w-field { border: 1px solid var(--w-line); border-radius: 8px; padding: 8px 10px; font-size: 13px; background: var(--w-bg); }
+.w-flab { font-size: 11px; font-weight: 700; color: var(--w-muted); }
+.w-date { display: flex; gap: 6px; padding: 8px 12px; border-bottom: 1px solid var(--w-line); }
+.w-date span { font-size: 11px; font-weight: 700; border: 1px solid var(--w-line); border-radius: 10px; padding: 2px 9px; color: var(--w-muted); }
+.w-date span.on { background: var(--w-navy); color: #fff; border-color: var(--w-navy); }
+.w-back { font-size: 12px; color: #aab8cc; }
+.w-phone .w-main { padding: 10px; }
+
+.summary { margin-top: 48px; border-top: 2px solid var(--rule); padding-top: 18px; }
+.summary h2 { margin: 0 0 12px; font-size: 22px; font-weight: 900; }
+.tablewrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; background: var(--card); border-radius: 12px; overflow: hidden; font-size: 14px; }
+th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { background: #e3e9f1; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; }
+.foot { margin-top: 28px; color: var(--muted); font-size: 13px; }
+
+@media (max-width: 1000px) {
+  .step { grid-template-columns: 1fr; justify-items: center; }
+  .step.flip .text { order: 0; }
+  .text { max-width: none; width: 100%; }
+}
+@media (max-width: 700px) {
+  .w-rail { display: none; }
+  .lscreen { height: auto; min-height: 450px; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <span class="eyebrow">ClinicAI · 10-doctor trial · After CLINIC-008 to 016</span>
+  <h1>How ClinicAI will work: attender app and doctor dashboard</h1>
+  <p class="lede">The complete flow once all trial stories are built. Part A follows one patient from registration to consultation. Part B shows every doctor dashboard screen; Part C shows the other attender app screens. Each screen names the story that builds it. Sample names and medical details are illustrative.</p>
+
+  <nav class="journey" aria-label="Sections">
+    <a href="#partA" class="chip">Part A · Patient journey (1–10)</a>
+    <a href="#web" class="chip">Part B · Doctor dashboard (W1–W8)</a>
+    <a href="#app" class="chip">Part C · Attender app screens (A1–A3)</a>
+  </nav>
+  <nav class="journey" aria-label="Journey overview">
+    <a href="#s1" class="chip"><b>1</b>Sign in</a><span class="arrow">→</span>
+    <a href="#s2" class="chip"><b>2</b>Today's queue</a><span class="arrow">→</span>
+    <a href="#s3" class="chip"><b>3</b>Register</a><span class="arrow">→</span>
+    <a href="#s4" class="chip"><b>4</b>Answers: voice or text</a><span class="arrow">→</span>
+    <a href="#s5" class="chip"><b>5</b>Old reports + name check</a><span class="arrow">→</span>
+    <a href="#s6" class="chip"><b>6</b>Send to doctor</a><span class="arrow">→</span>
+    <a href="#s7" class="chip"><b>7</b>Doctor reviews</a><span class="arrow">→</span>
+    <a href="#s8" class="chip loop"><b>8</b>Sent for tests</a><span class="arrow">→</span>
+    <a href="#s9" class="chip loop"><b>9</b>Returns next day</a><span class="arrow">→</span>
+    <a href="#s10" class="chip"><b>10</b>Consultation</a>
+  </nav>
+  <div class="legend">
+    <span><span class="who att">Attender</span> clinic phone app</span>
+    <span><span class="who doc">Doctor</span> dashboard on laptop or phone</span>
+    <span><span class="who sys">System</span> automatic</span>
+    <span><span class="new">NEW</span> not in ClinicAI today</span>
+    <span><span class="chip loop" style="padding:2px 8px">amber</span> only when the doctor asks for tests</span>
+  </div>
+
+  <!-- ===================== PART A ===================== -->
+  <div class="part" id="partA" style="margin-top:36px">
+    <span class="eyebrow">Part A · Patient journey</span>
+    <h2>One patient, from registration to consultation</h2>
+    <p>Arun Prakash, 52, at a Physician clinic. The doctor sends him for tests on day 1; he returns on day 2.</p>
+  </div>
+
+  <div class="day"><h2>Day 1</h2><span>Monday · Sri Sakthi Clinic, Madurai · Dr. Ramesh Kumar (Physician)</span></div>
+
+  <section class="step" id="s1">
+    <div class="text">
+      <div class="num">1</div>
+      <h3>The attender signs in once</h3>
+      <p><span class="who att">Attender</span> Each clinic has one phone and one attender. Priya signs in with her mobile number and password, and the app opens straight into her clinic. She stays signed in for 30 days.</p>
+      <ul><li>Each clinic sees only its own patients.</li><li>WisRight creates the accounts; no sign-up screen.</li></ul>
+      <div class="tags"><span class="story">CLINIC-008</span><span class="new">NEW</span></div>
+    </div>
+    <div class="phone"><div class="screen">
+      <div class="status"><span>8:58</span><span>●●● ▮</span></div>
+      <div class="bar" style="padding-top:40px;padding-bottom:30px"><div class="k">CLINICAI</div><div class="t">Sign in</div></div>
+      <div class="body" style="padding:18px 16px;gap:10px">
+        <span class="lbl">Mobile number</span><div class="input">98765 00000</div>
+        <span class="lbl">Password</span><div class="input">••••••••</div>
+        <div class="btn" style="margin-top:8px">Sign in</div>
+        <p class="muted" style="text-align:center;margin:6px 0 0">Forgot your password? Contact WisRight to reset it.</p>
+      </div>
+    </div></div>
+  </section>
+
+  <section class="step flip" id="s2">
+    <div class="text">
+      <div class="num">2</div>
+      <h3>Today's queue, first in first out</h3>
+      <p><span class="who att">Attender</span> The home screen shows today's patients in arrival order. Tokens restart at 1 every morning for this clinic. Earlier days are one tap away.</p>
+      <ul><li>Patients sent for tests appear under <b>Waiting for tests</b> until they return.</li><li>Each row shows the patient's status at a glance.</li></ul>
+      <div class="tags"><span class="story">CLINIC-015</span><span class="story">CLINIC-008</span></div>
+    </div>
+    <div class="phone"><div class="screen">
+      <div class="status"><span>10:42</span><span>●●● ▮</span></div>
+      <div class="bar"><div class="row"><div><div class="k">SRI SAKTHI CLINIC</div><div class="t">Today's queue</div></div><span class="muted" style="color:#8ab0cc">Priya ▾</span></div></div>
+      <div class="body">
+        <div class="daychip"><span class="on">Today</span><span>Yesterday</span><span>📅 Pick date</span></div>
+        <div class="qrow"><span class="tk">1</span><span class="nm">Meena S<br><span class="muted">Physician · 9:02</span></span><span class="pill p-sum">With doctor</span></div>
+        <div class="qrow"><span class="tk">2</span><span class="nm">Kumar V<br><span class="muted">Physician · 9:10</span></span><span class="pill p-sum">Summary ready</span></div>
+        <div class="qrow"><span class="tk">3</span><span class="nm">Lakshmi A<br><span class="muted">Gynaecologist · 9:31</span></span><span class="pill p-ans">Answering</span></div>
+        <div class="qrow"><span class="tk">4</span><span class="nm">Selvi R<br><span class="muted">Physician · 10:05</span></span><span class="pill p-wait">Waiting</span></div>
+        <span class="lbl" style="margin-top:4px">Waiting for tests</span>
+        <div class="qrow"><span class="tk" style="background:var(--amber)">–</span><span class="nm">Ravi T<br><span class="muted">Sent Friday · CBC, X-ray</span></span><span class="pill p-test">Tests</span></div>
+        <div class="btn" style="margin-top:auto">+ New patient</div>
+      </div>
+    </div></div>
+  </section>
+
+  <section class="step" id="s3">
+    <div class="text">
+      <div class="num">3</div>
+      <h3>Register the patient and give a token</h3>
+      <p><span class="who att">Attender</span> Priya enters the patient's name, age and sex, and picks the department. The app gives the next token for this clinic today.</p>
+      <ul><li>Departments: <b>Physician</b> (15 questions) and <b>Gynaecologist</b> (17 questions), editable per clinic.</li></ul>
+      <div class="tags"><span class="story">Built today</span><span class="story">CLINIC-008</span></div>
+    </div>
+    <div class="phone"><div class="screen">
+      <div class="status"><span>10:44</span><span>●●● ▮</span></div>
+      <div class="bar"><div class="k">NEW PATIENT</div><div class="t">Register</div></div>
+      <div class="body" style="gap:6px">
+        <span class="lbl">Patient name</span><div class="input">Arun Prakash</div>
+        <span class="lbl">Age</span><div class="input">52</div>
+        <span class="lbl">Sex</span><div class="input">Male</div>
+        <span class="lbl">Department</span><div class="input" style="border-color:var(--teal)">Physician ▾</div>
+        <div class="card" style="margin-top:6px;text-align:center"><span class="muted">Token assigned</span><div style="font-size:30px;font-weight:900;color:var(--teal)">Token 5</div></div>
+        <div class="btn" style="margin-top:auto">Register &amp; start questions</div>
+      </div>
+    </div></div>
+  </section>
+
+  <section class="step flip" id="s4">
+    <div class="text">
+      <div class="num">4</div>
+      <h3>Record or type each answer</h3>
+      <p><span class="who att">Attender</span> For each question, Priya either records the patient speaking (Tamil or English) or types the answer. Neither is compulsory; she picks whatever is quicker.</p>
+      <ul><li>Recordings are transcribed on WisRight's own server.</li><li>A quick "No" can just be typed.</li></ul>
+      <div class="tags"><span class="story">CLINIC-009</span><span class="new">NEW: typing</span></div>
+    </div>
+    <div class="phone"><div class="screen">
+      <div class="status"><span>10:47</span><span>●●● ▮</span></div>
+      <div class="bar"><div class="row"><div class="t">Arun Prakash</div><span class="token">Token 5</span></div></div>
+      <div class="body">
+        <span class="muted">Question 10 of 15</span>
+        <div style="font-weight:900;font-size:16px;line-height:1.3">Do you have any medicine allergy?</div>
+        <div class="seg"><span>🎙 Record</span><span class="on">⌨ Type</span></div>
+        <textarea class="ta" aria-label="Typed answer" readonly>No known allergies.</textarea>
+        <div class="btn">Save answer</div>
+        <span class="lbl" style="margin-top:6px">Earlier answers</span>
+        <div class="card"><div style="font-weight:800;font-size:13px">What is your main problem today?</div><div class="muted">🎙 Chest tightness when I walk, for two weeks.</div></div>
+        <div class="card"><div style="font-weight:800;font-size:13px">Which medicines do you take regularly?</div><div class="muted">🎙 Metformin and amlodipine.</div></div>
+      </div>
+    </div></div>
+  </section>
+
+  <section class="step" id="s5">
+    <div class="text">
+      <div class="num">5</div>
+      <h3>Photograph old reports; the name is checked</h3>
+      <p><span class="who att">Attender</span> Priya photographs the reports Arun brought. <span class="who sys">System</span> The AI reads the name on each report and compares it with the patient.</p>
+      <ul><li>One report says <b>Lakshmi A</b>, his wife's. The app warns <i>"This report has a different name"</i> and marks it <b>Report in Dispute</b>.</li><li>Priya can replace it now or upload the right one later.</li></ul>
+      <div class="tags"><span class="story">CLINIC-011</span><span class="story">CLINIC-016</span><span class="new">NEW</span></div>
+    </div>
+    <div class="phone"><div class="screen">
+      <div class="status"><span>10:58</span><span>●●● ▮</span></div>
+      <div class="bar"><div class="row"><div class="t">Previous reports</div><span class="token">Token 5</span></div></div>
+      <div class="body">
+        <div class="thumbs">
+          <div class="thumb ok"><div class="doc"></div>Blood sugar<br>Aug 2026</div>
+          <div class="thumb ok"><div class="doc"></div>ECG<br>Mar 2026</div>
+          <div class="thumb bad"><div class="doc"></div>Thyroid<br>⚠ Dispute</div>
+        </div>
+        <div class="alert dispute"><b style="color:var(--red)">This report has a different name</b><br>Name on report: <b style="color:var(--ink)">Lakshmi A</b> · Patient: Arun Prakash<br><span class="muted">Marked as Report in Dispute. It won't be used in the AI summary unless someone includes it.</span></div>
+        <div style="display:flex;gap:6px"><div class="btn ghost sm" style="flex:1">Replace report</div><div class="btn ghost sm" style="flex:1">Upload later</div></div>
+        <div class="btn ghost" style="margin-top:4px">📷 Add another report</div>
+        <p class="muted" style="margin:0">Name check: ✓ matches · ⚠ different name · ? not readable</p>
+      </div>
+    </div></div>
+  </section>
+
+  <section class="step flip" id="s6">
+    <div class="text">
+      <div class="num">6</div>
+      <h3>Review and send to the doctor</h3>
+      <p><span class="who att">Attender</span> Priya checks the answers and taps Send. <span class="who sys">System</span> The AI writes one short brief from today's answers and the matching reports.</p>
+      <ul><li>Disputed reports are left out by default, with a switch to include them.</li><li>Patient uncertainty is kept ("possible allergy", "unsure").</li></ul>
+      <div class="tags"><span class="story">CLINIC-007</span><span class="story">CLINIC-016</span><span class="story">CLINIC-013</span></div>
+    </div>
+    <div class="phone"><div class="screen">
+      <div class="status"><span>11:01</span><span>●●● ▮</span></div>
+      <div class="bar"><div class="row"><div class="t">Review &amp; send</div><span class="token">Token 5</span></div></div>
+      <div class="body">
+        <div class="card"><span class="lbl">Answers</span><div class="muted">15 of 15 answered · 12 recorded · 3 typed</div></div>
+        <div class="card"><span class="lbl">Reports</span><div class="muted">2 included · 1 in dispute</div>
+          <div class="toggle" style="margin-top:6px"><span>Include disputed reports</span><span class="sw" aria-hidden="true"></span></div></div>
+        <div class="card" style="background:var(--teal-soft)"><span class="lbl" style="color:var(--teal)">AI summary preview</span>
+          <div style="font-size:13px;font-weight:600;margin-top:2px">52-year-old male with 2 weeks of worsening chest tightness on exertion, with breathlessness. Diabetic and hypertensive on metformin and amlodipine; sugar 210 in August. ECG from March reported normal. Smokes 10 cigarettes a day.</div></div>
+        <div class="btn" style="margin-top:auto">Send to doctor</div>
+      </div>
+    </div></div>
+  </section>
+
+  <section class="step" id="s7">
+    <div class="text">
+      <div class="num">7</div>
+      <h3>The doctor reviews the brief before the patient walks in</h3>
+      <p><span class="who doc">Doctor</span> In a break after his 3rd patient, Dr. Ramesh opens Token 5 on the dashboard: name first, then history from reports, today's symptoms and the AI summary.</p>
+      <ul><li>He can <b>edit</b> the summary; the AI's original is kept.</li><li>Works on laptop and on phone.</li></ul>
+      <div class="tags"><span class="story">CLINIC-010</span><span class="story">CLINIC-012</span><span class="story">CLINIC-008</span></div>
+    </div>
+    <div class="laptop"><div class="lid"><div class="lscreen"><div class="w">
+      <div class="w-top"><span class="w-brand">ClinicAI</span><span class="w-sub">Doctor Dashboard</span><span class="w-user"><b>Dr. Ramesh Kumar</b> · Sign out</span></div>
+      <div class="w-layout">
+        <div class="w-rail">
+          <div class="w-clinic"><div class="w-clinic-name">Sri Sakthi Clinic</div><div class="w-clinic-date">Monday, 12 October 2026</div><div class="w-clinic-doc">Dr. Ramesh Kumar · Physician</div></div>
+          <div class="w-railhead"><span class="w-railtitle">Patient queue</span><span class="w-count">6</span></div>
+          <div class="w-item"><span class="w-tok" data-t="done">1</span><span class="w-ib"><span class="w-name">Meena S</span><span class="w-prog"><span class="w-track"><span class="w-fill done" style="width:100%"></span></span><span class="w-pn">15/15</span></span></span></div>
+          <div class="w-item"><span class="w-tok" data-t="done">2</span><span class="w-ib"><span class="w-name">Kumar V</span><span class="w-prog"><span class="w-track"><span class="w-fill done" style="width:100%"></span></span><span class="w-pn">15/15</span></span></span></div>
+          <div class="w-item"><span class="w-tok" data-t="current">3</span><span class="w-ib"><span class="w-name">Lakshmi A</span><span class="w-prog"><span class="w-track"><span class="w-fill done" style="width:100%"></span></span><span class="w-pn">17/17</span></span></span></div>
+          <div class="w-item"><span class="w-tok" data-t="next">4</span><span class="w-ib"><span class="w-name">Selvi R</span><span class="w-prog"><span class="w-track"><span class="w-fill" style="width:60%"></span></span><span class="w-pn">9/15</span></span></span></div>
+          <div class="w-item sel"><span class="w-tok" data-t="next">5</span><span class="w-ib"><span class="w-name">Arun Prakash</span><span class="w-prog"><span class="w-track"><span class="w-fill done" style="width:100%"></span></span><span class="w-pn">15/15</span></span></span></div>
+        </div>
+        <div class="w-main">
+          <div class="w-dmtop"><div><div class="w-dmname">Arun Prakash</div><div class="w-dmsub">Token 5 · 52 yrs · Male · Physician</div></div><span class="w-chip c-summarised">Summarised</span></div>
+          <div class="w-card"><div class="w-ctitle">History from reports</div>Blood sugar 210 (Aug 2026) · ECG normal (Mar 2026) · <span class="w-chip c-dispute">1 report in dispute</span></div>
+          <div class="w-card"><div class="w-ctitle">Today's symptoms</div>Chest tightness on walking for 2 weeks, getting worse · breathless, occasional sweating</div>
+          <div class="w-sum"><div class="w-sumhdr"><span class="w-badge">AI Summary</span><span class="w-by">edited by Dr. Ramesh · 11:16</span></div><p class="w-sumtext">52M, 2 weeks of progressive exertional chest tightness with breathlessness. DM + HTN on metformin, amlodipine. Smoker. Rule out cardiac cause.</p><div class="w-sumacts"><span>✎ Edit</span><span>View AI original</span></div></div>
+          <div class="w-actions"><span class="w-btn warn">Send for tests</span><span class="w-btn">Mark Done</span></div>
+        </div>
+      </div>
+      <div class="w-credit">Developed by WisRight Technologies</div>
+    </div></div></div><div class="base"></div></div>
+  </section>
+
+  <section class="step flip" id="s8">
+    <div class="text">
+      <div class="num loop">8</div>
+      <h3>The doctor sends the patient for tests first</h3>
+      <p><span class="who doc">Doctor</span> Dr. Ramesh writes: <i>"Do ECG, lipid profile and HbA1c, and come back."</i> <span class="who att">Attender</span> Priya's phone shows the alert straight away. She explains it to Arun, who goes to the lab instead of waiting two more hours.</p>
+      <ul><li>Arun moves to <b>Waiting for tests</b>.</li><li>Priya taps <b>Informed patient</b> to clear the alert.</li></ul>
+      <div class="tags"><span class="story">CLINIC-014</span><span class="new">NEW</span></div>
+    </div>
+    <div class="phone"><div class="screen">
+      <div class="status"><span>11:20</span><span>●●● ▮</span></div>
+      <div class="bar"><div class="k">SRI SAKTHI CLINIC</div><div class="t">Today's queue</div></div>
+      <div class="body">
+        <div class="alert"><b>Dr. Ramesh requested tests</b><br><span style="font-weight:800">Token 5 · Arun Prakash</span><div class="note" style="margin:6px 0;background:#fff">Do ECG, lipid profile and HbA1c, and come back.</div><div class="btn amber sm">Informed patient ✓</div></div>
+        <div class="qrow"><span class="tk">4</span><span class="nm">Selvi R<br><span class="muted">Physician · 10:05</span></span><span class="pill p-sum">Summary ready</span></div>
+        <div class="qrow"><span class="tk">6</span><span class="nm">Gopal M<br><span class="muted">Physician · 11:08</span></span><span class="pill p-ans">Answering</span></div>
+        <span class="lbl" style="margin-top:4px">Waiting for tests</span>
+        <div class="qrow"><span class="tk" style="background:var(--amber)">5</span><span class="nm">Arun Prakash<br><span class="muted">ECG, lipid, HbA1c</span></span><span class="pill p-test">Tests</span></div>
+        <div class="qrow"><span class="tk" style="background:var(--amber)">–</span><span class="nm">Ravi T<br><span class="muted">Sent Friday</span></span><span class="pill p-test">Tests</span></div>
+      </div>
+    </div></div>
+  </section>
+
+  <div class="day"><h2>Day 2</h2><span>Tuesday · Arun returns with his results</span></div>
+
+  <section class="step" id="s9">
+    <div class="text">
+      <div class="num loop">9</div>
+      <h3>Upload the results and put him back in today's queue</h3>
+      <p><span class="who att">Attender</span> Priya finds Arun under <b>Waiting for tests</b>, photographs the new results and taps <b>Back in queue</b>. <span class="who sys">System</span> Arun gets the next token in today's queue (first in first out), and the AI summary is updated with the new results.</p>
+      <ul><li>No questions are asked again; yesterday's answers are kept.</li></ul>
+      <div class="tags"><span class="story">CLINIC-014</span><span class="story">CLINIC-011</span><span class="story">CLINIC-015</span></div>
+    </div>
+    <div class="phone"><div class="screen">
+      <div class="status"><span>9:40</span><span>●●● ▮</span></div>
+      <div class="bar"><div class="row"><div class="t">Arun Prakash</div><span class="token" style="background:var(--amber)">Back for review</span></div></div>
+      <div class="body">
+        <div class="note">Dr. Ramesh, Mon 11:18: Do ECG, lipid profile and HbA1c, and come back.</div>
+        <span class="lbl">New test results</span>
+        <div class="thumbs">
+          <div class="thumb ok"><div class="doc"></div>ECG<br>Today</div>
+          <div class="thumb ok"><div class="doc"></div>Lipid<br>Today</div>
+          <div class="thumb ok"><div class="doc"></div>HbA1c<br>Today</div>
+        </div>
+        <div class="btn ghost">📷 Add result</div>
+        <div class="card" style="text-align:center"><span class="muted">Today's token</span><div style="font-size:26px;font-weight:900;color:var(--teal)">Token 4</div><span class="muted">after 3 patients already waiting</span></div>
+        <div class="btn" style="margin-top:auto">Back in queue</div>
+      </div>
+    </div></div>
+  </section>
+
+  <section class="step flip" id="s10">
+    <div class="text">
+      <div class="num">10</div>
+      <h3>Consultation with everything in one place</h3>
+      <p><span class="who doc">Doctor</span> Dr. Ramesh opens Arun on his phone between patients. He sees the <b>Returned with results</b> marker, his own note, the new results and the updated summary, then calls him in. After the consultation he marks the visit done.</p>
+      <ul><li>The patient saw the doctor once, with results ready.</li></ul>
+      <div class="tags"><span class="story">CLINIC-014</span><span class="story">CLINIC-010</span></div>
+    </div>
+    <div class="phone"><div class="screen w-phone"><div class="w">
+      <div class="w-top"><span class="w-back">‹ Queue</span><span class="w-brand" style="margin-left:auto">ClinicAI</span></div>
+      <div class="w-main">
+        <div class="w-dmtop"><div><div class="w-dmname">Arun Prakash</div><div class="w-dmsub">Token 4 · 52 yrs · Male</div></div><span class="w-chip c-returned">Returned</span></div>
+        <div class="w-note">Your note (Mon): Do ECG, lipid profile and HbA1c.</div>
+        <div class="w-card"><div class="w-ctitle">New results</div>ECG: ST changes V4–V6 · LDL 168 · HbA1c 8.4%</div>
+        <div class="w-sum"><div class="w-sumhdr"><span class="w-badge">AI Summary</span><span class="w-by">updated</span></div><p class="w-sumtext">52M, exertional chest tightness 2 weeks. New ECG ST changes V4–V6; LDL 168; HbA1c 8.4%. DM, HTN, smoker.</p></div>
+        <div class="w-card"><div class="w-ctitle">Answers</div>15 answers from Monday ›</div>
+        <div class="w-btn" style="text-align:center;margin-top:auto">Mark Done</div>
+      </div>
+    </div></div></div>
+  </section>
+
+  <!-- ===================== PART B: DOCTOR WEB ===================== -->
+  <div class="part" id="web">
+    <span class="eyebrow">Part B · Doctor dashboard (doctorattender.wisright.com)</span>
+    <h2>Every screen the doctor uses</h2>
+    <p>The same look as today's dashboard, with the new features added. It refreshes on its own every few seconds, so new patients and updates appear without reloading.</p>
+  </div>
+
+  <section class="step" id="w1">
+    <div class="text">
+      <div class="num web">W1</div>
+      <h3>Doctor sign-in</h3>
+      <p><span class="who doc">Doctor</span> Dr. Ramesh signs in with his mobile number and password and sees only his own clinic. Attender accounts can't open the doctor dashboard.</p>
+      <ul><li>Stays signed in for 30 days on his laptop.</li></ul>
+      <div class="tags"><span class="story">CLINIC-008</span><span class="new">NEW</span></div>
+    </div>
+    <div class="laptop"><div class="lid"><div class="lscreen"><div class="w">
+      <div class="w-top"><span class="w-brand">ClinicAI</span><span class="w-sub">Doctor Dashboard</span></div>
+      <div class="w-loginwrap"><div class="w-login">
+        <h4>Sign in</h4>
+        <span class="w-dmsub">See your clinic's patients</span>
+        <span class="w-flab">Mobile number</span><div class="w-field">98765 43210</div>
+        <span class="w-flab">Password</span><div class="w-field">••••••••••</div>
+        <div class="w-btn" style="text-align:center;margin-top:6px">Sign in</div>
+        <span class="w-dmsub" style="text-align:center">Forgot your password? Contact WisRight.</span>
+      </div></div>
+      <div class="w-credit">Developed by WisRight Technologies</div>
+    </div></div></div><div class="base"></div></div>
+  </section>
+
+  <section class="step flip" id="w2">
+    <div class="text">
+      <div class="num web">W2</div>
+      <h3>Today's dashboard</h3>
+      <p><span class="who doc">Doctor</span> On the left, today's queue in arrival order under the clinic block, with a date picker; patients sent for tests in their own group. On the right, the selected patient: name, stats, history from reports, today's symptoms and the AI summary.</p>
+      <ul><li>Token colours: grey seen, blue with the doctor, yellow up next.</li></ul>
+      <div class="tags"><span class="story">CLINIC-015</span><span class="story">CLINIC-011</span><span class="story">CLINIC-016</span></div>
+    </div>
+    <div class="laptop"><div class="lid"><div class="lscreen"><div class="w">
+      <div class="w-top"><span class="w-brand">ClinicAI</span><span class="w-sub">Doctor Dashboard</span><span class="w-user"><b>Dr. Ramesh Kumar</b> · Sign out</span></div>
+      <div class="w-layout">
+        <div class="w-rail">
+          <div class="w-clinic"><div class="w-clinic-name">Sri Sakthi Clinic</div><div class="w-clinic-date">Monday, 12 October 2026</div><div class="w-clinic-doc">Dr. Ramesh Kumar · Physician</div></div>
+          <div class="w-date"><span class="on">Today</span><span>📅 Pick date</span></div>
+          <div class="w-railhead"><span class="w-railtitle">Patient queue</span><span class="w-count">6</span></div>
+          <div class="w-item"><span class="w-tok" data-t="done">1</span><span class="w-ib"><span class="w-name">Meena S</span></span><span class="w-chip c-done">Done</span></div>
+          <div class="w-item"><span class="w-tok" data-t="current">2</span><span class="w-ib"><span class="w-name">Kumar V</span></span></div>
+          <div class="w-item"><span class="w-tok" data-t="next">3</span><span class="w-ib"><span class="w-name">Lakshmi A</span></span></div>
+          <div class="w-item sel"><span class="w-tok" data-t="next">5</span><span class="w-ib"><span class="w-name">Arun Prakash</span></span></div>
+          <div class="w-item"><span class="w-tok" data-t="next">6</span><span class="w-ib"><span class="w-name">Gopal M</span><span class="w-prog"><span class="w-track"><span class="w-fill" style="width:40%"></span></span><span class="w-pn">6/15</span></span></span></div>
+          <div class="w-grp tests"><span class="c">▾</span>Waiting for tests<span class="n">1</span></div>
+          <div class="w-item"><span class="w-tok" data-t="test">–</span><span class="w-ib"><span class="w-name">Ravi T</span></span><span class="w-chip c-tests">Tests</span></div>
+        </div>
+        <div class="w-main">
+          <div class="w-dmtop"><div><div class="w-dmname">Arun Prakash</div><div class="w-dmsub">Token 5 · 52 yrs · Male · Physician</div></div><span class="w-chip c-summarised">Summarised</span></div>
+          <div class="w-stats"><div class="w-stat"><div class="w-statn">1</div><div class="w-statl">Seen today</div></div><div class="w-stat"><div class="w-statn">5</div><div class="w-statl">Remaining</div></div><div class="w-stat"><div class="w-statn">1</div><div class="w-statl">Sent for tests</div></div><div class="w-stat"><div class="w-statn">15/15</div><div class="w-statl">Q&amp;A</div></div></div>
+          <div class="w-card"><div class="w-ctitle">History from reports (3)</div>Blood sugar 210 (Aug) · ECG normal (Mar) · <span class="w-chip c-dispute">Thyroid: in dispute, name Lakshmi A</span></div>
+          <div class="w-sum"><div class="w-sumhdr"><span class="w-badge">AI Summary</span><span class="w-by">generated · AI</span></div><p class="w-sumtext">52-year-old male with 2 weeks of worsening exertional chest tightness and breathlessness. Diabetic, hypertensive, smoker.</p><div class="w-sumacts"><span>✎ Edit</span></div></div>
+          <div class="w-actions"><span class="w-btn ghost">Reports &amp; answers</span><span class="w-btn warn">Send for tests</span><span class="w-btn">Mark Done</span></div>
+        </div>
+      </div>
+      <div class="w-credit">Developed by WisRight Technologies</div>
+    </div></div></div><div class="base"></div></div>
+  </section>
+
+  <section class="step" id="w3">
+    <div class="text">
+      <div class="num web">W3</div>
+      <h3>Reports and answers</h3>
+      <p><span class="who doc">Doctor</span> He opens the report photos full size and zooms in. Disputed reports are labelled with the name found on them; he can include one in the summary if it really is the patient's. Below: all the questions and answers, recorded or typed.</p>
+      <div class="tags"><span class="story">CLINIC-011</span><span class="story">CLINIC-016</span><span class="story">CLINIC-009</span></div>
+    </div>
+    <div class="laptop"><div class="lid"><div class="lscreen"><div class="w">
+      <div class="w-top"><span class="w-brand">ClinicAI</span><span class="w-sub">Arun Prakash · Reports &amp; answers</span><span class="w-user"><b>Dr. Ramesh Kumar</b></span></div>
+      <div class="w-main" style="padding:14px 20px">
+        <div class="w-ctitle">Previous reports</div>
+        <div class="w-reports">
+          <div class="w-rep"><div class="doc"></div>Blood sugar · Aug 2026<br><span class="w-chip c-summarised">✓ Name matches</span></div>
+          <div class="w-rep"><div class="doc"></div>ECG · Mar 2026<br><span class="w-chip c-summarised">✓ Name matches</span></div>
+          <div class="w-rep bad"><div class="doc"></div>Thyroid · Name: Lakshmi A<br><span class="w-chip c-dispute">Report in Dispute</span></div>
+        </div>
+        <div class="w-card toggle"><span>Include disputed report in the AI summary</span><span class="sw" aria-hidden="true"></span></div>
+        <div class="w-ctitle">Questions &amp; answers (15)</div>
+        <div class="w-qa"><div class="w-q"><span class="w-qn">1</span>What is your main problem today?</div><div class="w-a">🎙 "Chest tightness when I walk, for two weeks."</div></div>
+        <div class="w-qa"><div class="w-q"><span class="w-qn">10</span>Do you have any medicine allergy?</div><div class="w-a">⌨ "No known allergies."</div></div>
+      </div>
+      <div class="w-credit">Developed by WisRight Technologies</div>
+    </div></div></div><div class="base"></div></div>
+  </section>
+
+  <section class="step flip" id="w4">
+    <div class="text">
+      <div class="num web">W4</div>
+      <h3>Edit the summary</h3>
+      <p><span class="who doc">Doctor</span> He corrects or adds to the AI summary and saves. The card then shows "edited by Dr. Ramesh". The AI's original text is always kept and can be viewed.</p>
+      <div class="tags"><span class="story">CLINIC-012</span><span class="new">NEW</span></div>
+    </div>
+    <div class="laptop"><div class="lid"><div class="lscreen"><div class="w">
+      <div class="w-top"><span class="w-brand">ClinicAI</span><span class="w-sub">Doctor Dashboard</span><span class="w-user"><b>Dr. Ramesh Kumar</b> · Sign out</span></div>
+      <div class="w-main" style="padding:16px 22px">
+        <div class="w-dmtop"><div><div class="w-dmname">Arun Prakash</div><div class="w-dmsub">Token 5 · 52 yrs · Male · Physician</div></div><span class="w-chip c-summarised">Summarised</span></div>
+        <div class="w-sum"><div class="w-sumhdr"><span class="w-badge">AI Summary · editing</span><span class="w-by">AI original is kept</span></div>
+          <textarea class="w-edit" aria-label="Edit summary" readonly>52M, 2 weeks of progressive exertional chest tightness with breathlessness. DM + HTN on metformin, amlodipine. Smoker. Rule out cardiac cause.</textarea>
+          <div class="w-sumacts"><span style="background:#fff;color:#0a8f8f">Save</span><span>Cancel</span><span>View AI original</span></div>
+        </div>
+        <div class="w-card"><div class="w-ctitle">After saving</div>The card shows <b>edited by Dr. Ramesh · 11:16</b>, and the attender's phone shows the edited text.</div>
+      </div>
+      <div class="w-credit">Developed by WisRight Technologies</div>
+    </div></div></div><div class="base"></div></div>
+  </section>
+
+  <section class="step" id="w5">
+    <div class="text">
+      <div class="num loop">W5</div>
+      <h3>Send for tests</h3>
+      <p><span class="who doc">Doctor</span> He writes which tests to do. A note is required so the patient knows exactly what to get. On send, the attender's phone shows the alert (Part A, step 8).</p>
+      <div class="tags"><span class="story">CLINIC-014</span><span class="new">NEW</span></div>
+    </div>
+    <div class="laptop"><div class="lid"><div class="lscreen"><div class="w">
+      <div class="w-top"><span class="w-brand">ClinicAI</span><span class="w-sub">Doctor Dashboard</span><span class="w-user"><b>Dr. Ramesh Kumar</b> · Sign out</span></div>
+      <div class="w-main" style="padding:16px 22px">
+        <div class="w-dmtop"><div><div class="w-dmname">Arun Prakash</div><div class="w-dmsub">Token 5 · 52 yrs · Male · Physician</div></div></div>
+        <div class="w-sum"><span class="w-badge">AI Summary</span><p class="w-sumtext" style="margin-top:6px">52M, 2 weeks of progressive exertional chest tightness…</p></div>
+      </div>
+      <div class="w-credit">Developed by WisRight Technologies</div>
+      <div class="w-overlay"><div class="w-modal">
+        <h4>Send Arun Prakash for tests</h4>
+        <span class="w-dmsub">The attender will be alerted. Arun moves to "Waiting for tests" and comes back with results.</span>
+        <span class="w-flab">Tests and instructions</span>
+        <textarea aria-label="Test note" readonly>Do ECG, lipid profile and HbA1c, and come back.</textarea>
+        <div class="w-actions"><span class="w-btn ghost">Cancel</span><span class="w-btn warn">Send for tests</span></div>
+      </div></div>
+    </div></div></div><div class="base"></div></div>
+  </section>
+
+  <section class="step flip" id="w6">
+    <div class="text">
+      <div class="num loop">W6</div>
+      <h3>A patient returns with results</h3>
+      <p><span class="who doc">Doctor</span> The next day, Arun appears in today's queue with a green <b>Returned</b> token. His page shows the doctor's earlier note, the new results and the updated summary, above Monday's answers. After the consultation: <b>Mark Done</b>.</p>
+      <div class="tags"><span class="story">CLINIC-014</span><span class="story">CLINIC-015</span></div>
+    </div>
+    <div class="laptop"><div class="lid"><div class="lscreen"><div class="w">
+      <div class="w-top"><span class="w-brand">ClinicAI</span><span class="w-sub">Doctor Dashboard</span><span class="w-user"><b>Dr. Ramesh Kumar</b> · Sign out</span></div>
+      <div class="w-layout">
+        <div class="w-rail">
+          <div class="w-clinic"><div class="w-clinic-name">Sri Sakthi Clinic</div><div class="w-clinic-date">Tuesday, 13 October 2026</div><div class="w-clinic-doc">Dr. Ramesh Kumar · Physician</div></div>
+          <div class="w-railhead"><span class="w-railtitle">Patient queue</span><span class="w-count">5</span></div>
+          <div class="w-item"><span class="w-tok" data-t="done">1</span><span class="w-ib"><span class="w-name">Revathi K</span></span></div>
+          <div class="w-item"><span class="w-tok" data-t="done">2</span><span class="w-ib"><span class="w-name">Senthil P</span></span></div>
+          <div class="w-item"><span class="w-tok" data-t="current">3</span><span class="w-ib"><span class="w-name">Mary J</span></span></div>
+          <div class="w-item sel"><span class="w-tok" data-t="ret">4</span><span class="w-ib"><span class="w-name">Arun Prakash ↩</span></span><span class="w-chip c-returned">Returned</span></div>
+          <div class="w-item"><span class="w-tok" data-t="next">5</span><span class="w-ib"><span class="w-name">Bala S</span></span></div>
+        </div>
+        <div class="w-main">
+          <div class="w-dmtop"><div><div class="w-dmname">Arun Prakash</div><div class="w-dmsub">Token 4 today · first visit Mon, Token 5</div></div><span class="w-chip c-returned">Returned with results</span></div>
+          <div class="w-note">Your note (Mon 11:18): Do ECG, lipid profile and HbA1c, and come back.</div>
+          <div class="w-card"><div class="w-ctitle">New results (3)</div>ECG: ST changes V4–V6 · LDL 168 mg/dL · HbA1c 8.4%</div>
+          <div class="w-sum"><div class="w-sumhdr"><span class="w-badge">AI Summary</span><span class="w-by">updated with results</span></div><p class="w-sumtext">52M, exertional chest tightness 2 weeks. New ECG ST changes V4–V6; LDL 168; HbA1c 8.4%. DM, HTN, smoker.</p></div>
+          <div class="w-actions"><span class="w-btn ghost">✎ Edit</span><span class="w-btn">Mark Done</span></div>
+        </div>
+      </div>
+      <div class="w-credit">Developed by WisRight Technologies</div>
+    </div></div></div><div class="base"></div></div>
+  </section>
+
+  <section class="step" id="w7">
+    <div class="text">
+      <div class="num web">W7</div>
+      <h3>Look back at an earlier day</h3>
+      <p><span class="who doc">Doctor</span> Picking a date shows that day's patients in their arrival order, with their summaries. Today is always the default when the dashboard opens.</p>
+      <div class="tags"><span class="story">CLINIC-015</span></div>
+    </div>
+    <div class="laptop"><div class="lid"><div class="lscreen"><div class="w">
+      <div class="w-top"><span class="w-brand">ClinicAI</span><span class="w-sub">Doctor Dashboard</span><span class="w-user"><b>Dr. Ramesh Kumar</b> · Sign out</span></div>
+      <div class="w-layout">
+        <div class="w-rail">
+          <div class="w-clinic"><div class="w-clinic-name">Sri Sakthi Clinic</div><div class="w-clinic-date">Showing Monday, 12 October 2026</div><div class="w-clinic-doc">Dr. Ramesh Kumar · Physician</div></div>
+          <div class="w-date"><span>Today</span><span class="on">📅 Mon 12 Oct</span></div>
+          <div class="w-railhead"><span class="w-railtitle">Patient queue</span><span class="w-count">14</span></div>
+          <div class="w-item"><span class="w-tok" data-t="done">1</span><span class="w-ib"><span class="w-name">Meena S</span></span><span class="w-chip c-done">Done</span></div>
+          <div class="w-item sel"><span class="w-tok" data-t="done">2</span><span class="w-ib"><span class="w-name">Kumar V</span></span><span class="w-chip c-done">Done</span></div>
+          <div class="w-item"><span class="w-tok" data-t="done">3</span><span class="w-ib"><span class="w-name">Lakshmi A</span></span><span class="w-chip c-done">Done</span></div>
+          <div class="w-item"><span class="w-tok" data-t="test">5</span><span class="w-ib"><span class="w-name">Arun Prakash</span></span><span class="w-chip c-tests">Tests</span></div>
+        </div>
+        <div class="w-main">
+          <div class="w-stats"><div class="w-stat"><div class="w-statn">14</div><div class="w-statl">Patients</div></div><div class="w-stat"><div class="w-statn">12</div><div class="w-statl">Seen</div></div><div class="w-stat"><div class="w-statn">2</div><div class="w-statl">Sent for tests</div></div></div>
+          <div class="w-dmtop"><div><div class="w-dmname">Kumar V</div><div class="w-dmsub">Token 2 · 38 yrs · Male · Physician · Mon 12 Oct</div></div><span class="w-chip c-done">Done</span></div>
+          <div class="w-sum"><div class="w-sumhdr"><span class="w-badge">AI Summary</span><span class="w-by">generated · AI</span></div><p class="w-sumtext">38-year-old male with dry cough for 2 weeks, no fever, non-smoker. No known allergies.</p></div>
+        </div>
+      </div>
+      <div class="w-credit">Developed by WisRight Technologies</div>
+    </div></div></div><div class="base"></div></div>
+  </section>
+
+  <section class="step flip" id="w8">
+    <div class="text">
+      <div class="num web">W8</div>
+      <h3>The same dashboard on the doctor's phone</h3>
+      <p><span class="who doc">Doctor</span> On a phone, the queue fills the screen. Tapping a patient opens their page full screen (see Part A, step 10); Back returns to the queue. Nothing scrolls sideways.</p>
+      <div class="tags"><span class="story">CLINIC-010</span><span class="new">NEW</span></div>
+    </div>
+    <div class="phone"><div class="screen w-phone"><div class="w">
+      <div class="w-top"><span class="w-brand">ClinicAI</span><span class="w-user">📅 Today</span></div>
+      <div class="w-clinic"><div class="w-clinic-name">Sri Sakthi Clinic</div><div class="w-clinic-doc">Dr. Ramesh Kumar · Physician</div></div>
+      <div class="w-railhead"><span class="w-railtitle">Patient queue</span><span class="w-count">6</span></div>
+      <div style="background:#fff;flex:1">
+        <div class="w-item"><span class="w-tok" data-t="done">1</span><span class="w-ib"><span class="w-name">Meena S</span></span><span class="w-chip c-done">Done</span></div>
+        <div class="w-item"><span class="w-tok" data-t="current">2</span><span class="w-ib"><span class="w-name">Kumar V</span></span><span class="w-chip c-summarised">Summarised</span></div>
+        <div class="w-item"><span class="w-tok" data-t="next">3</span><span class="w-ib"><span class="w-name">Lakshmi A</span></span><span class="w-chip c-summarised">Summarised</span></div>
+        <div class="w-item sel"><span class="w-tok" data-t="next">5</span><span class="w-ib"><span class="w-name">Arun Prakash</span></span><span class="w-chip c-summarised">Summarised</span></div>
+        <div class="w-item"><span class="w-tok" data-t="next">6</span><span class="w-ib"><span class="w-name">Gopal M</span></span><span class="w-chip c-answering">Answering</span></div>
+        <div class="w-grp tests"><span class="c">▾</span>Waiting for tests<span class="n">1</span></div>
+        <div class="w-item"><span class="w-tok" data-t="test">–</span><span class="w-ib"><span class="w-name">Ravi T</span></span><span class="w-chip c-tests">Tests</span></div>
+      </div>
+      <div class="w-credit">Developed by WisRight Technologies</div>
+    </div></div></div>
+  </section>
+
+  <!-- ===================== PART C: OTHER APP SCREENS ===================== -->
+  <div class="part" id="app">
+    <span class="eyebrow">Part C · Attender app, other screens</span>
+    <h2>Settings, confirmation and account</h2>
+    <p>The screens the attender uses outside a single patient's journey.</p>
+  </div>
+
+  <section class="step" id="a1">
+    <div class="text">
+      <div class="num app">A1</div>
+      <h3>Questions per department, per clinic</h3>
+      <p><span class="who att">Attender</span> In Settings, pick a department and edit, reorder, add or delete its questions. Changes apply only to this clinic. Long lists scroll, with Save always visible.</p>
+      <ul><li>Physician: 15 questions · Gynaecologist: 17 questions to start.</li></ul>
+      <div class="tags"><span class="story">CLINIC-002</span><span class="story">CLINIC-008</span></div>
+    </div>
+    <div class="phone"><div class="screen">
+      <div class="status"><span>12:20</span><span>●●● ▮</span></div>
+      <div class="bar"><div class="k">CONFIGURATION</div><div class="t">Question template</div></div>
+      <div class="body">
+        <div class="input">Gynaecologist ▾</div>
+        <div class="mini-q"><i>1</i>What is your main problem today?</div>
+        <div class="mini-q"><i>2</i>Since when do you have this problem?</div>
+        <div class="mini-q"><i>3</i>When was your last period?</div>
+        <div class="mini-q"><i>4</i>Are your periods regular or irregular?</div>
+        <div class="mini-q"><i>5</i>How many days does your period usually last?</div>
+        <div class="mini-q"><i>6</i>Is the bleeding normal, heavy, or very little?</div>
+        <div class="mini-q" style="opacity:.6"><i>7</i>Do you have pain during periods?</div>
+        <div class="btn navy" style="margin-top:auto">Save template</div>
+      </div>
+    </div></div>
+  </section>
+
+  <section class="step flip" id="a2">
+    <div class="text">
+      <div class="num app">A2</div>
+      <h3>Sent to the doctor</h3>
+      <p><span class="who att">Attender</span> After sending, the attender sees a confirmation with the summary and goes back to the queue for the next patient. Answers can still be edited until the doctor sees the patient.</p>
+      <div class="tags"><span class="story">CLINIC-005</span></div>
+    </div>
+    <div class="phone"><div class="screen">
+      <div class="status"><span>11:01</span><span>●●● ▮</span></div>
+      <div class="bar"><div class="row"><div class="t">Arun Prakash</div><span class="token">Token 5</span></div></div>
+      <div class="body">
+        <div style="text-align:center;margin-top:20px"><div class="bigtick">✓</div><div style="font-size:18px;font-weight:900">Sent to Dr. Ramesh</div><span class="muted">11:01 · 15 answers · 2 reports</span></div>
+        <div class="card" style="background:var(--teal-soft)"><span class="lbl" style="color:var(--teal)">AI summary</span><div style="font-size:13px;font-weight:600">52-year-old male with 2 weeks of worsening chest tightness on exertion…</div></div>
+        <div class="btn ghost">Edit answers</div>
+        <div class="btn" style="margin-top:auto">Back to queue</div>
+      </div>
+    </div></div>
+  </section>
+
+  <section class="step" id="a3">
+    <div class="text">
+      <div class="num app">A3</div>
+      <h3>Account and sign out</h3>
+      <p><span class="who att">Attender</span> Shows who is signed in and for which clinic. Sign out is there if the phone or staff changes; otherwise the app stays signed in.</p>
+      <div class="tags"><span class="story">CLINIC-008</span><span class="new">NEW</span></div>
+    </div>
+    <div class="phone"><div class="screen">
+      <div class="status"><span>17:30</span><span>●●● ▮</span></div>
+      <div class="bar"><div class="k">ACCOUNT</div><div class="t">Priya</div></div>
+      <div class="body">
+        <div class="card"><span class="lbl">Clinic</span><div style="font-weight:800">Sri Sakthi Clinic, Madurai</div></div>
+        <div class="card"><span class="lbl">Role</span><div style="font-weight:800">Attender</div></div>
+        <div class="card"><span class="lbl">Mobile</span><div style="font-weight:800">98765 00000</div></div>
+        <div class="card"><span class="lbl">Doctor</span><div style="font-weight:800">Dr. Ramesh Kumar · Physician</div></div>
+        <div class="btn ghost" style="margin-top:auto;border-color:var(--red);color:var(--red)">Sign out</div>
+      </div>
+    </div></div>
+  </section>
+
+  <section class="summary">
+    <h2>What changes, story by story</h2>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Screens</th><th>What the clinic gets</th><th>Story</th><th>Today</th></tr></thead>
+        <tbody>
+          <tr><td>1, W1, A3</td><td>Own login per clinic; each clinic sees only its own patients; tokens start at 1 daily</td><td>CLINIC-008</td><td>No login; all clinics share one queue</td></tr>
+          <tr><td>2, W2, W7</td><td>Today's queue in arrival order; pick another date</td><td>CLINIC-015</td><td>All days in one list</td></tr>
+          <tr><td>4, W3</td><td>Record <b>or</b> type each answer</td><td>CLINIC-009</td><td>Voice only</td></tr>
+          <tr><td>5, 9, W3</td><td>Photograph old reports and test results</td><td>CLINIC-011</td><td>Not possible</td></tr>
+          <tr><td>5, 6, W3</td><td>Name check, "Report in Dispute", include/exclude in summary</td><td>CLINIC-016</td><td>Not possible</td></tr>
+          <tr><td>6</td><td>AI on WisRight's own server (cost and privacy)</td><td>CLINIC-013</td><td>Kimi, paid external</td></tr>
+          <tr><td>7, W4</td><td>Doctor edits the summary, AI original kept</td><td>CLINIC-012</td><td>Read only</td></tr>
+          <tr><td>10, W8</td><td>Doctor dashboard on phone as well as laptop</td><td>CLINIC-010</td><td>Laptop only</td></tr>
+          <tr><td>8, 9, W5, W6</td><td>Send for tests, attender alert, return next day, re-queue</td><td>CLINIC-014</td><td>Not possible</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="foot">Mockup for discussion. Screens show the intended flow, not final designs. All names and medical details are illustrative. Prepared by WisRight Technologies.</p>
+  </section>
+
+</div>
+</body>
+</html>
