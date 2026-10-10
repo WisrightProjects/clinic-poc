@@ -17,7 +17,8 @@ CREATE TABLE IF NOT EXISTS users (
   id            SERIAL PRIMARY KEY,
   clinic_id     INTEGER NOT NULL REFERENCES clinics(id),
   name          TEXT NOT NULL,
-  mobile        TEXT NOT NULL UNIQUE,
+  -- Stored as the 10-digit number (backend/src/utils/mobile.js normalizes logins to it).
+  mobile        TEXT NOT NULL UNIQUE CHECK (mobile ~ '^[6-9][0-9]{9}$'),
   password_hash TEXT NOT NULL,
   role          TEXT NOT NULL CHECK (role IN ('doctor', 'attender')),
   is_active     BOOLEAN NOT NULL DEFAULT true,

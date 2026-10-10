@@ -268,7 +268,7 @@ AND no API response ever includes password_hash
 **New files:**
 - `backend/src/repositories/userRepository.js` — `findByMobile`, `findById` (never select `password_hash` except in `findByMobile` for login).
 - `backend/src/repositories/clinicRepository.js` — `create`, `findById`.
-- `backend/src/services/authService.js` — `login(mobile, password)`: bcrypt compare, sign `{ sub: user.id, clinicId, role }`.
+- `backend/src/services/authService.js` — `login(mobile, password)`: bcrypt compare, sign `{ sub: user.id }` only — clinic and role are reloaded from the DB on every request, so they can't go stale in a token.
 - `backend/src/controllers/authController.js` — `POST /api/auth/login`, `GET /api/auth/me`.
 - `backend/src/utils/auth.js` — **replaces `roleGuard.js`**: reads `Authorization: Bearer <token>`, verifies it, loads the user (reject if `is_active` is false), sets `req.user = { id, clinicId, role }`. Plus `requireRole('doctor')` for doctor-only routes.
 

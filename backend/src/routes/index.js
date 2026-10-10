@@ -1,7 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const upload = require('../config/upload');
-const roleGuard = require('../utils/roleGuard');
+const { createAuthenticate, requireRole } = require('../utils/auth');
+const authService = require('../services/authService');
+const authController = require('../controllers/authController');
 const healthController = require('../controllers/healthController');
 const departmentController = require('../controllers/departmentController');
 const templateController = require('../controllers/templateController');
@@ -12,7 +14,12 @@ const wrap = fn => (req, res, next) => Promise.resolve(fn(req, res, next)).catch
 
 router.get('/health', wrap(healthController.check));
 
-router.use(roleGuard);
+router.post('/auth/login', wrap(authController.login));
+
+// Everything below needs a valid login token. The old x-role header is ignored.
+router.use(wrap(createAuthenticate(authService.authenticateToken)));
+
+router.get('/auth/me', wrap(authController.me));
 
 router.get('/departments', wrap(departmentController.list));
 router.get('/templates', wrap(templateController.list));
@@ -21,7 +28,9 @@ router.post('/visits', wrap(visitController.create));
 router.get('/visits', wrap(visitController.list));
 router.get('/visits/:id', wrap(visitController.getById));
 router.post('/visits/:id/answers', upload.single('audio'), wrap(answerController.create));
-router.patch('/visits/:id/status', wrap(visitController.updateStatus));
+// Only the doctor web calls this (to mark done). If attenders ever need PATCH
+// transitions, put the allowed role per transition in statusEngine, not here.
+router.patch('/visits/:id/status', requireRole('doctor'), wrap(visitController.updateStatus));
 router.post('/visits/:id/submit', wrap(visitController.submit));
 
 module.exports = router;

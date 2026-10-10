@@ -58,6 +58,10 @@ services:
       # — a URL ending at the port connects to no named database and the backend will fail.
       # When unset, falls back to the bundled postgres service for local `docker compose up`.
       DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/doctor_attender}
+      # Signs login tokens (CLINIC-008). Required — the backend refuses to start without it.
+      # Set it in Coolify as a Secret (a long random value, at least 32 characters).
+      JWT_SECRET: ${JWT_SECRET:-}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-}  # empty = 30d (config default)
       STT_PROVIDER: whisper
       WHISPER_URL: http://whisper:8000
       STT_LANGUAGE: auto

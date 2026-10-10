@@ -3,10 +3,16 @@ const path = require('path');
 if (!process.env.DATABASE_URL) {
   throw new Error('Missing required environment variable: DATABASE_URL');
 }
+// Signs login tokens (CLINIC-008). Long and random; anyone who has it can forge a login.
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
+  throw new Error('Missing or too short environment variable: JWT_SECRET (at least 32 characters)');
+}
 
 module.exports = {
   port: process.env.PORT || 4000,
   databaseUrl: process.env.DATABASE_URL,
+  jwtSecret: process.env.JWT_SECRET,
+  jwtExpiresIn: process.env.JWT_EXPIRES_IN || '30d',
   sarvamApiKey: process.env.SARVAM_API_KEY || null,
   sttProvider: process.env.STT_PROVIDER || 'whisper', // 'whisper' | 'sarvam'
   whisperUrl: process.env.WHISPER_URL || 'http://localhost:8000',
