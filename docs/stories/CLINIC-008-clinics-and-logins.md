@@ -6,12 +6,13 @@
 **Priority:** P0 (Blocker for the 10-doctor trial)
 **Effort:** 7 days (56 hours)
 **Sprint:** Phase 3 — Trial Readiness
-**Status:** Ready for Development (one open decision — see below)
+**Status:** Ready for Development
 **Depends On:** CLINIC-001 (schema, migrations, status engine), CLINIC-002 (templates), CLINIC-006 (doctor dashboard)
 **Blocks:** CLINIC-011 (report upload), CLINIC-012 (doctor edit) — both need `clinic_id` and the logged-in user.
 **Migration number reserved:** `006_clinics_and_users.sql`
 
-> **Open decision (waiting on manager):** *Does any doctor work at more than one clinic?* This story assumes **no — one user belongs to one clinic**. If the answer is yes, a follow-up adds a `user_clinics` link table and a clinic switcher after login (~1 day). Build everything else now; don't block on this.
+> **Decided (manager, 2026-10-10):** for this POC, **1 doctor = 1 clinic**, and each clinic has **1 attender** using **1 clinic phone**. After login, each user lands in their own clinic.
+> **Later (not in this story):** one doctor across multiple clinics (`user_clinics` link table + clinic switcher), and **family groups** (one patient record linked to family members). Keep `users.clinic_id` and the patient fields simple now, but don't hard-code "one clinic" anywhere outside the auth token, so these can be added without a rewrite.
 
 ---
 
@@ -106,7 +107,7 @@ So that I can never see or change another clinic's patients, questions or record
 ```gherkin
 As an attender
 I want a login screen, to stay signed in for 30 days, and a logout button
-So that the shared clinic phone can be handed between staff safely
+So that the clinic phone opens straight into my clinic, and can be signed out if the phone changes hands
 ```
 
 ### Sub-Story 5: Doctor web login
@@ -292,7 +293,7 @@ Pass `req.user.clinicId` from every controller into the service and repository. 
 - `mobile/src/api/client.js` — remove the `x-role` header; add an axios request interceptor that attaches `Authorization: Bearer <token>`, and a response interceptor that clears the token and returns to Login on 401 (AC10).
 - `mobile/src/screens/LoginScreen.js` **(NEW)** — mobile number (numeric keypad) + password, error message from `error.message`.
 - `mobile/src/navigation/AppNavigator.js` — show Login when no token, the existing stack when signed in.
-- Home screen — show the clinic name and a **Logout** button (also covers a shared clinic phone).
+- Home screen — show the clinic name and a **Logout** button (1 phone and 1 attender per clinic, so logout is rarely used, but needed if the phone or staff changes).
 
 ### Part 5: Doctor web login (0.5 day)
 

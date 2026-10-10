@@ -10,7 +10,7 @@
 **Depends On:** CLINIC-007 (AI summary), CLINIC-008 (signed-in doctor, for "edited by")
 **Migration number reserved:** `008_summary_edits.sql`
 
-> **Out of scope (waiting on manager):** requesting further tests/investigations and the front-office alert. Those depend on how the "tests before consultation" step works. This story only covers editing.
+> **Out of scope:** requesting tests before consultation and the attender alert — see **CLINIC-014**. This story only covers editing.
 
 ---
 

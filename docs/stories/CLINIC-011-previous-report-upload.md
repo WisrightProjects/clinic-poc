@@ -10,6 +10,8 @@
 **Depends On:** CLINIC-008 (reports must be clinic-scoped and served only to signed-in users)
 **Migration number reserved:** `007_visit_reports.sql`
 
+> **Work in progress (manager, 2026-10-10):** start with the reports clinics actually bring; the report section will be improved during the 3-month trial based on real use. The name check and "Report in Dispute" flow is **CLINIC-016**.
+
 > **Prerequisite — persistent file storage (check first):** in `docker-compose.app.yml` the backend stores files in `/app/uploads`, but no volume is declared for it (only Postgres has one). Unless Coolify mounts persistent storage there, **every redeploy deletes the stored files** — this may already be happening to voice recordings. Confirm in Coolify (backend → Storages) and add a named volume for `/app/uploads` if missing, **before** this story ships.
 
 ---
