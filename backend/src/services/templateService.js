@@ -14,7 +14,7 @@ async function update(clinicId, id, questions) {
   validateQuestions(questions);
   const template = await templateRepository.findById(clinicId, id);
   if (!template) throw new AppError('NOT_FOUND', 'Template not found', 404);
-  return templateRepository.updateQuestions(id, questions);
+  return templateRepository.updateQuestions(clinicId, template.id, questions);
 }
 
 module.exports = { getByDepartment, update };

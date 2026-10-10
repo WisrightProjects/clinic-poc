@@ -7,10 +7,9 @@ const kimiClient = require('../utils/summary/kimiClient');
 const MOCK_SUMMARY =
   'Patient presents with fever for 3 days and a severe headache. No medication taken prior to visit. No known allergies. No significant past history — BP normal, no diabetes. Requires physical examination. Consider CBC and fever panel.';
 
-// The visit's ordered question/transcript pairs for the LLM. The visit was already
-// loaded through the clinic-scoped lookup, so its clinic_id picks the clinic's template.
+// The visit's ordered question/transcript pairs for the LLM.
 async function buildQA(visit) {
-  const template = await templateRepository.findActiveByDepartmentId(visit.clinic_id, visit.department_id);
+  const template = await templateRepository.findActiveForVisit(visit);
   const answers = await answerRepository.findByVisitId(visit.id);
   const byQuestion = new Map(answers.map((a) => [a.question_id, a]));
   const qa = [...(template?.questions || [])]

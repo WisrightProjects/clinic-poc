@@ -1,3 +1,5 @@
+const fs = require('fs');
+
 class AppError extends Error {
   constructor(code, message, httpStatus = 500) {
     super(message);
@@ -6,7 +8,10 @@ class AppError extends Error {
   }
 }
 
-function errorHandler(err, _req, res, _next) {
+// A failed request never keeps its upload: multer saves the file before any check
+// runs (missing questionId, another clinic's visit, DB error), so delete it here.
+function errorHandler(err, req, res, _next) {
+  if (req.file) fs.promises.unlink(req.file.path).catch(() => {});
   const status = err.httpStatus || 500;
   const code = err.code || 'INTERNAL_ERROR';
   const message = err.message || 'An unexpected error occurred';

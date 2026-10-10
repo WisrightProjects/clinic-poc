@@ -1,8 +1,6 @@
 const db = require('../config/db');
 const { AppError } = require('../utils/errors');
 
-// Templates belong to a clinic (CLINIC-008): each clinic edits its own copy, and
-// another clinic's template comes back null (-> 404).
 async function withQuestions(template) {
   if (!template) return null;
   const { rows: questions } = await db.query(
@@ -12,6 +10,8 @@ async function withQuestions(template) {
   return { ...template, questions };
 }
 
+// Templates belong to a clinic (CLINIC-008): each clinic edits its own copy, and
+// another clinic's template comes back null (-> 404).
 async function findActiveByDepartmentId(clinicId, departmentId) {
   const { rows } = await db.query(
     `SELECT * FROM question_templates
@@ -22,18 +22,22 @@ async function findActiveByDepartmentId(clinicId, departmentId) {
   return withQuestions(rows[0]);
 }
 
+// The template a visit's questions come from: its own clinic's, for its department.
+function findActiveForVisit(visit) {
+  return findActiveByDepartmentId(visit.clinic_id, visit.department_id);
+}
+
 async function findById(clinicId, id) {
   const { rows } = await db.query('SELECT * FROM question_templates WHERE id = $1 AND clinic_id = $2', [id, clinicId]);
   return withQuestions(rows[0]);
 }
 
 // Reconcile the template's questions in place rather than delete-and-recreate.
-// Callers must first load the template through the clinic-scoped findById.
 // Existing questions (those carrying an `id`) are UPDATEd, new ones are INSERTed,
 // and questions dropped by the client are DELETEd only when no answer references
 // them — deleting an answered question would orphan patient data, so we reject
 // that with a 409 instead of letting the FK raise a raw 500.
-async function updateQuestions(templateId, questions) {
+async function updateQuestions(clinicId, templateId, questions) {
   const client = await db.connect();
   try {
     await client.query('BEGIN');
@@ -79,8 +83,7 @@ async function updateQuestions(templateId, questions) {
     }
 
     await client.query('COMMIT');
-    const { rows } = await db.query('SELECT * FROM question_templates WHERE id = $1', [templateId]);
-    return withQuestions(rows[0]);
+    return findById(clinicId, templateId);
   } catch (err) {
     await client.query('ROLLBACK');
     throw err;
@@ -89,4 +92,4 @@ async function updateQuestions(templateId, questions) {
   }
 }
 
-module.exports = { findActiveByDepartmentId, findById, updateQuestions };
+module.exports = { findActiveByDepartmentId, findActiveForVisit, findById, updateQuestions };

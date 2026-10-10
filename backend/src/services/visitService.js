@@ -27,9 +27,11 @@ async function list(clinicId, statusQuery) {
 
 async function getById(clinicId, id) {
   const visit = await findVisit(clinicId, id);
-  const template = await templateRepository.findActiveByDepartmentId(clinicId, visit.department_id);
-  const answers = await answerRepository.findByVisitId(id);
-  const summary = await summaryRepository.findByVisitId(id);
+  const [template, answers, summary] = await Promise.all([
+    templateRepository.findActiveForVisit(visit),
+    answerRepository.findByVisitId(visit.id),
+    summaryRepository.findByVisitId(visit.id),
+  ]);
   return { visit, template, answers, summary };
 }
 
@@ -74,19 +76,16 @@ async function submit(clinicId, visitId) {
   return summary; // return the summary row so the client can render it without a reload
 }
 
-async function maybeAdvance(clinicId, visitId) {
-  const visit = await visitRepository.findById(clinicId, visitId);
-  if (!visit) return;
+// Takes the visit and template the caller already loaded (clinic-scoped).
+async function maybeAdvance(visit, template) {
   if (visit.status === 'waiting') {
-    await visitRepository.updateStatus(visitId, 'answering');
+    await visitRepository.updateStatus(visit.id, 'answering');
     return;
   }
-  if (visit.status === 'answering') {
-    const template = await templateRepository.findActiveByDepartmentId(clinicId, visit.department_id);
-    if (!template) return;
-    const answeredCount = await answerRepository.countByVisitId(visitId);
+  if (visit.status === 'answering' && template) {
+    const answeredCount = await answerRepository.countByVisitId(visit.id);
     if (answeredCount >= template.questions.length) {
-      await visitRepository.updateStatus(visitId, 'answered');
+      await visitRepository.updateStatus(visit.id, 'answered');
     }
   }
 }
