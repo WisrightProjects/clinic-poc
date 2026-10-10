@@ -118,6 +118,7 @@ GET   /templates            PUT /templates/:id
 POST  /visits               GET /visits   (?status=csv)   GET /visits/:id
 POST  /visits/:id/answers   (multipart, field "audio" — Multer; triggers STT)
 PATCH /visits/:id/status    POST /visits/:id/submit     (PATCH: doctor only, sets 'done' only)
+PUT   /visits/:id/summary   { text } — doctor edits the summary (CLINIC-012); summary_text stays the AI original
 GET   /answers/:id/audio    (the recording, own clinic only)
 ```
 
