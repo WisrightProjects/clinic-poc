@@ -1,7 +1,7 @@
 // Tests for backend/src/utils/summaryValidation.js (CLINIC-012 AC4).
 // Pure logic only — no config/DB/network — mirrors visitValidation.test.js style.
 
-const { validateSummaryEdit, MAX } = require('../utils/summaryValidation');
+const { validateSummaryEdit, MAX_SUMMARY_LENGTH: MAX } = require('../utils/summaryValidation');
 
 describe('AC4: validateSummaryEdit', () => {
   test('returns the trimmed text', () => {

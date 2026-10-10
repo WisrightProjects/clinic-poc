@@ -58,7 +58,12 @@
  * @typedef {Object} Summary
  * @property {number} id
  * @property {number} visit_id
- * @property {string} summary_text
+ * @property {string} summary_text      the AI's original, never overwritten
  * @property {string} generated_by
  * @property {string} created_at
+ * @property {string|null} edited_text  the doctor's edit (CLINIC-012)
+ * @property {number|null} edited_by
+ * @property {string|null} edited_at
+ * @property {string|null} edited_by_name
+ * @property {string} display_text      what to show: edited_text if present, else summary_text (generated column)
  */

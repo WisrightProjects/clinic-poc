@@ -27,10 +27,10 @@ const PROGRESS_COLUMNS = `
 // fetch. Only submitted visits (summarised/done) have a summary; others come back
 // null. Truncated to keep the list payload small — the client clamps it to two lines.
 const SUMMARY_COLUMN = `
-  (SELECT LEFT(COALESCE(s.edited_text, s.summary_text), 240)
+  (SELECT LEFT(s.display_text, 240)
      FROM summaries s
     WHERE s.visit_id = v.id
-    ORDER BY s.created_at DESC
+    ORDER BY s.created_at DESC, s.id DESC
     LIMIT 1) AS summary_excerpt`;
 
 // An empty statusFilter means every status.

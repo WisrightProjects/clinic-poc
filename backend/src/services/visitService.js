@@ -83,14 +83,18 @@ async function submit(clinicId, visitId) {
 }
 
 // CLINIC-012: the doctor saves an edited summary. The AI's original (summary_text) is
-// kept; the edit is stored beside it with who and when. Another clinic's visit is 404.
+// kept; the edit is stored beside it with who and when. Another clinic's visit is 404;
+// only a submitted visit (summarised/done) can be edited (AC1).
+const EDITABLE_STATUSES = ['summarised', 'done'];
+
 async function editSummary(clinicId, visitId, text, userId) {
   const editedText = validateSummaryEdit(text);
   const visit = await findVisit(clinicId, visitId);
-  const summary = await summaryRepository.findByVisitId(visit.id);
+  const summary = EDITABLE_STATUSES.includes(visit.status)
+    ? await summaryRepository.updateEdit(visit.id, editedText, userId)
+    : null;
   if (!summary) throw new AppError('NO_SUMMARY', 'This visit has no summary to edit yet', 409);
-  await summaryRepository.updateEdit(summary.id, editedText, userId);
-  return summaryRepository.findByVisitId(visit.id);
+  return summary;
 }
 
 // Takes the visit and template the caller already loaded (clinic-scoped). The first
