@@ -2,6 +2,7 @@ const visitRepository = require('../repositories/visitRepository');
 const answerRepository = require('../repositories/answerRepository');
 const summaryRepository = require('../repositories/summaryRepository');
 const templateRepository = require('../repositories/templateRepository');
+const reportRepository = require('../repositories/reportRepository');
 const statusEngine = require('./statusEngine');
 const summaryService = require('./summaryService');
 const { AppError } = require('../utils/errors');
@@ -27,12 +28,13 @@ async function list(clinicId, statusQuery) {
 
 async function getById(clinicId, id) {
   const visit = await findVisit(clinicId, id);
-  const [template, answers, summary] = await Promise.all([
+  const [template, answers, summary, reports] = await Promise.all([
     templateRepository.findActiveForVisit(visit),
     answerRepository.findByVisitId(visit.id),
     summaryRepository.findByVisitId(visit.id),
+    reportRepository.findByVisitId(visit.id),
   ]);
-  return { visit, template, answers, summary };
+  return { visit, template, answers, summary, reports };
 }
 
 // The doctor's "mark done" action. Other statuses are set by the intake flow itself

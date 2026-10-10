@@ -12,11 +12,14 @@ class AppError extends Error {
 // integer id, or an unknown status in ?status=) with 22P02 — a bad request, not a crash.
 const PG_INVALID_TEXT = '22P02';
 
-// A failed request doesn't keep its upload: multer saves the file before any check runs
-// (missing questionId, another clinic's visit), so delete it here — unless a DB row
-// already points at it (file.stored, set by answerService), which must keep its audio.
+// A failed request doesn't keep its uploads: multer saves files before any check runs
+// (missing questionId, wrong image type, a DB error), so delete them here —
+// unless a DB row already points at one (file.stored, set by the service), which must stay.
 function errorHandler(err, req, res, _next) {
-  if (req.file && !req.file.stored) fs.promises.unlink(req.file.path).catch(() => {});
+  const files = Array.isArray(req.files) ? req.files : Object.values(req.files || {}).flat();
+  for (const file of [req.file, ...files]) {
+    if (file && !file.stored) fs.promises.unlink(file.path).catch(() => {});
+  }
   if (err.code === PG_INVALID_TEXT) err = new AppError('BAD_REQUEST', 'Invalid value in request', 400);
   const status = err.httpStatus || 500;
   const code = err.code || 'INTERNAL_ERROR';

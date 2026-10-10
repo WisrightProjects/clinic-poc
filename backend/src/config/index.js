@@ -8,6 +8,8 @@ if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
   throw new Error('Missing or too short environment variable: JWT_SECRET (at least 32 characters)');
 }
 
+const audioDir = process.env.AUDIO_DIR || path.join(__dirname, '../../../storage/audio');
+
 module.exports = {
   port: process.env.PORT || 4000,
   databaseUrl: process.env.DATABASE_URL,
@@ -27,6 +29,9 @@ module.exports = {
   // 'disabled' (default) or 'enabled'. Thinking mode spends ~1,000+ hidden reasoning tokens per
   // summary (~45s vs ~4s), which pushed 15-17 question intakes past the 60s timeout.
   kimiThinking: process.env.KIMI_THINKING === 'enabled' ? 'enabled' : 'disabled',
-  audioDir: process.env.AUDIO_DIR || path.join(__dirname, '../../../storage/audio'),
+  audioDir,
+  // Report photos (CLINIC-011). Inside AUDIO_DIR by default so the one persistent
+  // uploads volume keeps both recordings and reports across redeploys.
+  reportsDir: process.env.REPORTS_DIR || path.join(audioDir, 'reports'),
   corsOrigins: (process.env.CORS_ORIGINS || 'http://localhost:5173,http://localhost:8081').split(','),
 };

@@ -1,6 +1,7 @@
 const config = require('../config');
 const answerService = require('../services/answerService');
 const { AppError } = require('../utils/errors');
+const { sendStoredFile } = require('../utils/sendStoredFile');
 
 async function create(req, res) {
   if (!req.file) throw new AppError('BAD_REQUEST', 'Audio file is required', 400);
@@ -10,12 +11,9 @@ async function create(req, res) {
   res.status(201).json(answer);
 }
 
-// sendFile with `root` refuses paths that escape AUDIO_DIR (e.g. '..').
 async function audio(req, res, next) {
   const audioPath = await answerService.getAudioPath(req.user.clinicId, req.params.id);
-  res.sendFile(audioPath, { root: config.audioDir }, err => {
-    if (err && !res.headersSent) next(new AppError('NOT_FOUND', 'Recording not found', 404));
-  });
+  sendStoredFile(res, next, config.audioDir, audioPath, { notFoundMessage: 'Recording not found' });
 }
 
 module.exports = { create, audio };

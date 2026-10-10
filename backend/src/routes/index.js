@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const upload = require('../config/upload');
+const reportUpload = require('../config/reportUpload');
 const { createAuthenticate, requireRole } = require('../utils/auth');
 const authService = require('../services/authService');
 const authController = require('../controllers/authController');
@@ -9,6 +10,7 @@ const departmentController = require('../controllers/departmentController');
 const templateController = require('../controllers/templateController');
 const visitController = require('../controllers/visitController');
 const answerController = require('../controllers/answerController');
+const reportController = require('../controllers/reportController');
 
 const wrap = fn => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
@@ -32,5 +34,11 @@ router.post('/visits/:id/answers', upload.single('audio'), wrap(answerController
 router.patch('/visits/:id/status', requireRole('doctor'), wrap(visitController.updateStatus));
 router.post('/visits/:id/submit', wrap(visitController.submit));
 router.get('/answers/:id/audio', wrap(answerController.audio));
+// Previous-report photos (CLINIC-011), multipart field "report" (one or more images).
+// prepareUpload checks the visit (clinic, open, not full) before any file is written.
+router.post('/visits/:id/reports', requireRole('attender'), wrap(reportController.prepareUpload), reportUpload, wrap(reportController.add));
+router.get('/visits/:id/reports', wrap(reportController.list));
+router.get('/reports/:id/file', wrap(reportController.file));
+router.delete('/reports/:id', requireRole('attender'), wrap(reportController.remove));
 
 module.exports = router;

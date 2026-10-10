@@ -78,7 +78,12 @@ services:
       KIMI_THINKING: ${KIMI_THINKING:-disabled}
       SUMMARY_LANGUAGE: ${SUMMARY_LANGUAGE:-English}
       AUDIO_DIR: /app/uploads
+      REPORTS_DIR: ${REPORTS_DIR:-/app/uploads/reports}
       PORT: "4000"
+    # Recordings and report photos must survive redeploys (CLINIC-011 AC5). In Coolify,
+    # confirm this volume appears under the backend's Storages after deploying.
+    volumes:
+      - clinic-uploads:/app/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -102,3 +107,4 @@ services:
 
 volumes:
   clinic-db:
+  clinic-uploads:
