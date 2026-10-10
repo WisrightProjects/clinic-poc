@@ -5,6 +5,7 @@
 **Feature:** Turn the single shared POC into a multi-clinic system: every patient, token and question template belongs to a clinic, and every doctor and attender signs in with their own mobile number + password, seeing only their own clinic's data.
 **Priority:** P0 (Blocker for the 10-doctor trial)
 **Effort:** 7 days (56 hours)
+**Who:** 👨‍💻 **Senior** leads (008.1–008.3 + release) · 🧑‍🎓 **Junior** (008.4–008.6, once the login API works)
 **Sprint:** Phase 3 — Trial Readiness
 **Status:** Ready for Development
 **Depends On:** CLINIC-001 (schema, migrations, status engine), CLINIC-002 (templates), CLINIC-006 (doctor dashboard)
@@ -76,7 +77,7 @@ With this story, Kavitha's first patient is **Token 1**, her queue shows only Cl
 
 ### Sub-Story 1: Clinics, users and clinic-scoped data (schema)
 **Story ID:** CLINIC-008.1
-**Points:** 5 | **Effort:** 1.5 days
+**Points:** 5 | **Effort:** 1.5 days | **Who:** 👨‍💻 Senior
 ```gherkin
 As the product owner
 I want every visit and template to belong to a clinic, and users to belong to one clinic
@@ -85,7 +86,7 @@ So that data can be separated per clinic without losing what is already in produ
 
 ### Sub-Story 2: Login API + authentication on every request
 **Story ID:** CLINIC-008.2
-**Points:** 5 | **Effort:** 1.5 days
+**Points:** 5 | **Effort:** 1.5 days | **Who:** 👨‍💻 Senior
 ```gherkin
 As a doctor or attender
 I want to sign in with my mobile number and password and get a long-lived session
@@ -94,7 +95,7 @@ So that the backend knows who I am and which clinic I belong to
 
 ### Sub-Story 3: Clinic-scoped endpoints, tokens and audio
 **Story ID:** CLINIC-008.3
-**Points:** 5 | **Effort:** 1.5 days
+**Points:** 5 | **Effort:** 1.5 days | **Who:** 👨‍💻 Senior
 ```gherkin
 As a clinic user
 I want every list, read and write to be limited to my clinic
@@ -103,7 +104,7 @@ So that I can never see or change another clinic's patients, questions or record
 
 ### Sub-Story 4: Mobile app login
 **Story ID:** CLINIC-008.4
-**Points:** 3 | **Effort:** 1 day
+**Points:** 3 | **Effort:** 1 day | **Who:** 🧑‍🎓 Junior (after 008.2)
 ```gherkin
 As an attender
 I want a login screen, to stay signed in for 30 days, and a logout button
@@ -112,7 +113,7 @@ So that the clinic phone opens straight into my clinic, and can be signed out if
 
 ### Sub-Story 5: Doctor web login
 **Story ID:** CLINIC-008.5
-**Points:** 2 | **Effort:** 0.5 day
+**Points:** 2 | **Effort:** 0.5 day | **Who:** 🧑‍🎓 Junior (after 008.2)
 ```gherkin
 As a doctor
 I want a login page on the dashboard that works on my laptop and phone
@@ -121,7 +122,7 @@ So that only I can open my patients' information
 
 ### Sub-Story 6: Account-setup script
 **Story ID:** CLINIC-008.6
-**Points:** 2 | **Effort:** 0.5 day
+**Points:** 2 | **Effort:** 0.5 day | **Who:** 🧑‍🎓 Junior (after 008.1)
 ```gherkin
 As the product owner
 I want a command to create a clinic with its users, and to reset a password
@@ -313,6 +314,20 @@ Pass `req.user.clinicId` from every controller into the service and repository. 
 Following the repo convention (pure logic, no live DB):
 - `backend/src/__tests__/auth.test.js` — token sign/verify round trip, expired and tampered tokens rejected, `requireRole` allows/blocks.
 - Extend `visitValidation`-style tests for any new pure helpers (e.g. mobile number validation).
+
+### Part 8: Release plan — 👨‍💻 Senior
+
+> ⚠️ **This is a breaking change.** Once the backend requires a login, the APK clients have today and the current doctor web **stop loading data**. Everything must go live together.
+
+1. **Before merging:** test migration 006 on a copy of production-shaped data (001–005 + seed → 006 → 006 again).
+2. **In Coolify, before deploying:** set `JWT_SECRET` (a long random value, marked as a Secret). The backend refuses to start without it.
+3. **Deploy** the backend and the doctor web together (one Coolify redeploy). Migration 006 runs on boot and moves existing data into "Default Clinic".
+4. **Create the accounts:** run `scripts/clinic-admin.mjs create-clinic` for each trial clinic; note the printed passwords.
+5. **Build the new APK** (`expo-secure-store` is a new native module) and share it with each clinic **together with** their attender's mobile number and password.
+6. **Share the doctor login** (mobile number + password) with each doctor.
+7. **Check after go-live:** sign in as two different clinics and confirm each sees only its own patients and tokens start at 1.
+
+**Do this outside clinic hours** — between steps 3 and 5, the old app cannot be used.
 
 ---
 

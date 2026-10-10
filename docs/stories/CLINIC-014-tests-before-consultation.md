@@ -5,6 +5,7 @@
 **Feature:** While a patient waits in the queue, the doctor reads their AI summary and writes a note such as "Do CBC, ECG and come back". The attender is alerted, the patient goes for the tests, and when they come back (usually the next day) with results, the attender uploads them and puts the patient back in that day's queue.
 **Priority:** P1 (High)
 **Effort:** 4 days (32 hours)
+**Who:** 👨‍💻 **Senior** (status, migration, re-queue, summary regeneration) · 🧑‍🎓 **Junior** (alert, lists, buttons) — see each sub-story
 **Sprint:** Phase 3 — Trial Readiness
 **Status:** Ready for Development (after CLINIC-008 and CLINIC-011)
 **Depends On:** CLINIC-008 (doctor/attender roles, clinic scoping), CLINIC-011 (uploading the test results as reports), CLINIC-015 (date-based queue)
@@ -43,7 +44,7 @@ The **next day** he returns with the results. Priya finds him under **Waiting fo
 ## Detailed Sub-Stories
 
 ### Sub-Story 1: Doctor requests tests (with a note)
-**Story ID:** CLINIC-014.1 | **Effort:** 1 day
+**Story ID:** CLINIC-014.1 | **Effort:** 1 day | **Who:** 👨‍💻 Senior (API + status) · 🧑‍🎓 Junior (doctor web button + note)
 ```gherkin
 As a doctor
 I want a "Send for tests" action with a note on a waiting patient's summary
@@ -51,7 +52,7 @@ So that the patient can do the tests before seeing me
 ```
 
 ### Sub-Story 2: Attender alert
-**Story ID:** CLINIC-014.2 | **Effort:** 1 day
+**Story ID:** CLINIC-014.2 | **Effort:** 1 day | **Who:** 🧑‍🎓 Junior
 ```gherkin
 As the attender
 I want a clear alert on the clinic phone when the doctor requests tests
@@ -59,7 +60,7 @@ So that I can tell the patient before they keep waiting
 ```
 
 ### Sub-Story 3: Patient returns — upload results and re-queue
-**Story ID:** CLINIC-014.3 | **Effort:** 1.5 days
+**Story ID:** CLINIC-014.3 | **Effort:** 1.5 days | **Who:** 👨‍💻 Senior (re-queue logic) · 🧑‍🎓 Junior (mobile screens)
 ```gherkin
 As the attender
 I want to find a returning patient, upload their results and put them back in today's queue
@@ -67,7 +68,7 @@ So that the doctor sees them with the results
 ```
 
 ### Sub-Story 4: Doctor sees the full history
-**Story ID:** CLINIC-014.4 | **Effort:** 0.5 day
+**Story ID:** CLINIC-014.4 | **Effort:** 0.5 day | **Who:** 🧑‍🎓 Junior
 ```gherkin
 As a doctor
 I want to see my earlier note and the new results together with the original answers

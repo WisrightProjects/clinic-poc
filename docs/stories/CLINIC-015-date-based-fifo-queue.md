@@ -5,6 +5,7 @@
 **Feature:** Show each day's queue separately, first in first out, and stop sending every visit ever to the apps.
 **Priority:** P2 (Medium)
 **Effort:** 1.5 days (12 hours)
+**Who:** 🧑‍🎓 **Junior** · 👨‍💻 Senior reviews the API change
 **Sprint:** Phase 3 — Trial Readiness
 **Status:** Ready for Development (after CLINIC-008)
 **Depends On:** CLINIC-008 (clinic scoping). Coordinates with CLINIC-014 (returning patients join today's queue).

@@ -5,6 +5,7 @@
 **Feature:** Let the attender either record an answer or type it. Neither is compulsory.
 **Priority:** P1 (High)
 **Effort:** 2 days (16 hours)
+**Who:** 🧑‍🎓 **Junior** · 👨‍💻 Senior reviews the PR
 **Sprint:** Phase 3 — Trial Readiness
 **Status:** Ready for Development
 **Depends On:** CLINIC-004 (voice answer capture). **No migration** — can be built in parallel with CLINIC-008.
@@ -34,7 +35,7 @@ The waiting room is loud and the patient answers "Any medicine allergy?" with a 
 ## Detailed Sub-Stories
 
 ### Sub-Story 1: Backend accepts a typed answer
-**Story ID:** CLINIC-009.1 | **Effort:** 0.5 day
+**Story ID:** CLINIC-009.1 | **Effort:** 0.5 day | **Who:** 🧑‍🎓 Junior
 ```gherkin
 As an attender
 I want to save an answer as text without an audio file
@@ -42,7 +43,7 @@ So that typed answers are stored like transcribed ones
 ```
 
 ### Sub-Story 2: "Type instead" on the recording screen
-**Story ID:** CLINIC-009.2 | **Effort:** 1 day
+**Story ID:** CLINIC-009.2 | **Effort:** 1 day | **Who:** 🧑‍🎓 Junior
 ```gherkin
 As an attender
 I want a Type option next to Record for each question
@@ -50,7 +51,7 @@ So that I can choose the quicker way for each answer
 ```
 
 ### Sub-Story 3: Show typed answers everywhere answers appear
-**Story ID:** CLINIC-009.3 | **Effort:** 0.5 day
+**Story ID:** CLINIC-009.3 | **Effort:** 0.5 day | **Who:** 🧑‍🎓 Junior
 ```gherkin
 As a doctor
 I want typed answers to appear exactly like transcribed ones

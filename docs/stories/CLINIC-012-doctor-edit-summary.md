@@ -5,6 +5,7 @@
 **Feature:** Let the doctor correct or add to the AI summary from the dashboard. The AI's original text is always kept.
 **Priority:** P1 (High)
 **Effort:** 2 days (16 hours)
+**Who:** 👨‍💻 **Senior** (migration + edit API) · 🧑‍🎓 **Junior** (edit screens) — see Work Split
 **Sprint:** Phase 3 — Trial Readiness
 **Status:** Ready for Development (after CLINIC-008)
 **Depends On:** CLINIC-007 (AI summary), CLINIC-008 (signed-in doctor, for "edited by")
@@ -31,6 +32,16 @@
 
 ### Real-World Use Case
 The summary says "No known allergies", but the patient tells Dr. Ramesh she reacted to amoxicillin last year. He taps **Edit**, adds "Allergic to amoxicillin (rash, 2025)", and saves. The card now shows "Edited by Dr. Ramesh", and he can still view the AI's original text.
+
+---
+
+## Work Split
+
+| Task | Who | Effort |
+|---|---|---|
+| Migration `008_summary_edits.sql` + `PUT /api/visits/:id/summary` with clinic and doctor-role checks | 👨‍💻 Senior | 0.5 day |
+| Doctor web: Edit / Save / Cancel, "Edited by", "View AI original" | 🧑‍🎓 Junior | 1 day |
+| Mobile review screen shows the edited text; validator unit test | 🧑‍🎓 Junior | 0.5 day |
 
 ---
 

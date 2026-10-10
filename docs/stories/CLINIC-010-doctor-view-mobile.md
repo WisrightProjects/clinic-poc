@@ -5,6 +5,7 @@
 **Feature:** Make the doctor dashboard work on a phone, with the patient's name at the top, followed by history, today's symptoms and the AI summary.
 **Priority:** P1 (High)
 **Effort:** 2 days (16 hours)
+**Who:** 🧑‍🎓 **Junior** · 👨‍💻 Senior reviews the PR
 **Sprint:** Phase 3 — Trial Readiness
 **Status:** Ready for Development
 **Depends On:** CLINIC-006 (doctor dashboard). No backend or migration change. Can run in parallel with CLINIC-008 (whose login page should be built responsive from the start).

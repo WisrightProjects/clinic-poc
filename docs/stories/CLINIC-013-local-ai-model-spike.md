@@ -5,6 +5,7 @@
 **Type:** Spike (timeboxed research — the deliverable is a findings note, not a feature)
 **Priority:** P1 (High)
 **Effort:** 3 days (timebox — stop and report at 3 days)
+**Who:** 👨‍💻 **Senior** with **Uday Augustin** · 🧑‍🎓 Junior helps collect sample reports and score results
 **Sprint:** Phase 3 — Trial Readiness
 **Status:** Ready to Start
 **Depends On:** Nothing. Production stays on Kimi during the spike.

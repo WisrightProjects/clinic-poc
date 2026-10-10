@@ -5,6 +5,7 @@
 **Feature:** Let the attender photograph or pick the patient's previous reports, store them against the visit, and show them to the doctor. **No AI reads the reports in this story** — that comes after the local-model test (CLINIC-013) and the manager's answers on report types.
 **Priority:** P1 (High)
 **Effort:** 4 days (32 hours)
+**Who:** 👨‍💻 **Senior** (storage, upload API, private file access) · 🧑‍🎓 **Junior** (mobile camera screen, doctor report viewer) — see Work Split
 **Sprint:** Phase 3 — Trial Readiness
 **Status:** Ready for Development (after CLINIC-008)
 **Depends On:** CLINIC-008 (reports must be clinic-scoped and served only to signed-in users)
@@ -36,6 +37,17 @@
 
 ### Real-World Use Case
 Arun brings a folder with last month's blood test and an old ECG. Priya taps **Add report**, photographs the two pages, and continues the intake. Before calling Arun in, Dr. Ramesh opens his visit and sees the two report photos under "Previous reports", taps one and zooms in.
+
+---
+
+## Work Split
+
+| Task | Who | Effort |
+|---|---|---|
+| Persistent storage for `/app/uploads` in Coolify / `docker-compose.app.yml` | 👨‍💻 Senior | 0.25 day |
+| Migration `007_visit_reports.sql`, upload API with type/size limits, private file route, delete | 👨‍💻 Senior | 1.75 days |
+| Mobile: Add report (camera + gallery), compress, thumbnails, remove | 🧑‍🎓 Junior (after the upload API is ready) | 1 day |
+| Doctor web: "Previous reports" thumbnails + full-size viewer | 🧑‍🎓 Junior | 1 day |
 
 ---
 

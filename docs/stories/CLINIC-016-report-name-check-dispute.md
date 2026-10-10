@@ -5,6 +5,7 @@
 **Feature:** When a report is uploaded (or used for the AI summary), compare the name on the report with the registered patient. If it differs or is unclear, tell the attender, mark the report **"Report in Dispute"**, and let the doctor or attender choose whether disputed reports are included in the AI summary.
 **Priority:** P1 (High)
 **Effort:** 3 days (24 hours), plus the AI reading part, which depends on CLINIC-013
+**Who:** 👨‍💻 **Senior** with **Uday Augustin** (approach, AI name reading, matching) · 🧑‍🎓 **Junior** (dispute labels, include/exclude switch) — see Work Split
 **Sprint:** Phase 3 — Trial Readiness
 **Status:** Draft — technical approach to be decided (Manoj + Uday Augustin), after CLINIC-013
 **Depends On:** CLINIC-011 (report upload), CLINIC-013 (which model reads the name from a report photo)
@@ -30,6 +31,17 @@
 
 - Patients often carry a family member's reports in the same folder. A wrong report mixed into the AI summary could mislead the doctor.
 - Indian names are written in many ways (initials first or last, father's name, spelling differences, Tamil and English script), so "different name" has to allow for that — and say "uncertain" rather than guess.
+
+---
+
+## Work Split
+
+| Task | Who | Effort |
+|---|---|---|
+| Choose the approach (A/B/C) and the model for reading names | 👨‍💻 Senior + **Uday Augustin** | after CLINIC-013 |
+| Name extraction from report photos, matching function + unit tests, migration `010` | 👨‍💻 Senior | 2 days |
+| Mobile: mismatch alert, "Report in Dispute" label, replace report | 🧑‍🎓 Junior | 0.5 day |
+| Doctor web + summary: dispute labels, "Include disputed reports" switch | 🧑‍🎓 Junior | 0.5 day |
 
 ---
 
