@@ -59,6 +59,9 @@ npm run dev                    # port 4000; creates the tables automatically on 
 npm run seed
 ```
 
+The seed also creates two demo logins in "Default Clinic" (local only, never production):
+doctor `9000000001` / `demo1234`, attender `9000000002` / `demo1234`.
+
 **Whisper speech-to-text** (terminal 2)
 
 ```bash

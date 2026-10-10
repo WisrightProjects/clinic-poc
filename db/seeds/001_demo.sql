@@ -1,41 +1,59 @@
-INSERT INTO departments (id, name) VALUES (1, 'General')
+-- Rows are looked up by name, not fixed ids: on a fresh database migration 005
+-- (Physician/Gynaecologist) runs first and takes department/template id 1.
+-- Everything belongs to 'Default Clinic' (created by migration 006).
+INSERT INTO departments (name) VALUES ('General')
   ON CONFLICT (name) DO NOTHING;
 
-INSERT INTO question_templates (id, department_id, name, is_active)
-  SELECT 1, 1, 'General Intake', true
-  WHERE NOT EXISTS (SELECT 1 FROM question_templates WHERE id = 1);
+INSERT INTO question_templates (department_id, name, is_active, clinic_id)
+  SELECT d.id, 'General Intake', true, c.id
+  FROM departments d, clinics c
+  WHERE d.name = 'General' AND c.name = 'Default Clinic'
+  AND NOT EXISTS (
+    SELECT 1 FROM question_templates qt WHERE qt.department_id = d.id AND qt.clinic_id = c.id
+  );
 
+WITH t AS (
+  SELECT qt.id FROM question_templates qt
+  JOIN departments d ON d.id = qt.department_id AND d.name = 'General'
+  JOIN clinics c ON c.id = qt.clinic_id AND c.name = 'Default Clinic'
+)
 INSERT INTO questions (template_id, order_index, text)
-  SELECT vals.* FROM (VALUES
-    (1, 1, 'Main complaint today?'),
-    (1, 2, 'Since how long?'),
-    (1, 3, 'Any medication taken?'),
-    (1, 4, 'Any known allergies?'),
-    (1, 5, 'Past medical history?')
-  ) AS vals(template_id, order_index, text)
-  WHERE NOT EXISTS (SELECT 1 FROM questions WHERE template_id = 1);
+  SELECT t.id, vals.order_index, vals.text
+  FROM t, (VALUES
+    (1, 'Main complaint today?'),
+    (2, 'Since how long?'),
+    (3, 'Any medication taken?'),
+    (4, 'Any known allergies?'),
+    (5, 'Past medical history?')
+  ) AS vals(order_index, text)
+  WHERE NOT EXISTS (SELECT 1 FROM questions q WHERE q.template_id = t.id);
 
-INSERT INTO visits (token_number, patient_name, age, sex, department_id, status)
-  SELECT v.token_number, v.patient_name, v.age, v.sex, v.department_id, v.status::visit_status
+INSERT INTO visits (token_number, patient_name, age, sex, department_id, status, clinic_id)
+  SELECT v.token_number, v.patient_name, v.age, v.sex, d.id, v.status::visit_status, c.id
   FROM (VALUES
-    (4,  'Lakshmi Krishnamurthy', 34, 'Female', 1, 'summarised'),
-    (5,  'Arun M.',               41, 'Male',   1, 'waiting'),
-    (6,  'Deepa N.',              28, 'Female', 1, 'waiting'),
-    (7,  'Suresh P.',             52, 'Male',   1, 'answering'),
-    (8,  'Kavitha R.',            36, 'Female', 1, 'answered'),
-    (9,  'Bala S.',               45, 'Male',   1, 'waiting'),
-    (10, 'Nithya K.',             30, 'Female', 1, 'waiting'),
-    (11, 'Ravi T.',               60, 'Male',   1, 'done'),
-    (12, 'Meena V.',              22, 'Female', 1, 'summarised'),
-    (13, 'Gopal R.',              48, 'Male',   1, 'answered')
-  ) AS v(token_number, patient_name, age, sex, department_id, status)
-  WHERE NOT EXISTS (SELECT 1 FROM visits WHERE token_number = v.token_number);
+    (4,  'Lakshmi Krishnamurthy', 34, 'Female', 'summarised'),
+    (5,  'Arun M.',               41, 'Male',   'waiting'),
+    (6,  'Deepa N.',              28, 'Female', 'waiting'),
+    (7,  'Suresh P.',             52, 'Male',   'answering'),
+    (8,  'Kavitha R.',            36, 'Female', 'answered'),
+    (9,  'Bala S.',               45, 'Male',   'waiting'),
+    (10, 'Nithya K.',             30, 'Female', 'waiting'),
+    (11, 'Ravi T.',               60, 'Male',   'done'),
+    (12, 'Meena V.',              22, 'Female', 'summarised'),
+    (13, 'Gopal R.',              48, 'Male',   'answered')
+  ) AS v(token_number, patient_name, age, sex, status)
+  JOIN departments d ON d.name = 'General'
+  JOIN clinics c ON c.name = 'Default Clinic'
+  WHERE NOT EXISTS (
+    SELECT 1 FROM visits ex WHERE ex.token_number = v.token_number AND ex.clinic_id = c.id
+  );
 
 INSERT INTO summaries (visit_id, summary_text, generated_by)
   SELECT v.id,
     'Patient (F/34) presents with fever for 3 days and a severe headache. No medication taken prior to visit. No known allergies. No significant past history — BP normal, no diabetes. Requires physical examination. Consider CBC and fever panel.',
     'mock'
   FROM visits v
+  JOIN clinics c ON c.id = v.clinic_id AND c.name = 'Default Clinic'
   WHERE v.token_number = 4
   AND NOT EXISTS (SELECT 1 FROM summaries s WHERE s.visit_id = v.id);
 
@@ -76,8 +94,11 @@ INSERT INTO answers (visit_id, question_id, audio_path, transcript, transcript_s
     (13, 4, 'Endha allergy-um theriyala.'),
     (13, 5, 'Munnaadi onnum periya problem illai.')
   ) AS a(token_number, order_index, transcript)
-  JOIN visits vis ON vis.token_number = a.token_number
-  JOIN questions q ON q.template_id = 1 AND q.order_index = a.order_index
+  JOIN clinics c ON c.name = 'Default Clinic'
+  JOIN visits vis ON vis.token_number = a.token_number AND vis.clinic_id = c.id
+  JOIN departments d ON d.name = 'General'
+  JOIN question_templates qt ON qt.department_id = d.id AND qt.clinic_id = c.id
+  JOIN questions q ON q.template_id = qt.id AND q.order_index = a.order_index
   WHERE NOT EXISTS (
     SELECT 1 FROM answers ex WHERE ex.visit_id = vis.id AND ex.question_id = q.id
   );
@@ -90,5 +111,18 @@ INSERT INTO summaries (visit_id, summary_text, generated_by)
     || 'Requires physical examination and basic investigations.',
     'mock'
   FROM visits v
+  JOIN clinics c ON c.id = v.clinic_id AND c.name = 'Default Clinic'
   WHERE v.token_number IN (11, 12)
   AND NOT EXISTS (SELECT 1 FROM summaries s WHERE s.visit_id = v.id);
+
+-- Demo logins for LOCAL development only (CLINIC-008), listed in README.md.
+-- Password for both: demo1234 (bcrypt hash below). Never run against production.
+INSERT INTO users (clinic_id, name, mobile, password_hash, role)
+  SELECT c.id, u.name, u.mobile,
+    '$2a$10$jjYDkdXnWIFxL0WPjDAO..DRSCa64ymoxAwW9KGEeTHynMTzVRxBa', u.role
+  FROM (VALUES
+    ('Dr. Demo Doctor', '9000000001', 'doctor'),
+    ('Demo Attender',   '9000000002', 'attender')
+  ) AS u(name, mobile, role)
+  JOIN clinics c ON c.name = 'Default Clinic'
+  ON CONFLICT (mobile) DO NOTHING;
