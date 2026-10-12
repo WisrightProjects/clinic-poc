@@ -27,7 +27,8 @@
         {
           "microphonePermission": "ClinicAI needs microphone access to record patient answers."
         }
-      ]
+      ],
+      "expo-secure-store"
     ]
   }
 }

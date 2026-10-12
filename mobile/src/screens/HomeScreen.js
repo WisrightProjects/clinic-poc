@@ -16,12 +16,14 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   StyleSheet,
+  Alert,
 } from 'react-native';
 // Use the safe-area-context SafeAreaView (not RN's deprecated one) so the bottom
 // inset is applied on Android — otherwise the footer button hides behind the nav bar.
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useVisitQueue } from '../hooks/useVisitQueue';
+import { useSession, clearSession } from '../auth/authStore';
 
 const NAVY = '#1a3050';
 const TEAL = '#0a8f8f';
@@ -176,6 +178,14 @@ export default function HomeScreen() {
   const { visits, loading, error, reload } = useVisitQueue();
   const today = todayKey();
   const yesterday = yesterdayKey();
+  const clinicName = useSession().session?.user?.clinic?.name;
+
+  // Clearing the session makes App.js swap in the Login screen (CLINIC-008.4).
+  const confirmLogout = () =>
+    Alert.alert('Log out?', 'You will need to sign in again.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Logout', style: 'destructive', onPress: clearSession },
+    ]);
 
   // Header count reflects TODAY's queue only — tokens reset daily, so the total
   // across all days isn't a meaningful "queue size". Older days still appear in
@@ -258,10 +268,20 @@ export default function HomeScreen() {
   return (
     <SafeAreaView style={styles.flex} edges={['bottom']}>
       <View style={styles.header}>
-        <Text style={styles.heading}>Patient Queue</Text>
-        <Text style={styles.subheading}>
-          {todayCount} {todayCount === 1 ? 'patient' : 'patients'} in today's queue
-        </Text>
+        <View style={styles.headerText}>
+          <Text style={styles.heading}>Patient Queue</Text>
+          {clinicName ? <Text style={styles.clinicName}>{clinicName}</Text> : null}
+          <Text style={styles.subheading}>
+            {todayCount} {todayCount === 1 ? 'patient' : 'patients'} in today's queue
+          </Text>
+        </View>
+        <TouchableOpacity
+          style={styles.logoutBtn}
+          onPress={confirmLogout}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Text style={styles.logoutText}>Logout</Text>
+        </TouchableOpacity>
       </View>
 
       {loading ? (
@@ -308,7 +328,17 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: '#f5f8fa' },
-  header: { paddingHorizontal: 20, paddingTop: 18, paddingBottom: 10 },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingHorizontal: 20,
+    paddingTop: 18,
+    paddingBottom: 10,
+  },
+  headerText: { flex: 1 },
+  clinicName: { fontSize: 14, fontWeight: '600', color: TEAL, marginTop: 2 },
+  logoutBtn: { paddingVertical: 6, paddingLeft: 12, minHeight: 44, justifyContent: 'center' },
+  logoutText: { color: '#c0392b', fontSize: 14, fontWeight: '700' },
   heading: { fontSize: 22, fontWeight: '700', color: NAVY },
   subheading: { fontSize: 13, color: '#6b7c93', marginTop: 2 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
