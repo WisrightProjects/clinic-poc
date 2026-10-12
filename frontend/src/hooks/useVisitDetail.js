@@ -7,27 +7,33 @@
 // and sort by order_index (same shape the mobile app derives). Output:
 // { visit, qa, summary, isLoading, error, refetch, saveSummary }.
 
-import { useEffect, useState, useCallback } from 'react'
-import { getVisit, saveSummary } from '../utils/apiClient'
+import { useEffect, useRef, useState, useCallback } from 'react'
+import { getVisit, saveSummary as putSummary } from '../utils/apiClient'
 
 export function useVisitDetail(visitId) {
   const [data, setData] = useState(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null)
+  // The visit the latest load is for: a slower response for a patient the doctor has
+  // already clicked away from must not replace the current patient's data.
+  const latestId = useRef(visitId)
 
   const load = useCallback(async () => {
+    latestId.current = visitId
     if (!visitId) {
       setData(null)
       return
     }
+    const isCurrent = () => latestId.current === visitId
     setIsLoading(true)
     setError(null)
     try {
-      setData(await getVisit(visitId))
+      const result = await getVisit(visitId)
+      if (isCurrent()) setData(result)
     } catch (e) {
-      setError(e)
+      if (isCurrent()) setError(e)
     } finally {
-      setIsLoading(false)
+      if (isCurrent()) setIsLoading(false)
     }
   }, [visitId])
 
@@ -51,9 +57,9 @@ export function useVisitDetail(visitId) {
   // Save the doctor's edited summary (CLINIC-012). The PUT returns the updated row, which
   // replaces the shown summary without a refetch that would flash the whole panel back
   // to "Loading patient…". Rejects with the server error so the caller can show it.
-  const saveVisitSummary = useCallback(
+  const saveSummary = useCallback(
     async (text) => {
-      const summary = await saveSummary(visitId, text)
+      const summary = await putSummary(visitId, text)
       // Skip if the doctor already switched to another patient while this was saving.
       setData((d) => (d?.visit?.id === summary.visit_id ? { ...d, summary } : d))
     },
@@ -67,6 +73,6 @@ export function useVisitDetail(visitId) {
     isLoading,
     error,
     refetch: load,
-    saveSummary: saveVisitSummary,
+    saveSummary,
   }
 }

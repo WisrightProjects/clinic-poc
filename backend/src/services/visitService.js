@@ -52,7 +52,7 @@ async function submit(clinicId, visitId) {
 
   // AC5: idempotent — an already-summarised/done visit returns its existing
   // summary without re-asserting the transition or inserting a duplicate row.
-  if (visit.status === 'summarised' || visit.status === 'done') {
+  if (statusEngine.isSubmitted(visit.status)) {
     const existing = await summaryRepository.findByVisitId(visitId);
     if (existing) return existing;
   }
@@ -84,13 +84,11 @@ async function submit(clinicId, visitId) {
 
 // CLINIC-012: the doctor saves an edited summary. The AI's original (summary_text) is
 // kept; the edit is stored beside it with who and when. Another clinic's visit is 404;
-// only a submitted visit (summarised/done) can be edited (AC1).
-const EDITABLE_STATUSES = ['summarised', 'done'];
-
+// only a submitted visit can be edited (AC1).
 async function editSummary(clinicId, visitId, text, userId) {
   const editedText = validateSummaryEdit(text);
   const visit = await findVisit(clinicId, visitId);
-  const summary = EDITABLE_STATUSES.includes(visit.status)
+  const summary = statusEngine.isSubmitted(visit.status)
     ? await summaryRepository.updateEdit(visit.id, editedText, userId)
     : null;
   if (!summary) throw new AppError('NO_SUMMARY', 'This visit has no summary to edit yet', 409);

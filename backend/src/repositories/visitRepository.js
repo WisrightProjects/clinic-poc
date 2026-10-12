@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const { LATEST_FIRST } = require('./summaryRepository');
 
 // Every read is scoped to the caller's clinic (CLINIC-008): another clinic's visit
 // comes back null, so callers answer 404 and ids can't be probed.
@@ -30,7 +31,7 @@ const SUMMARY_COLUMN = `
   (SELECT LEFT(s.display_text, 240)
      FROM summaries s
     WHERE s.visit_id = v.id
-    ORDER BY s.created_at DESC, s.id DESC
+    ORDER BY ${LATEST_FIRST}
     LIMIT 1) AS summary_excerpt`;
 
 // An empty statusFilter means every status.

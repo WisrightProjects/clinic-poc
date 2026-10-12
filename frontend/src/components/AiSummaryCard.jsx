@@ -51,7 +51,6 @@ export default function AiSummaryCard({ summary, status, onSave }) {
 
   function cancelEdit() {
     setEditing(false)
-    setError(null)
   }
 
   async function handleSave() {
