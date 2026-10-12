@@ -37,7 +37,9 @@ export default function AiSummaryCard({ summary, status, onSave }) {
     )
   }
 
-  const edited = Boolean(summary.edited_by_name)
+  // edited_at, not edited_by_name: if the doctor who edited is later removed, edited_by
+  // becomes NULL (ON DELETE SET NULL) but the edit — and the AI original — are still there.
+  const edited = Boolean(summary.edited_at)
   const trimmed = draft.trim()
   const canSave = !saving && trimmed.length > 0 && trimmed.length <= MAX_LENGTH && trimmed !== summary.display_text
 
@@ -101,8 +103,7 @@ export default function AiSummaryCard({ summary, status, onSave }) {
           <div className="sum-footer">
             {edited ? (
               <span className="sum-edited">
-                Edited by {summary.edited_by_name}
-                {summary.edited_at ? ` · ${formatEditedAt(summary.edited_at)}` : ''}
+                Edited{summary.edited_by_name ? ` by ${summary.edited_by_name}` : ''} · {formatEditedAt(summary.edited_at)}
               </span>
             ) : null}
             <div className="sum-actions">
