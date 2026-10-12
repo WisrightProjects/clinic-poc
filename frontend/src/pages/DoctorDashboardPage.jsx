@@ -13,6 +13,7 @@ import PatientHeader from '../components/PatientHeader'
 import StatsStrip from '../components/StatsStrip'
 import AiSummaryCard from '../components/AiSummaryCard'
 import QaList from '../components/QaList'
+import ReportsList from '../components/ReportsList'
 
 export default function DoctorDashboardPage() {
   const user = useSession()?.user
@@ -70,6 +71,13 @@ export default function DoctorDashboardPage() {
   const answeredCount = detail.qa.filter((q) => q.transcript && q.transcript.trim()).length
 
   const canMarkDone = selected && selected.status === 'summarised'
+
+  // The queue rail previews the summary's display_text, so refresh it after a save. The save
+  // itself is awaited — a failed save still rejects and shows its error in the card.
+  async function handleSummarySave(text) {
+    await detail.saveSummary(text)
+    refetch()
+  }
 
   async function handleDone() {
     if (!selected || marking) return
@@ -139,8 +147,14 @@ export default function DoctorDashboardPage() {
                 answered={answeredCount}
                 total={detail.qa.length}
               />
-              <AiSummaryCard summary={detail.summary} status={(selected ?? detail.visit).status} />
+              <AiSummaryCard
+                key={selectedId}
+                summary={detail.summary}
+                status={(selected ?? detail.visit).status}
+                onSave={handleSummarySave}
+              />
               <QaList qa={detail.qa} />
+              <ReportsList key={selectedId} reports={detail.reports} />
 
               {doneError ? <div className="done-error">{doneError}</div> : null}
               <div className="action-bar">

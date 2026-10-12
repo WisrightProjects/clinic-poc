@@ -2,6 +2,7 @@ const config = require('../config');
 const answerService = require('../services/answerService');
 const { AppError } = require('../utils/errors');
 const { validateAnswer } = require('../utils/answerValidation');
+const { sendStoredFile } = require('../utils/sendStoredFile');
 
 // An answer is either a recording (multipart file "audio") or typed text (field "text"),
 // never both and never neither (CLINIC-009). multer parses the multipart body in both
@@ -18,12 +19,9 @@ async function create(req, res) {
   res.status(201).json(answer);
 }
 
-// sendFile with `root` refuses paths that escape AUDIO_DIR (e.g. '..').
 async function audio(req, res, next) {
   const audioPath = await answerService.getAudioPath(req.user.clinicId, req.params.id);
-  res.sendFile(audioPath, { root: config.audioDir }, err => {
-    if (err && !res.headersSent) next(new AppError('NOT_FOUND', 'Recording not found', 404));
-  });
+  sendStoredFile(res, next, config.audioDir, audioPath, { notFoundMessage: 'Recording not found' });
 }
 
 module.exports = { create, audio };

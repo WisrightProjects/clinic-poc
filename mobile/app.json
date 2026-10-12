@@ -28,6 +28,13 @@
           "microphonePermission": "ClinicAI needs microphone access to record patient answers."
         }
       ],
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "ClinicAI needs camera access to photograph the patient's previous reports.",
+          "photosPermission": "ClinicAI needs photo access to attach the patient's previous reports."
+        }
+      ],
       "expo-secure-store"
     ]
   }

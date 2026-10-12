@@ -2,10 +2,12 @@ const visitRepository = require('../repositories/visitRepository');
 const answerRepository = require('../repositories/answerRepository');
 const summaryRepository = require('../repositories/summaryRepository');
 const templateRepository = require('../repositories/templateRepository');
+const reportRepository = require('../repositories/reportRepository');
 const statusEngine = require('./statusEngine');
 const summaryService = require('./summaryService');
 const { AppError } = require('../utils/errors');
 const { validateNewVisit } = require('../utils/visitValidation');
+const { validateSummaryEdit } = require('../utils/summaryValidation');
 
 // Every entry point takes the signed-in user's clinicId (CLINIC-008). A visit from
 // another clinic is NOT_FOUND, exactly like a missing one, so ids can't be probed.
@@ -27,12 +29,13 @@ async function list(clinicId, statusQuery) {
 
 async function getById(clinicId, id) {
   const visit = await findVisit(clinicId, id);
-  const [template, answers, summary] = await Promise.all([
+  const [template, answers, summary, reports] = await Promise.all([
     templateRepository.findActiveForVisit(visit),
     answerRepository.findByVisitId(visit.id),
     summaryRepository.findByVisitId(visit.id),
+    reportRepository.findByVisitId(visit.id),
   ]);
-  return { visit, template, answers, summary };
+  return { visit, template, answers, summary, reports };
 }
 
 // The doctor's "mark done" action. Other statuses are set by the intake flow itself
@@ -51,7 +54,7 @@ async function submit(clinicId, visitId) {
 
   // AC5: idempotent — an already-summarised/done visit returns its existing
   // summary without re-asserting the transition or inserting a duplicate row.
-  if (visit.status === 'summarised' || visit.status === 'done') {
+  if (statusEngine.isSubmitted(visit.status)) {
     const existing = await summaryRepository.findByVisitId(visitId);
     if (existing) return existing;
   }
@@ -81,6 +84,19 @@ async function submit(clinicId, visitId) {
   return summary; // return the summary row so the client can render it without a reload
 }
 
+// CLINIC-012: the doctor saves an edited summary. The AI's original (summary_text) is
+// kept; the edit is stored beside it with who and when. Another clinic's visit is 404;
+// only a submitted visit can be edited (AC1).
+async function editSummary(clinicId, visitId, text, userId) {
+  const editedText = validateSummaryEdit(text);
+  const visit = await findVisit(clinicId, visitId);
+  const summary = statusEngine.isSubmitted(visit.status)
+    ? await summaryRepository.updateEdit(visit.id, editedText, userId)
+    : null;
+  if (!summary) throw new AppError('NO_SUMMARY', 'This visit has no summary to edit yet', 409);
+  return summary;
+}
+
 // Takes the visit and template the caller already loaded (clinic-scoped). The first
 // answer moves waiting -> answering; the same call continues to 'answered' when that
 // answer was the last one (e.g. a one-question template).
@@ -100,4 +116,4 @@ async function maybeAdvance(visit, template) {
   }
 }
 
-module.exports = { findVisit, create, list, getById, updateStatus, submit, maybeAdvance };
+module.exports = { findVisit, create, list, getById, updateStatus, submit, editSummary, maybeAdvance };
