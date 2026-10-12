@@ -30,6 +30,7 @@ async function request(path, options = {}) {
     err.status = res.status
     throw err
   }
+  if (options.asBlob) return res.blob()
   return res.status === 204 ? null : res.json()
 }
 
@@ -41,7 +42,7 @@ export const login = (mobile, password) =>
 export const getVisits = (status) =>
   request(`/visits${status ? `?status=${encodeURIComponent(status)}` : ''}`)
 
-// GET /api/visits/:id — { visit, template, answers, summary }
+// GET /api/visits/:id — { visit, template, answers, summary, reports }
 export const getVisit = (id) => request(`/visits/${id}`)
 
 // POST /api/visits/:id/test-request — doctor sends a summarised (waiting) patient for
@@ -52,6 +53,11 @@ export const requestTests = (id, note) =>
     method: 'POST',
     body: JSON.stringify({ note }),
   })
+
+// GET /api/reports/:id/file — a previous-report photo (CLINIC-011) as a Blob. The route
+// needs the login header, so a plain <img src> can't load it: fetch it here, then show
+// it through URL.createObjectURL (see components/ReportsList.jsx).
+export const getReportImage = (id) => request(`/reports/${id}/file`, { asBlob: true })
 
 // PATCH /api/visits/:id/status — doctor marks a summarised visit done
 export const setVisitDone = (id) =>

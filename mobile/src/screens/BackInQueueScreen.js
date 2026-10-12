@@ -1,15 +1,18 @@
 // Purpose: CLINIC-014.3 — a patient the doctor sent for tests is back. Shows the doctor's
-// note and how many result photos are uploaded, and "Back in queue" puts the patient at the
-// END of today's queue (POST /visits/:id/requeue; the original date, answers, summary and
-// note are kept). With no results uploaded the attender is warned but can still re-queue.
-// Opened from the "Waiting for tests" section on Home.
+// note and lets the attender add the test results as photos (the CLINIC-011 reports section,
+// allowed while the visit is waiting for tests). "Back in queue" puts the patient at the END
+// of today's queue (POST /visits/:id/requeue; the original date, answers, summary and note
+// are kept). If no result was added since the doctor's request, the attender is warned but
+// can still re-queue. Opened from the "Waiting for tests" section on Home.
 
 import React, { useCallback, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { PatientHeader } from '../components/PatientHeader';
+import { ReportsSection } from '../components/ReportsSection';
 import { getVisitDetail } from '../api/visitApi';
+import { listReports } from '../api/reportApi';
 import { requeueVisit } from '../api/testRequestApi';
 
 const NAVY = '#1a3050';
@@ -38,7 +41,7 @@ export default function BackInQueueScreen() {
     }
   }, [visitId]);
 
-  // Reload on focus so results uploaded elsewhere are counted when the attender returns.
+  // Reload on focus so the screen shows the current state when the attender returns.
   useFocusEffect(
     useCallback(() => {
       load();
@@ -47,8 +50,15 @@ export default function BackInQueueScreen() {
 
   const visit = data?.visit;
   const latest = data?.test_requests?.[0];
-  const resultCount = data?.reports?.length ?? 0;
   const waiting = visit?.status === 'tests_requested';
+
+  // Results = reports added after the doctor's request. Older reports (photographed during
+  // intake) don't count, or the "no results" warning would never show for a patient who
+  // brought old reports. Read fresh, since photos were just added in the section below.
+  const countResults = async () => {
+    const reports = await listReports(visitId);
+    return reports.filter((r) => latest && new Date(r.created_at) >= new Date(latest.requested_at)).length;
+  };
 
   const requeue = async () => {
     setSending(true);
@@ -64,7 +74,13 @@ export default function BackInQueueScreen() {
     }
   };
 
-  const onBackInQueue = () => {
+  const onBackInQueue = async () => {
+    let resultCount = 0;
+    try {
+      resultCount = await countResults();
+    } catch {
+      // Can't tell: don't block the attender — the warning below just asks them to confirm.
+    }
     if (resultCount > 0) return requeue();
     Alert.alert(
       'No test results uploaded',
@@ -109,11 +125,13 @@ export default function BackInQueueScreen() {
           </View>
         ) : null}
 
-        <View style={styles.card}>
-          <Text style={styles.cardLabel}>Test results</Text>
-          <Text style={styles.results}>
-            {resultCount > 0 ? `${resultCount} photo${resultCount === 1 ? '' : 's'} uploaded` : 'No results uploaded yet'}
-          </Text>
+        <View style={styles.resultsCard}>
+          <ReportsSection
+            visitId={visitId}
+            editable={waiting}
+            title="Test results"
+            hint="Add photos of the test results the patient brought."
+          />
         </View>
 
         {!waiting ? (
@@ -143,7 +161,8 @@ const styles = StyleSheet.create({
   cardLabel: { fontSize: 12, fontWeight: '800', color: '#6b7c93', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6 },
   note: { fontSize: 16, color: NAVY, lineHeight: 23 },
   meta: { fontSize: 12.5, color: '#6b7c93', marginTop: 8 },
-  results: { fontSize: 16, fontWeight: '600', color: NAVY },
+  // The reports section draws its own white strip; round it to match the note card above.
+  resultsCard: { borderRadius: 10, borderWidth: 1, borderColor: '#e8edf2', overflow: 'hidden', marginBottom: 12 },
   closed: { fontSize: 14, color: '#6b7c93', textAlign: 'center', marginTop: 8 },
   footer: { padding: 16, borderTopWidth: 1, borderTopColor: '#e8edf2', backgroundColor: '#ffffff' },
   btn: { backgroundColor: TEAL, borderRadius: 10, paddingVertical: 15, alignItems: 'center', minHeight: 50, justifyContent: 'center' },

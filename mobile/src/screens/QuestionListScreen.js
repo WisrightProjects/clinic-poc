@@ -20,8 +20,11 @@ import { PatientHeader } from '../components/PatientHeader';
 import { ProgressBar } from '../components/ProgressBar';
 import { IntakeQuestionRow } from '../components/IntakeQuestionRow';
 import { SendToDoctorButton } from '../components/SendToDoctorButton';
+import { ReportsSection } from '../components/ReportsSection';
 
 const NAVY = '#1a3050';
+// Report photos can only be added/removed until the visit is submitted (CLINIC-011).
+const EDITABLE_STATUSES = ['waiting', 'answering', 'answered'];
 
 export default function QuestionListScreen() {
   const navigation = useNavigation();
@@ -91,6 +94,7 @@ export default function QuestionListScreen() {
         )}
         style={styles.flex}
       />
+      <ReportsSection visitId={visitId} editable={EDITABLE_STATUSES.includes(visit?.status)} />
       <SendToDoctorButton
         disabled={!allAnswered}
         onPress={() => navigation.navigate('Review', { visitId })}

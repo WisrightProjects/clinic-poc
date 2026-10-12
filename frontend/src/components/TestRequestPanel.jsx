@@ -4,7 +4,7 @@
 // This panel shows: the button + note dialog, the current "waiting for tests" state, the
 // "Returned with test results" badge with the doctor's earlier note, and the history.
 // Notes are plain text only (React text nodes / a textarea), never HTML.
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { requestTests } from '../utils/apiClient'
 
 const MAX_NOTE = 1000 // matches backend/src/utils/testRequestValidation.js
@@ -40,6 +40,15 @@ function SendDialog({ onSend, onClose }) {
   const trimmed = note.trim()
   const tooLong = trimmed.length > MAX_NOTE
   const canSend = !sending && trimmed.length > 0 && !tooLong
+
+  // Esc closes the dialog (like the report viewer), but not while the request is in flight.
+  useEffect(() => {
+    function onKey(e) {
+      if (e.key === 'Escape' && !sending) onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [sending, onClose])
 
   async function submit() {
     if (!canSend) return
