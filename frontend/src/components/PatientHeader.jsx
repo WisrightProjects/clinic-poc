@@ -11,7 +11,7 @@ export default function PatientHeader({ visit }) {
       <div>
         <div className="dm-name">{visit.patient_name}</div>
         <div className="dm-sub">
-          Token {visit.token_number}
+          Token {visit.queue_token}
           {demo ? ` · ${demo}` : ''}
         </div>
       </div>

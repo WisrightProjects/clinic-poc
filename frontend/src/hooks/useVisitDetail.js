@@ -5,7 +5,7 @@
 // The API returns { visit, template, answers, summary } where questions live in
 // template.questions and transcripts in answers. We merge them by question_id
 // and sort by order_index (same shape the mobile app derives). Output:
-// { visit, qa, summary, reports, isLoading, error, refetch }.
+// { visit, qa, summary, reports, testRequests, isLoading, error, refetch }.
 
 import { useEffect, useState, useCallback } from 'react'
 import { getVisit } from '../utils/apiClient'
@@ -15,19 +15,20 @@ export function useVisitDetail(visitId) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null)
 
-  const load = useCallback(async () => {
+  // silent = refresh the data in place, without flipping the page to "Loading patient…".
+  const load = useCallback(async ({ silent = false } = {}) => {
     if (!visitId) {
       setData(null)
       return
     }
-    setIsLoading(true)
+    if (!silent) setIsLoading(true)
     setError(null)
     try {
       setData(await getVisit(visitId))
     } catch (e) {
       setError(e)
     } finally {
-      setIsLoading(false)
+      if (!silent) setIsLoading(false)
     }
   }, [visitId])
 
@@ -53,6 +54,7 @@ export function useVisitDetail(visitId) {
     qa,
     summary: data?.summary ?? null,
     reports: data?.reports ?? [],
+    testRequests: data?.test_requests ?? [], // CLINIC-014 history, newest first
     isLoading,
     error,
     refetch: load,

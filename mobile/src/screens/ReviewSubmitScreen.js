@@ -50,7 +50,7 @@ export default function ReviewSubmitScreen() {
     if (res) {
       navigation.replace('Sent', {
         patientName: visit?.patient_name,
-        token: visit?.token_number,
+        token: visit?.queue_token,
         answeredCount,
         total,
         summaryText: res.summary?.summary_text ?? summaryText,
@@ -88,7 +88,7 @@ export default function ReviewSubmitScreen() {
 
   return (
     <SafeAreaView style={styles.flex} edges={['bottom']}>
-      {visit && <PatientHeader name={visit.patient_name} token={visit.token_number} />}
+      {visit && <PatientHeader name={visit.patient_name} token={visit.queue_token} />}
 
       <ScrollView contentContainerStyle={styles.scroll}>
         <Text style={styles.sectionLabel}>

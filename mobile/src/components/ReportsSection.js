@@ -53,7 +53,14 @@ function Thumbnail({ report, editable, disabled, onRemove }) {
   );
 }
 
-export function ReportsSection({ visitId, editable }) {
+// title / hint: the heading and the empty-state line (the Back from tests screen reuses this
+// section to add test results, CLINIC-014).
+export function ReportsSection({
+  visitId,
+  editable,
+  title = 'Previous reports',
+  hint = 'Optional — add photos of any old reports the patient brought.',
+}) {
   const { reports, remaining, busy, error, addFromCamera, addFromGallery, remove } = useReports(visitId);
 
   const onAdd = () =>
@@ -74,7 +81,7 @@ export function ReportsSection({ visitId, editable }) {
   return (
     <View style={styles.section}>
       <View style={styles.header}>
-        <Text style={styles.title}>Previous reports{reports.length ? ` (${reports.length})` : ''}</Text>
+        <Text style={styles.title}>{title}{reports.length ? ` (${reports.length})` : ''}</Text>
         {busy ? <ActivityIndicator size="small" color={TEAL} style={styles.spinner} /> : null}
         {editable ? (
           <TouchableOpacity style={styles.addBtn} onPress={onAdd} disabled={busy || remaining <= 0}>
@@ -90,7 +97,7 @@ export function ReportsSection({ visitId, editable }) {
           ))}
         </ScrollView>
       ) : (
-        <Text style={styles.hint}>Optional — add photos of any old reports the patient brought.</Text>
+        <Text style={styles.hint}>{hint}</Text>
       )}
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
