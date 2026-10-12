@@ -1,5 +1,5 @@
 // Purpose: API wrappers for visit endpoints.
-// Uses the shared axios instance from client.js (x-role: attender header is pre-set).
+// Uses the shared axios instance from client.js (Bearer token is attached by its interceptor).
 //
 // Response shape for getVisitDetail:
 //   { visit, template, answers, summary }

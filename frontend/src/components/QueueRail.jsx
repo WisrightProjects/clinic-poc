@@ -9,11 +9,6 @@
 import { useState } from 'react'
 import StatusChip from './StatusChip'
 
-// Clinic name and doctor are static placeholders — the POC has no clinic entity
-// and no doctor login to populate them (auth is just the x-role header).
-const CLINIC_NAME = 'CarePoint Clinic'
-const DOCTOR_LINE = 'Dr. S. Ramesh · General'
-
 // Local calendar day as YYYY-MM-DD, so "Today"/"Yesterday" match the wall clock
 // without a timezone shift.
 function dayKey(d) {
@@ -101,7 +96,7 @@ function groupLabel(key, today, yesterday) {
   return formatDate(key)
 }
 
-export default function QueueRail({ visits, selectedId, onSelect, isLoading, error, onRetry }) {
+export default function QueueRail({ user, visits, selectedId, onSelect, isLoading, error, onRetry }) {
   const groups = groupByDate(visits)
   const today = todayKey()
   const yesterday = yesterdayKey()
@@ -133,9 +128,9 @@ export default function QueueRail({ visits, selectedId, onSelect, isLoading, err
   return (
     <aside className="rail">
       <div className="rail-clinic">
-        <div className="rail-clinic-name">{CLINIC_NAME}</div>
+        <div className="rail-clinic-name">{user?.clinic?.name}</div>
         <div className="rail-clinic-date">{formatDate(today)}</div>
-        <div className="rail-clinic-doc">{DOCTOR_LINE}</div>
+        <div className="rail-clinic-doc">{user?.name}</div>
       </div>
 
       <div className="rail-head">
