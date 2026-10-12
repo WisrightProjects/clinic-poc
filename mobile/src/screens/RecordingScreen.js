@@ -1,7 +1,9 @@
-// Purpose: Voice recording screen (M-02). Records the patient's spoken answer to a
-// question, uploads it, and returns to the intake list (which reloads on focus and
-// shows the transcript + Done). All recorder logic lives in useAudioRecorder; this
-// screen renders states and orchestrates the upload + retry.
+// Purpose: Answer screen (M-02). Records the patient's spoken answer to a question, or —
+// via "Type instead" (CLINIC-009) — takes it typed; neither is compulsory. Uploads it and
+// returns to the intake list (which reloads on focus and shows the transcript + Done).
+// All recorder logic lives in useAudioRecorder; this screen renders states and orchestrates
+// the upload + retry. A typed answer is stored as a finished transcript, so there is no
+// transcription to wait for.
 //
 // Route params: { visitId, questionId, questionText?, index?, total? }
 
@@ -22,6 +24,8 @@ import { useAudioRecorder } from '../hooks/useAudioRecorder';
 import { uploadAnswer, waitForAnswerTranscript } from '../api/answerApi';
 import { Waveform } from '../components/Waveform';
 import { RecordTimer } from '../components/RecordTimer';
+import { QuestionCard } from '../components/QuestionCard';
+import { TypedAnswerForm } from '../components/TypedAnswerForm';
 
 const NAVY = '#1a3050';
 const TEAL = '#0a8f8f';
@@ -35,6 +39,7 @@ export default function RecordingScreen() {
   const rec = useAudioRecorder();
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState(null);
+  const [typing, setTyping] = useState(false); // "Type instead" (CLINIC-009)
 
   const doUpload = useCallback(
     async (fileUri) => {
@@ -49,7 +54,7 @@ export default function RecordingScreen() {
         navigation.goBack(); // list reloads on focus → shows transcript + Done
       } catch (err) {
         // AC6/AC10: keep the local file, surface a retry action
-        setUploadError(err?.message ?? 'Could not save the answer. Please retry.');
+        setUploadError(err?.response?.data?.error?.message ?? err?.message ?? 'Could not save the answer. Please retry.');
         setUploading(false);
       }
     },
@@ -62,6 +67,27 @@ export default function RecordingScreen() {
     doUpload(fileUri);
   }, [rec, doUpload]);
 
+  // --- Typing instead of recording (CLINIC-009) ---
+  if (typing) {
+    return (
+      <TypedAnswerForm
+        visitId={visitId}
+        questionId={questionId}
+        questionText={questionText}
+        index={index}
+        total={total}
+        onCancel={() => setTyping(false)}
+      />
+    );
+  }
+
+  // Neither method is compulsory: offered next to Record, and when the microphone is denied.
+  const typeInsteadBtn = (
+    <TouchableOpacity style={styles.secondaryBtn} onPress={() => setTyping(true)}>
+      <Text style={styles.secondaryBtnText}>Type instead</Text>
+    </TouchableOpacity>
+  );
+
   // --- Permission denied (AC2) ---
   if (rec.status === 'denied') {
     return (
@@ -70,7 +96,8 @@ export default function RecordingScreen() {
           <Text style={styles.bigIcon}>🎙️</Text>
           <Text style={styles.title}>Microphone access needed</Text>
           <Text style={styles.body}>
-            Microphone access is needed to record answers. Enable it in Settings, then try again.
+            Microphone access is needed to record answers. Enable it in Settings, then try again —
+            or type the answer instead.
           </Text>
           <TouchableOpacity style={styles.primaryBtn} onPress={() => Linking.openSettings()}>
             <Text style={styles.primaryBtnText}>Open Settings</Text>
@@ -78,6 +105,7 @@ export default function RecordingScreen() {
           <TouchableOpacity style={styles.secondaryBtn} onPress={rec.reset}>
             <Text style={styles.secondaryBtnText}>Try Again</Text>
           </TouchableOpacity>
+          {typeInsteadBtn}
         </View>
       </SafeAreaView>
     );
@@ -87,14 +115,7 @@ export default function RecordingScreen() {
 
   return (
     <SafeAreaView style={styles.flex} edges={['bottom']}>
-      <View style={styles.questionCard}>
-        {index && total ? (
-          <Text style={styles.qMeta}>
-            Question {index} of {total}
-          </Text>
-        ) : null}
-        <Text style={styles.qText}>{questionText ?? 'Record the answer'}</Text>
-      </View>
+      <QuestionCard index={index} total={total} questionText={questionText} />
 
       <View style={styles.stage}>
         {uploading ? (
@@ -141,10 +162,13 @@ export default function RecordingScreen() {
               <Text style={styles.stopBtnText}>Stop &amp; Save Answer</Text>
             </TouchableOpacity>
           ) : (
-            <TouchableOpacity style={styles.recordBtn} onPress={rec.start}>
-              <View style={styles.recordDot} />
-              <Text style={styles.recordBtnText}>Record</Text>
-            </TouchableOpacity>
+            <>
+              <TouchableOpacity style={styles.recordBtn} onPress={rec.start}>
+                <View style={styles.recordDot} />
+                <Text style={styles.recordBtnText}>Record</Text>
+              </TouchableOpacity>
+              {typeInsteadBtn}
+            </>
           )}
         </View>
       )}
@@ -154,16 +178,6 @@ export default function RecordingScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: '#f5f8fa' },
-  questionCard: {
-    backgroundColor: '#ffffff',
-    margin: 16,
-    padding: 18,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#e8edf2',
-  },
-  qMeta: { fontSize: 12, fontWeight: '700', color: TEAL, letterSpacing: 0.5, marginBottom: 6 },
-  qText: { fontSize: 18, fontWeight: '600', color: NAVY },
   stage: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   centered: { alignItems: 'center', justifyContent: 'center' },
   hint: { marginTop: 16, fontSize: 14, color: '#6b7c93', fontWeight: '600' },
