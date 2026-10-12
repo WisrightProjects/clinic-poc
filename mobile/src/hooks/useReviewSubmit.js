@@ -50,7 +50,8 @@ export function useReviewSubmit(visitId) {
   const total = qa.length;
   const answeredCount = qa.filter((q) => q.transcript && q.transcript.trim()).length;
   const allAnswered = total > 0 && answeredCount === total;
-  const summaryText = data?.summary?.summary_text ?? null;
+  // display_text = the doctor's edit if there is one, else the AI text (CLINIC-012).
+  const summaryText = data?.summary?.display_text ?? null;
 
   const submit = useCallback(async () => {
     if (submitState === 'sending') return null; // guard double-tap (AC5 client side)
