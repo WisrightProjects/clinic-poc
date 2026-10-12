@@ -11,18 +11,20 @@ const TRANSITIONS = {
   done:            [],
 };
 
-// Before the attender submits. Every later status (summarised, tests_requested, done)
-// counts as submitted.
-const PRE_SUBMIT = ['waiting', 'answering', 'answered'];
+// The attender has submitted the visit (it has a summary): summarised, away for tests
+// (CLINIC-014) or done. Listed explicitly, so an unknown status never counts.
+const SUBMITTED = ['summarised', 'tests_requested', 'done'];
 
 function isSubmitted(status) {
-  return !PRE_SUBMIT.includes(status);
+  return SUBMITTED.includes(status);
 }
 
 // Report photos (CLINIC-011) can change until submit, and again while the patient is
 // away for tests, to upload the results (CLINIC-014).
+const REPORTS_EDITABLE = ['waiting', 'answering', 'answered', 'tests_requested'];
+
 function canEditReports(status) {
-  return !isSubmitted(status) || status === 'tests_requested';
+  return REPORTS_EDITABLE.includes(status);
 }
 
 function assertTransition(from, to) {

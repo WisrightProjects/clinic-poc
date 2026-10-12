@@ -26,4 +26,9 @@ async function submit(req, res) {
   res.json({ status: 'summarised', summary });
 }
 
-module.exports = { create, list, getById, updateStatus, submit };
+async function editSummary(req, res) {
+  const summary = await visitService.editSummary(req.user.clinicId, req.params.id, req.body.text, req.user.id);
+  res.json(summary);
+}
+
+module.exports = { create, list, getById, updateStatus, submit, editSummary };

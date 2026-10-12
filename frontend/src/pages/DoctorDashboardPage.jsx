@@ -82,6 +82,13 @@ export default function DoctorDashboardPage() {
     await Promise.all([detail.refetch({ silent: true }), refetch()])
   }
 
+  // The queue rail previews the summary's display_text, so refresh it after a save. The save
+  // itself is awaited — a failed save still rejects and shows its error in the card.
+  async function handleSummarySave(text) {
+    await detail.saveSummary(text)
+    refetch()
+  }
+
   async function handleDone() {
     if (!selected || marking) return
     const id = selected.id
@@ -156,7 +163,12 @@ export default function DoctorDashboardPage() {
                 requests={detail.testRequests}
                 onChanged={handleTestsChanged}
               />
-              <AiSummaryCard summary={detail.summary} status={(selected ?? detail.visit).status} />
+              <AiSummaryCard
+                key={selectedId}
+                summary={detail.summary}
+                status={(selected ?? detail.visit).status}
+                onSave={handleSummarySave}
+              />
               <QaList qa={detail.qa} />
               <ReportsList key={selectedId} reports={detail.reports} />
 

@@ -87,7 +87,7 @@ export default function ReportsList({ reports }) {
         {reports.map((r, i) => (
           <button key={r.id} className="reports-thumb" onClick={() => setOpenIndex(i)} aria-label={`Open report photo ${i + 1}`}>
             {isLoaded(images[r.id]) ? (
-              <img src={images[r.id]} alt={`Previous report ${i + 1}`} />
+              <img src={images[r.id]} alt={`Previous report ${i + 1}`} decoding="async" />
             ) : (
               <span className="reports-thumb-msg">{images[r.id] === 'error' ? 'Failed' : '…'}</span>
             )}

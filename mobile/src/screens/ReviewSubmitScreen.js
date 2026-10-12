@@ -53,7 +53,7 @@ export default function ReviewSubmitScreen() {
         token: visit?.queue_token,
         answeredCount,
         total,
-        summaryText: res.summary?.summary_text ?? summaryText,
+        summaryText: res.summary?.display_text ?? summaryText,
       });
     }
   }, [submit, navigation, visit, answeredCount, total, summaryText]);
