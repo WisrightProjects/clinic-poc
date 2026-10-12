@@ -5,7 +5,10 @@ const COLUMNS = 'r.id, r.visit_id, r.mime_type, r.size_bytes, r.uploaded_by, r.c
 
 // files: [{ path, mimeType, size }] — one INSERT for all of them. The visit row is
 // locked first and check(status, existingCount) runs inside the same transaction, so
-// two uploads at once (or a submit during a slow upload) can't pass the rules twice.
+// two uploads at once can't both pass the per-visit limit. (Submit doesn't take this
+// lock, so an upload that commits while a submit is still generating its summary is
+// kept — the doctor still sees it.) A visit deleted mid-upload has no status, which
+// check rejects.
 async function createMany(visitId, userId, files, check) {
   const params = [visitId, userId];
   const values = files.map(f => {
@@ -17,10 +20,7 @@ async function createMany(visitId, userId, files, check) {
   try {
     await client.query('BEGIN');
     const { rows: [visit] } = await client.query('SELECT status FROM visits WHERE id = $1 FOR UPDATE', [visitId]);
-    const { rows: [{ n }] } = await client.query(
-      'SELECT COUNT(*)::int AS n FROM visit_reports WHERE visit_id = $1', [visitId]
-    );
-    check(visit.status, n);
+    check(visit?.status, await countByVisitId(visitId, client));
     const { rows } = await client.query(
       `INSERT INTO visit_reports AS r (visit_id, file_path, mime_type, size_bytes, uploaded_by)
        VALUES ${values.join(', ')} RETURNING ${COLUMNS}`,
@@ -44,8 +44,9 @@ async function findByVisitId(visitId) {
   return rows;
 }
 
-async function countByVisitId(visitId) {
-  const { rows } = await db.query('SELECT COUNT(*)::int AS n FROM visit_reports WHERE visit_id = $1', [visitId]);
+// client: pass a transaction's client to count inside it.
+async function countByVisitId(visitId, client = db) {
+  const { rows } = await client.query('SELECT COUNT(*)::int AS n FROM visit_reports WHERE visit_id = $1', [visitId]);
   return rows[0].n;
 }
 

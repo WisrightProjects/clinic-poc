@@ -47,6 +47,7 @@ export function useReportImages(reports) {
           urls.current.set(id, value)
         } catch {
           value = 'error'
+          requested.current.delete(id) // try again the next time the report list changes
         }
         if (mounted.current) setImages((prev) => ({ ...prev, [id]: value }))
       }

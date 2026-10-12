@@ -47,7 +47,7 @@ export const getVisit = (id) => request(`/visits/${id}`)
 
 // GET /api/reports/:id/file — a previous-report photo (CLINIC-011) as a Blob. The route
 // needs the login header, so a plain <img src> can't load it: fetch it here, then show
-// it through URL.createObjectURL (see components/ReportsList.jsx).
+// it through URL.createObjectURL (see hooks/useReportImages.js).
 export const getReportImage = (id) => request(`/reports/${id}/file`, { asBlob: true })
 
 // PUT /api/visits/:id/summary — doctor saves an edited summary (CLINIC-012).

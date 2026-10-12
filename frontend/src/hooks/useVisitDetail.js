@@ -2,7 +2,7 @@
 // visitId changes — never on a queue poll — so the open panel is not reset or
 // re-fetched by background refreshes (AC3).
 //
-// The API returns { visit, template, answers, summary } where questions live in
+// The API returns { visit, template, answers, summary, reports } where questions live in
 // template.questions and transcripts in answers. We merge them by question_id
 // and sort by order_index (same shape the mobile app derives). Output:
 // { visit, qa, summary, reports, isLoading, error, refetch, saveSummary }.
