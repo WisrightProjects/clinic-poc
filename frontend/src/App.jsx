@@ -9,8 +9,11 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      {/* The open patient is in the URL (/doctor/:visitId) so the phone's back button
+          returns to the queue. One optional-segment route, so moving between the queue and
+          a patient keeps the same page mounted (no reload of the polled queue). */}
       <Route
-        path="/doctor"
+        path="/doctor/:visitId?"
         element={
           <RequireDoctor>
             <DoctorDashboardPage />
