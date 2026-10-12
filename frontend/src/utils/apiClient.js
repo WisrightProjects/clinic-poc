@@ -42,8 +42,17 @@ export const login = (mobile, password) =>
 export const getVisits = (status) =>
   request(`/visits${status ? `?status=${encodeURIComponent(status)}` : ''}`)
 
-// GET /api/visits/:id — { visit, template, answers, summary, reports }
+// GET /api/visits/:id — { visit, template, answers, summary, reports, test_requests }
 export const getVisit = (id) => request(`/visits/${id}`)
+
+// POST /api/visits/:id/test-request — doctor sends a summarised (waiting) patient for
+// tests with a required note (CLINIC-014). 409 = the visit is no longer summarised,
+// 422 = empty note or over 1000 characters.
+export const requestTests = (id, note) =>
+  request(`/visits/${id}/test-request`, {
+    method: 'POST',
+    body: JSON.stringify({ note }),
+  })
 
 // GET /api/reports/:id/file — a previous-report photo (CLINIC-011) as a Blob. The route
 // needs the login header, so a plain <img src> can't load it: fetch it here, then show

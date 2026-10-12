@@ -14,6 +14,8 @@ import StatsStrip from '../components/StatsStrip'
 import AiSummaryCard from '../components/AiSummaryCard'
 import QaList from '../components/QaList'
 import ReportsList from '../components/ReportsList'
+import TestRequestPanel from '../components/TestRequestPanel'
+import { isInQueueOn } from '../utils/queue'
 
 export default function DoctorDashboardPage() {
   const user = useSession()?.user
@@ -64,13 +66,21 @@ export default function DoctorDashboardPage() {
     const p = (n) => String(n).padStart(2, '0')
     return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
   })()
-  const todaysVisits = queue.filter((v) => (v.visit_date || '').slice(0, 10) === today)
+  // A returned patient counts on the day they re-joined the queue; a patient still away
+  // for tests is not in today's queue.
+  const todaysVisits = queue.filter((v) => isInQueueOn(v, today))
 
   const seenToday = todaysVisits.filter((v) => v.status === 'done').length
   const remaining = todaysVisits.filter((v) => isActionable(v.status)).length
   const answeredCount = detail.qa.filter((q) => q.transcript && q.transcript.trim()).length
 
   const canMarkDone = selected && selected.status === 'summarised'
+
+  // After "Send for tests" the visit's status moved: reload its detail (quietly, so the
+  // whole pane doesn't flash back to "Loading patient…") and the queue.
+  async function handleTestsChanged() {
+    await Promise.all([detail.refetch({ silent: true }), refetch()])
+  }
 
   // The queue rail previews the summary's display_text, so refresh it after a save. The save
   // itself is awaited — a failed save still rejects and shows its error in the card.
@@ -146,6 +156,12 @@ export default function DoctorDashboardPage() {
                 remaining={remaining}
                 answered={answeredCount}
                 total={detail.qa.length}
+              />
+              <TestRequestPanel
+                key={selectedId}
+                visit={selected ?? detail.visit}
+                requests={detail.testRequests}
+                onChanged={handleTestsChanged}
               />
               <AiSummaryCard
                 key={selectedId}

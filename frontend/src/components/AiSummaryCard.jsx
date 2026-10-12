@@ -7,14 +7,9 @@
 // All summary text is rendered as plain text (React text nodes / a textarea) — never
 // as HTML or Markdown. Line breaks are kept with CSS (white-space: pre-wrap).
 import { useState } from 'react'
+import { formatDateTime } from '../utils/format'
 
 const MAX_LENGTH = 4000 // matches the backend limit
-
-function formatEditedAt(iso) {
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return ''
-  return d.toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
-}
 
 // onSave(text) saves the edit and rejects with the server's error (see useVisitDetail).
 export default function AiSummaryCard({ summary, status, onSave }) {
@@ -102,7 +97,7 @@ export default function AiSummaryCard({ summary, status, onSave }) {
           <div className="sum-footer">
             {edited ? (
               <span className="sum-edited">
-                Edited{summary.edited_by_name ? ` by ${summary.edited_by_name}` : ''} · {formatEditedAt(summary.edited_at)}
+                Edited{summary.edited_by_name ? ` by ${summary.edited_by_name}` : ''} · {formatDateTime(summary.edited_at)}
               </span>
             ) : null}
             <div className="sum-actions">

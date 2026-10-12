@@ -8,6 +8,7 @@
 // default; older days start collapsed behind a caret so the rail stays short.
 import { useState } from 'react'
 import StatusChip from './StatusChip'
+import { TESTS_GROUP, groupKey, isInQueueOn } from '../utils/queue'
 
 // Local calendar day as YYYY-MM-DD, so "Today"/"Yesterday" match the wall clock
 // without a timezone shift.
@@ -24,25 +25,23 @@ function yesterdayKey() {
   return dayKey(d)
 }
 
-// Bucket visits by their visit_date (date part only), newest day first. Within a
-// day, order by token so it reads 1, 2, 3… Undated rows (shouldn't happen) sort last.
+// Bucket visits by queue group (see utils/queue.js): "Waiting for tests" first, then each
+// queue day, newest first. Within a group, order by queue token so it reads 1, 2, 3…
 function groupByDate(visits) {
   const buckets = new Map()
   for (const v of visits) {
-    const key = (v.visit_date || '').slice(0, 10) || 'unknown'
+    const key = groupKey(v)
     if (!buckets.has(key)) buckets.set(key, [])
     buckets.get(key).push(v)
   }
   return [...buckets.entries()]
-    .sort((a, b) => {
-      if (a[0] === b[0]) return 0
-      if (a[0] === 'unknown') return 1 // undated always last, whatever it sorts as
-      if (b[0] === 'unknown') return -1
-      return a[0] < b[0] ? 1 : -1 // real dates newest first
+    .sort(([a], [b]) => {
+      if (a === TESTS_GROUP || b === TESTS_GROUP) return a === TESTS_GROUP ? -1 : 1
+      return a < b ? 1 : -1 // real dates newest first
     })
     .map(([date, items]) => ({
       date,
-      items: [...items].sort((x, y) => (x.token_number ?? 0) - (y.token_number ?? 0)),
+      items: [...items].sort((x, y) => x.queue_token - y.queue_token),
     }))
 }
 
@@ -91,6 +90,7 @@ function tokenState(status) {
 // Recent days read as "Today"/"Yesterday" (with the date kept alongside); older
 // days keep their full date.
 function groupLabel(key, today, yesterday) {
+  if (key === TESTS_GROUP) return 'Waiting for tests'
   if (key === today) return `Today · ${shortDate(key)}`
   if (key === yesterday) return `Yesterday · ${shortDate(key)}`
   return formatDate(key)
@@ -104,15 +104,15 @@ export default function QueueRail({ user, visits, selectedId, onSelect, isLoadin
   // The count badge reflects TODAY's queue only — tokens reset daily, so an
   // all-days total isn't a meaningful "queue size". Older days still show in the
   // rail (collapsed); only the header number is scoped to today.
-  const todayCount = visits.filter((v) => (v.visit_date || '').slice(0, 10) === today).length
+  const todayCount = visits.filter((v) => isInQueueOn(v, today)).length
 
   // A day is open by default if it's Today, Yesterday, or holds the selected
   // patient (the page auto-selects the first actionable visit, which may sit in
   // an older day — we keep that row visible). This is computed live each render,
   // so it stays correct across the 5s poll and a midnight boundary.
   const selected = visits.find((x) => x.id === selectedId)
-  const selectedKey = selected ? (selected.visit_date || '').slice(0, 10) || 'unknown' : null
-  const defaultOpen = (key) => key === today || key === yesterday || key === selectedKey
+  const selectedKey = selected ? groupKey(selected) : null
+  const defaultOpen = (key) => key === TESTS_GROUP || key === today || key === yesterday || key === selectedKey
 
   // We track only the user's explicit toggles (key -> open?), layered over the
   // live defaults above. This keeps the caret functional on every day (incl. the
@@ -175,7 +175,7 @@ export default function QueueRail({ user, visits, selectedId, onSelect, isLoadin
                           className={`rail-item${v.id === selectedId ? ' rail-item--sel' : ''}`}
                           onClick={() => onSelect(v.id)}
                         >
-                          <span className="rail-token" data-token={tokenState(v.status) || undefined}>{v.token_number}</span>
+                          <span className="rail-token" data-token={tokenState(v.status) || undefined}>{v.queue_token}</span>
                           <div className="rail-body">
                             <span className="rail-name">{v.patient_name}</span>
                             {p.total > 0 ? (
