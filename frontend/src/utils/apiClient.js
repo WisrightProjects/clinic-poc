@@ -35,6 +35,15 @@ export const getVisits = (status) =>
 // GET /api/visits/:id — { visit, template, answers, summary }
 export const getVisit = (id) => request(`/visits/${id}`)
 
+// PUT /api/visits/:id/summary — doctor saves an edited summary (CLINIC-012).
+// Returns the updated summary row (display_text, summary_text = AI original,
+// edited_by_name, edited_at). 409 = no summary yet, 422 = empty / over 4000 chars.
+export const saveSummary = (id, text) =>
+  request(`/visits/${id}/summary`, {
+    method: 'PUT',
+    body: JSON.stringify({ text }),
+  })
+
 // PATCH /api/visits/:id/status — doctor marks a summarised visit done
 export const setVisitDone = (id) =>
   request(`/visits/${id}/status`, {

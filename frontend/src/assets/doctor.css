@@ -148,7 +148,38 @@ html, body, #root {
 }
 .sum-card--pending .ai-badge { background: var(--teal); color: #fff; }
 .sum-by { font-size: 11px; opacity: 0.8; }
-.sum-text { margin: 0; font-size: 15px; line-height: 1.55; }
+.sum-text { margin: 0; font-size: 15px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* Summary editing (CLINIC-012) — controls sit on the dark gradient card */
+.sum-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; margin-top: 14px; }
+.sum-edited { font-size: 12px; opacity: 0.85; }
+.sum-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-left: auto; }
+.sum-card .link-btn { color: #fff; text-decoration: underline; font-weight: 600; font-size: 13px; margin-left: 0; }
+.sum-btn {
+  background: transparent; color: #fff; border: 1px solid rgba(255,255,255,0.6); border-radius: 8px;
+  padding: 7px 16px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit;
+}
+.sum-btn:hover:not(:disabled) { background: rgba(255,255,255,0.15); }
+.sum-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.sum-btn--primary { background: #fff; color: var(--navy); border-color: #fff; }
+.sum-btn--primary:hover:not(:disabled) { background: #e9f3f3; }
+.sum-edit {
+  width: 100%; resize: vertical; min-height: 140px; border: 1px solid #c9d6df; border-radius: 8px;
+  padding: 10px 12px; font: inherit; font-size: 15px; line-height: 1.5; color: var(--navy); background: #fff;
+}
+.sum-edit:focus { outline: 2px solid #fff; outline-offset: 1px; }
+.sum-count { display: block; text-align: right; margin: 6px 0 10px; font-size: 12px; opacity: 0.85; }
+.sum-count--over { color: #ffd2cc; font-weight: 700; opacity: 1; }
+.sum-error { background: rgba(255,255,255,0.15); color: #ffd2cc; border-radius: 6px; padding: 6px 10px; font-size: 13px; margin-bottom: 10px; }
+.sum-original { margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.25); }
+.sum-original-label { font-size: 11px; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; opacity: 0.8; margin-bottom: 6px; }
+@media (max-width: 640px) {
+  .sum-card { padding: 16px; }
+  .sum-footer { flex-direction: column; align-items: stretch; }
+  .sum-actions { margin-left: 0; justify-content: space-between; }
+  .sum-actions .sum-btn { flex: 1; text-align: center; padding: 10px 16px; }
+  .sum-edit { font-size: 16px; } /* 16px stops iOS zooming into the field */
+}
 .sum-pending { margin: 8px 0 0; font-size: 14px; color: var(--muted); font-style: italic; }
 
 /* Q&A */

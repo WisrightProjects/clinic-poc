@@ -132,7 +132,12 @@ export default function DoctorDashboardPage() {
                 answered={answeredCount}
                 total={detail.qa.length}
               />
-              <AiSummaryCard summary={detail.summary} status={(selected ?? detail.visit).status} />
+              <AiSummaryCard
+                key={selectedId}
+                summary={detail.summary}
+                status={(selected ?? detail.visit).status}
+                onSave={detail.saveSummary}
+              />
               <QaList qa={detail.qa} />
 
               {doneError ? <div className="done-error">{doneError}</div> : null}
