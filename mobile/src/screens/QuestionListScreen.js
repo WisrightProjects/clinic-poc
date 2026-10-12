@@ -56,7 +56,7 @@ export default function QuestionListScreen() {
   if (total === 0 && !loading) {
     return (
       <SafeAreaView style={styles.flex} edges={['bottom']}>
-        {visit && <PatientHeader name={visit.patient_name} token={visit.token_number} />}
+        {visit && <PatientHeader name={visit.patient_name} token={visit.queue_token} />}
         <View style={styles.centered}>
           <Text style={styles.emptyTitle}>No questions configured</Text>
           <Text style={styles.emptyBody}>
@@ -69,7 +69,7 @@ export default function QuestionListScreen() {
 
   return (
     <SafeAreaView style={styles.flex} edges={['bottom']}>
-      {visit && <PatientHeader name={visit.patient_name} token={visit.token_number} />}
+      {visit && <PatientHeader name={visit.patient_name} token={visit.queue_token} />}
       <ProgressBar answered={answeredCount} total={total} percent={percent} />
       <FlatList
         data={items}

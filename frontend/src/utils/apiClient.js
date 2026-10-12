@@ -44,6 +44,15 @@ export const getVisits = (status) =>
 // GET /api/visits/:id — { visit, template, answers, summary }
 export const getVisit = (id) => request(`/visits/${id}`)
 
+// POST /api/visits/:id/test-request — doctor sends a summarised (waiting) patient for
+// tests with a required note (CLINIC-014). 409 = the visit is no longer summarised,
+// 422 = empty note or over 1000 characters.
+export const requestTests = (id, note) =>
+  request(`/visits/${id}/test-request`, {
+    method: 'POST',
+    body: JSON.stringify({ note }),
+  })
+
 // PATCH /api/visits/:id/status — doctor marks a summarised visit done
 export const setVisitDone = (id) =>
   request(`/visits/${id}/status`, {
