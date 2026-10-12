@@ -1,12 +1,13 @@
 // Purpose: Home / Patient Queue screen — the attender's landing screen.
-// Shows visits grouped by date, newest day first (tap a row to resume its
+// Shows visits grouped by queue day, newest first, with patients away for tests in a
+// "Waiting for tests" group on top (tap a row to resume its
 // intake), and a "New Patient" button to start a fresh registration. This is the
 // hub that links into the CLINIC-003 flow. Settings (question template) is
 // reachable via the header gear configured in AppNavigator. Data comes from
 // GET /visits via useVisitQueue.
 //
 // Tokens restart at 1 each day, so a flat list showed the same token number
-// repeating with no context; grouping by visit_date makes each day read 1, 2, 3…
+// repeating with no context; grouping by queue_date makes each day read 1, 2, 3…
 
 import React, { useMemo, useState } from 'react';
 import {
@@ -25,7 +26,8 @@ import { useNavigation } from '@react-navigation/native';
 import { useVisitQueue } from '../hooks/useVisitQueue';
 import { useSession, clearSession } from '../auth/authStore';
 import { TestRequestAlerts } from '../components/TestRequestAlerts';
-import { TESTS_KEY, groupKey, isInQueueOn } from '../utils/queue';
+import { TESTS_GROUP, groupKey, isInQueueOn } from '../utils/queue';
+import { errorMessage } from '../utils/apiError';
 
 const NAVY = '#1a3050';
 const TEAL = '#0a8f8f';
@@ -90,12 +92,12 @@ function buildSections(visits) {
   }
   return [...buckets.entries()]
     .sort(([a], [b]) => {
-      if (a === TESTS_KEY || b === TESTS_KEY) return a === TESTS_KEY ? -1 : 1;
+      if (a === TESTS_GROUP || b === TESTS_GROUP) return a === TESTS_GROUP ? -1 : 1;
       return a < b ? 1 : -1; // real dates newest first
     })
     .map(([key, items]) => ({
       key,
-      title: key === TESTS_KEY ? STATUS_STYLE.tests_requested.label : formatDate(key),
+      title: key === TESTS_GROUP ? STATUS_STYLE.tests_requested.label : formatDate(key),
       data: [...items].sort((x, y) => x.queue_token - y.queue_token),
     }));
 }
@@ -199,7 +201,7 @@ export default function HomeScreen() {
   // A day is open by default if it's Today or Yesterday. Computed live each
   // render (not seeded once), so it stays correct across a midnight boundary —
   // the new day's section opens on its own instead of staying collapsed.
-  const defaultOpen = (key) => key === TESTS_KEY || key === today || key === yesterday;
+  const defaultOpen = (key) => key === TESTS_GROUP || key === today || key === yesterday;
 
   // Track only the user's explicit toggles (key -> open?), layered over the live
   // defaults above. Keeps the caret functional on every day (incl. today) with
@@ -303,7 +305,7 @@ export default function HomeScreen() {
       ) : error ? (
         <View style={styles.centered}>
           <Text style={styles.errorText}>
-            {error?.response?.data?.error?.message ?? error.message ?? 'Failed to load queue'}
+            {errorMessage(error, 'Failed to load queue')}
           </Text>
           <TouchableOpacity style={styles.retryBtn} onPress={() => reload()}>
             <Text style={styles.retryText}>Retry</Text>

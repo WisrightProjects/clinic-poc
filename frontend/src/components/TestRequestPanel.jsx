@@ -6,18 +6,13 @@
 // Notes are plain text only (React text nodes / a textarea), never HTML.
 import { useEffect, useState } from 'react'
 import { requestTests } from '../utils/apiClient'
+import { formatDateTime } from '../utils/format'
 
 const MAX_NOTE = 1000 // matches backend/src/utils/testRequestValidation.js
 
-function formatWhen(iso) {
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return ''
-  return d.toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
-}
-
 function requestState(r) {
-  if (r.returned_at) return `Back in queue · ${formatWhen(r.returned_at)}`
-  if (r.acknowledged_at) return `Patient informed${r.acknowledged_by_name ? ` by ${r.acknowledged_by_name}` : ''} · ${formatWhen(r.acknowledged_at)}`
+  if (r.returned_at) return `Back in queue · ${formatDateTime(r.returned_at)}`
+  if (r.acknowledged_at) return `Patient informed${r.acknowledged_by_name ? ` by ${r.acknowledged_by_name}` : ''} · ${formatDateTime(r.acknowledged_at)}`
   return 'Attender not informed yet'
 }
 
@@ -28,7 +23,7 @@ function RequestEntry({ request, label }) {
     <div className="tr-entry">
       {label ? <div className="tr-entry-label">{label}</div> : null}
       <p className="tr-note-text">{request.note}</p>
-      <div className="tr-meta">{by}{formatWhen(request.requested_at)} · {requestState(request)}</div>
+      <div className="tr-meta">{by}{formatDateTime(request.requested_at)} · {requestState(request)}</div>
     </div>
   )
 }

@@ -9,12 +9,11 @@ import { useFocusEffect } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { listReports, uploadReports, deleteReport } from '../api/reportApi';
+import { errorMessage } from '../utils/apiError';
 
 const MAX_REPORTS = 20; // backend limit per visit (MAX_REPORTS_PER_VISIT); the 422 is the real guard
 const LONG_EDGE = 2000; // resize target (px) so photos stay well under the backend's 10 MB limit
 const JPEG_QUALITY = 0.8;
-
-const errorMessage = (err, fallback) => err?.response?.data?.error?.message ?? err?.message ?? fallback;
 
 // Resize to a long edge of ~2000px (never upscale) and re-encode as JPEG, whatever
 // the source format (HEIC/PNG/WEBP). Returns the new local file URI.

@@ -14,11 +14,10 @@ import { ReportsSection } from '../components/ReportsSection';
 import { getVisitDetail } from '../api/visitApi';
 import { listReports } from '../api/reportApi';
 import { requeueVisit } from '../api/testRequestApi';
+import { errorMessage } from '../utils/apiError';
 
 const NAVY = '#1a3050';
 const TEAL = '#0a8f8f';
-
-const errorMessage = (err, fallback) => err?.response?.data?.error?.message ?? err?.message ?? fallback;
 
 export default function BackInQueueScreen() {
   const navigation = useNavigation();
@@ -56,8 +55,9 @@ export default function BackInQueueScreen() {
   // intake) don't count, or the "no results" warning would never show for a patient who
   // brought old reports. Read fresh, since photos were just added in the section below.
   const countResults = async () => {
+    if (!latest) return 0;
     const reports = await listReports(visitId);
-    return reports.filter((r) => latest && new Date(r.created_at) >= new Date(latest.requested_at)).length;
+    return reports.filter((r) => new Date(r.created_at) >= new Date(latest.requested_at)).length;
   };
 
   const requeue = async () => {

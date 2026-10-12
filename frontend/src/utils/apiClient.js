@@ -42,7 +42,7 @@ export const login = (mobile, password) =>
 export const getVisits = (status) =>
   request(`/visits${status ? `?status=${encodeURIComponent(status)}` : ''}`)
 
-// GET /api/visits/:id — { visit, template, answers, summary, reports }
+// GET /api/visits/:id — { visit, template, answers, summary, reports, test_requests }
 export const getVisit = (id) => request(`/visits/${id}`)
 
 // POST /api/visits/:id/test-request — doctor sends a summarised (waiting) patient for

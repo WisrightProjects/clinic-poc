@@ -7,6 +7,7 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, Alert, StyleSheet } from 'react-native';
 import { acknowledgeTestRequest } from '../api/testRequestApi';
+import { errorMessage } from '../utils/apiError';
 
 // Visits waiting for tests whose latest request is still unacknowledged.
 function pendingTestAlerts(visits) {
@@ -26,7 +27,7 @@ export function TestRequestAlerts({ visits, onChanged }) {
       await acknowledgeTestRequest(testRequestId);
     } catch (err) {
       // 409 = the patient is already back; the refresh below drops the banner.
-      Alert.alert('Could not update', err?.response?.data?.error?.message ?? err?.message ?? 'Please retry.');
+      Alert.alert('Could not update', errorMessage(err, 'Please retry.'));
     } finally {
       setBusyId(null);
       onChanged();

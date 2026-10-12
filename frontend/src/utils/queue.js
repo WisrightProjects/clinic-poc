@@ -7,7 +7,7 @@
 export const TESTS_GROUP = 'tests'
 
 // The day (YYYY-MM-DD) of the visit's queue place.
-export const queueDay = (v) => v.queue_date.slice(0, 10)
+const queueDay = (v) => v.queue_date.slice(0, 10)
 
 // The group a visit is listed under: "Waiting for tests", or its queue day.
 export const groupKey = (v) => (v.status === 'tests_requested' ? TESTS_GROUP : queueDay(v))
