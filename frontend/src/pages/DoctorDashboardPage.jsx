@@ -13,6 +13,7 @@ import PatientHeader from '../components/PatientHeader'
 import StatsStrip from '../components/StatsStrip'
 import AiSummaryCard from '../components/AiSummaryCard'
 import QaList from '../components/QaList'
+import ReportsList from '../components/ReportsList'
 
 export default function DoctorDashboardPage() {
   const user = useSession()?.user
@@ -141,6 +142,7 @@ export default function DoctorDashboardPage() {
               />
               <AiSummaryCard summary={detail.summary} status={(selected ?? detail.visit).status} />
               <QaList qa={detail.qa} />
+              <ReportsList key={selectedId} reports={detail.reports} />
 
               {doneError ? <div className="done-error">{doneError}</div> : null}
               <div className="action-bar">

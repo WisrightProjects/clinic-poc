@@ -5,7 +5,7 @@
 // The API returns { visit, template, answers, summary } where questions live in
 // template.questions and transcripts in answers. We merge them by question_id
 // and sort by order_index (same shape the mobile app derives). Output:
-// { visit, qa, summary, isLoading, error, refetch }.
+// { visit, qa, summary, reports, isLoading, error, refetch }.
 
 import { useEffect, useState, useCallback } from 'react'
 import { getVisit } from '../utils/apiClient'
@@ -52,6 +52,7 @@ export function useVisitDetail(visitId) {
     visit: data?.visit ?? null,
     qa,
     summary: data?.summary ?? null,
+    reports: data?.reports ?? [],
     isLoading,
     error,
     refetch: load,
