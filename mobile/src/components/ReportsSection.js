@@ -3,7 +3,7 @@
 // each. Photos are not read by any AI here — the doctor just sees them on the dashboard.
 // `editable` is false once the visit is submitted: the backend rejects adds/removes then.
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -15,36 +15,29 @@ import {
   StyleSheet,
 } from 'react-native';
 import { useReports } from '../hooks/useReports';
-import { fetchReportImage } from '../api/reportApi';
+import { reportImageSource } from '../api/reportApi';
 
 const NAVY = '#1a3050';
 const TEAL = '#0a8f8f';
 
 function Thumbnail({ report, editable, disabled, onRemove }) {
-  // 'loading' | 'failed' | the image's data URL
-  const [image, setImage] = useState('loading');
-
-  useEffect(() => {
-    let alive = true;
-    fetchReportImage(report.id)
-      .then((dataUrl) => alive && setImage(dataUrl))
-      .catch(() => alive && setImage('failed'));
-    return () => {
-      alive = false;
-    };
-  }, [report.id]);
-
-  const loaded = image !== 'loading' && image !== 'failed';
+  // 'loading' | 'loaded' | 'failed'. The Image downloads (and caches) the photo itself,
+  // sending the login token in its headers; the placeholder covers it until it is ready.
+  const [status, setStatus] = useState('loading');
 
   return (
     <View style={styles.thumbWrap}>
-      {loaded ? (
-        <Image source={{ uri: image }} style={styles.thumb} />
-      ) : (
+      <Image
+        source={reportImageSource(report.id)}
+        style={styles.thumb}
+        onLoad={() => setStatus('loaded')}
+        onError={() => setStatus('failed')}
+      />
+      {status !== 'loaded' ? (
         <View style={[styles.thumb, styles.thumbPlaceholder]}>
-          {image === 'failed' ? <Text style={styles.thumbFail}>!</Text> : <ActivityIndicator size="small" color={NAVY} />}
+          {status === 'failed' ? <Text style={styles.thumbFail}>!</Text> : <ActivityIndicator size="small" color={NAVY} />}
         </View>
-      )}
+      ) : null}
       {editable ? (
         <TouchableOpacity
           style={styles.removeBtn}
@@ -123,7 +116,8 @@ const styles = StyleSheet.create({
   strip: { paddingTop: 4, paddingBottom: 4 },
   thumbWrap: { marginRight: 10, paddingTop: 8 },
   thumb: { width: 72, height: 72, borderRadius: 8, backgroundColor: '#eef2f6' },
-  thumbPlaceholder: { alignItems: 'center', justifyContent: 'center' },
+  // Sits over the Image (inside thumbWrap's 8px top padding) until it has loaded.
+  thumbPlaceholder: { position: 'absolute', top: 8, left: 0, alignItems: 'center', justifyContent: 'center' },
   thumbFail: { fontSize: 20, fontWeight: '800', color: '#c0392b' },
   removeBtn: {
     position: 'absolute',

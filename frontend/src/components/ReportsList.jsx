@@ -2,7 +2,7 @@
 // and a full-size viewer you can zoom. Nothing here reads the images — the doctor just
 // looks at them. The same object URL (see hooks/useReportImages.js) feeds the thumbnail
 // and the viewer.
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useReportImages } from '../hooks/useReportImages'
 
 const MIN_ZOOM = 1
@@ -28,6 +28,22 @@ function Viewer({ reports, images, index, onIndex, onClose }) {
     return () => window.removeEventListener('keydown', onKey)
   }, [index, last, onIndex, onClose])
 
+  // Zoom with Ctrl + mouse wheel (a trackpad pinch also sends ctrlKey); the plain wheel
+  // scrolls, so a zoomed photo can be moved around. React's onWheel is passive and can't
+  // preventDefault, so Ctrl+wheel would also zoom the whole browser page — use a native
+  // listener that can cancel it.
+  const stageRef = useRef(null)
+  useEffect(() => {
+    const stage = stageRef.current
+    function onWheel(e) {
+      if (!e.ctrlKey) return
+      e.preventDefault()
+      setZoom((z) => clamp(z + (e.deltaY < 0 ? ZOOM_STEP : -ZOOM_STEP)))
+    }
+    stage.addEventListener('wheel', onWheel, { passive: false })
+    return () => stage.removeEventListener('wheel', onWheel)
+  }, [])
+
   return (
     <div className="rv-overlay" role="dialog" aria-modal="true" aria-label="Report photo" onClick={onClose}>
       <div className="rv-bar" onClick={(e) => e.stopPropagation()}>
@@ -40,11 +56,7 @@ function Viewer({ reports, images, index, onIndex, onClose }) {
         </div>
       </div>
 
-      <div
-        className="rv-stage"
-        onClick={(e) => e.stopPropagation()}
-        onWheel={(e) => setZoom((z) => clamp(z + (e.deltaY < 0 ? ZOOM_STEP : -ZOOM_STEP)))}
-      >
+      <div className="rv-stage" ref={stageRef} onClick={(e) => e.stopPropagation()}>
         {isLoaded(src) ? (
           <img className="rv-img" src={src} alt={`Previous report ${index + 1}`} style={{ width: `${zoom * 100}%` }} />
         ) : (
