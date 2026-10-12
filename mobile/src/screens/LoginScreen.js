@@ -1,6 +1,7 @@
 // Purpose: CLINIC-008.4 — attender sign-in with mobile number + password.
 // On success the token is saved (authStore); App.js reacts to the new session and
 // swaps this screen for the main stack, so no navigation call is needed here.
+// Only attender accounts are accepted — a doctor login is refused and not stored.
 // Error text comes from the backend envelope: error.response.data.error.message.
 
 import React, { useRef, useState } from 'react';
@@ -45,6 +46,13 @@ export default function LoginScreen() {
     setError(null);
     try {
       const { token, user } = await login(mobile.trim(), password);
+      // The app is attender-only (the doctor uses the web dashboard), so refuse any
+      // other role without storing the session.
+      if (user.role !== 'attender') {
+        setError('This app is for attenders. Doctors sign in on the web dashboard.');
+        setSubmitting(false);
+        return;
+      }
       await saveSession({ token, user });
     } catch (err) {
       setError(loginErrorMessage(err));
