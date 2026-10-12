@@ -104,7 +104,9 @@ npm start                      # open the shown URL in Expo Go on your phone
 ## Onboarding a clinic
 
 Each clinic has its own patients, tokens and question templates. Create a clinic with its doctor
-and attender (run from the repo root, after `npm install`; it uses `DATABASE_URL` from `backend/.env`):
+and attender (run from the repo root, after `npm install`; it uses `DATABASE_URL` from `backend/.env`).
+In production, run the same commands in the backend container's terminal (Coolify → backend →
+Terminal); the script is in the image and uses the container's `DATABASE_URL`:
 
 ```bash
 node scripts/clinic-admin.mjs create-clinic "Sri Clinic, Madurai" --doctor "Dr. Ramesh:9876543210" --attender "Priya:9876500000"

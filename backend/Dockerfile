@@ -25,6 +25,11 @@ RUN npm ci --omit=dev --prefix backend
 # Sources. The layout must mirror the repo so '../../db/...' resolves from backend/src/.
 COPY backend ./backend
 COPY db ./db
+# Clinic setup script (CLINIC-008.6), run from the container shell:
+#   node scripts/clinic-admin.mjs create-clinic ... | reset-password <mobile>
+# Its deps (bcryptjs, pg, dotenv) are in the root package.json installed above;
+# DATABASE_URL comes from the container environment.
+COPY scripts ./scripts
 
 # Migrations run on boot (server.js) before app.listen.
 ENV PORT=4000
