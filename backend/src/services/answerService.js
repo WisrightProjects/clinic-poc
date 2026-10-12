@@ -1,32 +1,33 @@
 const path = require('path');
 const config = require('../config');
 const answerRepository = require('../repositories/answerRepository');
+const templateRepository = require('../repositories/templateRepository');
 const sttService = require('./sttService');
 const visitService = require('./visitService');
+const { AppError } = require('../utils/errors');
 
-async function recordAnswer(visitId, questionId, file) {
-  if (!file || !file.path) {
-    const err = new Error('Audio file is required');
-    err.status = 400;
-    throw err;
+async function recordAnswer(clinicId, visitId, questionId, file) {
+  // The visit must be in the caller's clinic (else 404) and the question in its
+  // template (else 400). A rejected upload's file is deleted by the errorHandler.
+  const visit = await visitService.findVisit(clinicId, visitId);
+  const template = await templateRepository.findActiveForVisit(visit);
+  if (!template || !template.questions.some(q => q.id === Number(questionId))) {
+    throw new AppError('BAD_REQUEST', 'questionId is not a question for this visit', 400);
   }
   const audioPath = path.relative(config.audioDir, file.path);
-  const answer = await answerRepository.upsert(visitId, questionId, audioPath, 'pending');
+  const answer = await answerRepository.upsert(visit.id, questionId, audioPath, 'pending');
+  file.stored = true; // the answer row now references it: errorHandler must not delete it
   // Advance the visit lifecycle now — these are fast DB-only ops that don't depend
   // on the transcript (progress is derived from answer rows, not transcript text).
-  await visitService.maybeAdvance(visitId);
-  // Transcribe in the BACKGROUND and respond immediately. Holding the mobile upload
-  // connection open for the full 5–8s STT duration was intermittently dropping over
-  // Wi-Fi as "Network Error" (the request/response never completing). The transcript
-  // now fills in asynchronously (transcript_status: pending → done/failed) and clients
-  // reload to see it — the answer row already exists, so the question shows as answered.
+  await visitService.maybeAdvance(visit, template);
   startTranscription(answer.id, file.path);
-  return answerRepository.findById(answer.id); // returned with transcript_status 'pending'
+  return answer; // transcript_status 'pending'
 }
 
-// Fire-and-forget background transcription. Never throws to the request handler;
-// failures are recorded as transcript_status='failed', exactly as the old inline
-// path did — submit still works, the answer is just marked failed.
+// Fire-and-forget background transcription, so the upload responds immediately (holding
+// the mobile connection open for the 5–8s STT call dropped over Wi-Fi as "Network Error").
+// The transcript fills in later (pending → done/failed); clients reload to see it. Never
+// throws: a failure is recorded as 'failed' and submit still works.
 function startTranscription(answerId, filePath) {
   (async () => {
     try {
@@ -43,4 +44,12 @@ function startTranscription(answerId, filePath) {
   })();
 }
 
-module.exports = { recordAnswer };
+// Stored path (relative to AUDIO_DIR) of an answer's recording, only for the visit's
+// own clinic (AC9). Another clinic's answer is NOT_FOUND, the same as a missing one.
+async function getAudioPath(clinicId, answerId) {
+  const answer = await answerRepository.findByIdForClinic(clinicId, answerId);
+  if (!answer || !answer.audio_path) throw new AppError('NOT_FOUND', 'Recording not found', 404);
+  return answer.audio_path;
+}
+
+module.exports = { recordAnswer, getAudioPath };

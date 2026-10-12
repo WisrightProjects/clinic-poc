@@ -23,8 +23,12 @@ async function setTranscript(answerId, transcript, status) {
   return rows[0];
 }
 
-async function findById(id) {
-  const { rows } = await db.query('SELECT * FROM answers WHERE id = $1', [id]);
+// Scoped through the answer's visit: another clinic's answer comes back null.
+async function findByIdForClinic(clinicId, id) {
+  const { rows } = await db.query(
+    'SELECT a.* FROM answers a JOIN visits v ON v.id = a.visit_id WHERE a.id = $1 AND v.clinic_id = $2',
+    [id, clinicId]
+  );
   return rows[0] || null;
 }
 
@@ -44,4 +48,4 @@ async function countByVisitId(visitId) {
   return parseInt(rows[0].count, 10);
 }
 
-module.exports = { upsert, setTranscript, findById, findByVisitId, countByVisitId };
+module.exports = { upsert, setTranscript, findByIdForClinic, findByVisitId, countByVisitId };

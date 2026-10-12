@@ -4,15 +4,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-ClinicAI is a POC for an AI-powered patient intake and voice transcription system for clinics in India (Tamil/English). An attender records patients' spoken answers on a mobile app; the backend transcribes them (Sarvam AI STT) and generates an AI summary; doctors review the summary and Q&A transcript on a web dashboard.
+ClinicAI is a POC for an AI-powered patient intake and voice transcription system for clinics in India (Tamil/English). An attender records patients' spoken answers on a mobile app; the backend transcribes them (self-hosted Whisper by default, Sarvam AI optional) and generates an AI summary; doctors review the summary and Q&A transcript on a web dashboard.
 
-The repo is a **monorepo with four independently-installed Node projects** plus shared DB/scripts tooling. There is no root install that wires them together — each app has its own `package.json` and `node_modules`. The stories in `docs/stories/` (CLINIC-001…006) are implemented; treat them as the spec when changing behavior.
+The repo is a **monorepo with four independently-installed Node projects** plus shared DB/scripts tooling. There is no root install that wires them together — each app has its own `package.json` and `node_modules`. The stories in `docs/stories/` (CLINIC-001…007) are implemented; treat them as the spec when changing behavior. `mobile/` has its own `CLAUDE.md`/`AGENTS.md` with app-specific rules.
 
 ## Layout
 
 | Path | What it is | Stack |
 |---|---|---|
-| `backend/` | API server | Express 4 + PostgreSQL (`pg`), Multer audio upload |
+| `backend/` | API server (code in `backend/src/`) | Express 4 + PostgreSQL (`pg`), Multer audio upload |
+| `stt-service/` | Whisper STT sidecar | Python, faster-whisper |
 | `mobile/` | Attender app (Android-first) | React Native 0.85 + Expo 56, React Navigation |
 | `frontend/` | Doctor web dashboard | React 19 + Vite 8, React Router 7 |
 | `db/` | Migrations, seeds, runners | plain SQL + `pg` |
@@ -45,7 +46,19 @@ cd frontend && npm install && npm run dev
 cd mobile && npm install && npm start          # or: npm run android
 ```
 
-Key env (`backend/.env`, see `backend/.env.example`): `DATABASE_URL`, `PORT=4000`, `STT_PROVIDER` (`whisper`|`sarvam`, default `whisper`), `WHISPER_URL`, `STT_LANGUAGE`, `USE_MOCK_SUMMARY=true`, `AUDIO_DIR`, `CORS_ORIGINS`. `config/index.js` throws on boot if `DATABASE_URL` is missing. `STT_PROVIDER=whisper` needs the `stt-service/` sidecar running (see its README).
+Key env (`backend/.env`, see `backend/.env.example`): `DATABASE_URL`, `PORT=4000`, `STT_PROVIDER` (`whisper`|`sarvam`, default `whisper`), `WHISPER_URL`, `STT_LANGUAGE`, `SUMMARY_PROVIDER` (`mock`|`kimi`, default `mock`) + `KIMI_*`/`SUMMARY_LANGUAGE`, `AUDIO_DIR`, `CORS_ORIGINS`. (`USE_MOCK_SUMMARY` is legacy and has no effect.) `JWT_SECRET` (≥ 32 chars), `JWT_EXPIRES_IN`. `config/index.js` throws on boot if `DATABASE_URL` or `JWT_SECRET` is missing. `STT_PROVIDER=whisper` needs the `stt-service/` sidecar running (see its README).
+
+### Full Docker stack (mirrors the Coolify deployment)
+
+```bash
+docker compose -f docker-compose.app.yml up --build   # postgres + whisper + backend + doctor web
+```
+
+- Migrations run on boot; **seeds do not**. No service publishes a host port (reverse proxy only); add a local override file for psql/seeding.
+- The backend image builds from the **repo root** context (`backend/Dockerfile`) because `server.js` requires `../../db/run-migrations` — a `./backend` context crashloops.
+- Every backend env var must be declared in the compose `environment:` block — a var set in Coolify but not listed there is silently dropped.
+- The backend waits on the whisper healthcheck (model load ~30–60s); until then transcriptions save as `failed`.
+- Files in `frontend/public/` (e.g. `demo-walkthrough.html`) are served as-is from the nginx webroot.
 
 ## Tests
 
@@ -56,8 +69,9 @@ There are **three separate jest setups** — running `npm test` in the wrong pla
 npm test                                  # from repo root
 npm test -- -t "progress"                 # single test by name
 
-# Backend unit tests (e.g. visit validation)
+# Backend unit tests (backend/src/__tests__: visitValidation, summaryProvider)
 cd backend && npm test
+cd backend && npx jest src/__tests__/summaryProvider.test.js   # single file
 
 # Frontend lint (no test runner configured)
 cd frontend && npm run lint
@@ -70,17 +84,18 @@ Note the root `package.json` jest `testMatch` only picks up `clinic003*` files. 
 Strict 4-layer separation — keep each layer's responsibility pure:
 
 ```
-routes/        Express routers. /api/* canonical paths. roleGuard applied after /health.
+routes/        Express routers. /api/* canonical paths. authenticate applied after /health + /auth/login.
 controllers/   HTTP parse + response shaping only. No business logic.
 services/      Orchestration, validation, status transitions, transactions.
 repositories/  SQL only. No business rules.
-utils/         errors.js (envelope + errorHandler), roleGuard.js, validation helpers.
+utils/         errors.js (envelope + errorHandler), auth.js + authToken.js (login tokens), validation helpers.
 config/        index.js (env), db.js (pool), upload.js (multer).
 ```
 
 - Route handlers are wrapped with a `wrap(fn)` promise-catch adapter in `routes/index.js` so async errors reach the central `errorHandler`. New routes must use `wrap`.
 - Errors: throw `AppError(code, message, httpStatus)` from `utils/errors.js`. The handler emits `{ error: { code, message } }` — **never** plain-string errors. Clients (both apps) read `error.message` off this shape.
-- `app.js` wiring order: `cors(config.corsOrigins)` → `express.json()` → static `/audio` (serves `AUDIO_DIR`) → `/api` routes → `errorHandler` last.
+- `app.js` wiring order: `cors(config.corsOrigins)` → `express.json()` → `/api` routes → `errorHandler` last. There is no public static `/audio`; recordings are served by `GET /api/answers/:id/audio`.
+- `errorHandler` deletes a failed request's multer upload (`req.file`) unless `req.file.stored` is set — set it once a DB row references the file.
 - Server entry `server.js` runs migrations (own pool) **before** `app.listen`.
 
 ### Status engine
@@ -93,22 +108,29 @@ waiting → answering → answered → summarised → done   (done is terminal)
 
 Never mutate `visits.status` in a repository/service without going through `assertTransition`. The two client apps mirror this state machine (`frontend/src/utils/statusMap.js`, mobile status display) — keep them consistent.
 
-### API surface (all under `/api`, all require `x-role` except `/health`)
+### API surface (all under `/api`, all require a login token except `/health` and `POST /auth/login`)
 
 ```
 GET   /health
+POST  /auth/login           GET /auth/me
 GET   /departments
 GET   /templates            PUT /templates/:id
 POST  /visits               GET /visits   (?status=csv)   GET /visits/:id
 POST  /visits/:id/answers   (multipart, field "audio" — Multer; triggers STT)
-PATCH /visits/:id/status    POST /visits/:id/submit
+PATCH /visits/:id/status    POST /visits/:id/submit     (PATCH: doctor only, sets 'done' only)
+GET   /answers/:id/audio    (the recording, own clinic only)
 ```
 
 `GET /visits/:id` returns `{ visit, template, answers, summary }` (the shape the doctor web consumes).
 
-### Auth (POC only)
+### Auth and clinics (CLINIC-008)
 
-No real auth. Role travels in the `x-role: attender|doctor` header; `utils/roleGuard.js` rejects unknown roles with 403 and is mounted **after** `/health` so health checks stay open. Mobile hard-codes `x-role: attender` (`mobile/src/api/client.js`); doctor web hard-codes `x-role: doctor` (`frontend/src/utils/apiClient.js`).
+- **Login:** `POST /auth/login { mobile, password }` (bcrypt) returns `{ token, user: { id, name, role, clinic: { id, name } } }`. Every failure is the same 401 `INVALID_LOGIN`. Mobiles are normalised to 10 digits (`utils/mobile.js`); the DB only stores that form.
+- **Token:** HS256 JWT signed with `JWT_SECRET` (required, ≥ 32 chars, or the backend won't start), `JWT_EXPIRES_IN` default `30d`, carrying **only** `sub` (user id). Clients send `Authorization: Bearer <token>`. The old `x-role` header is ignored.
+- **Every request** reloads the active user (`authService.authenticateToken`) and sets `req.user = { id, name, role, clinicId, clinicName }`. Role and clinic always come from the DB, never the token. Deactivating a user (`is_active=false`) or changing their password (`password_changed_at = now()`) rejects their existing tokens.
+- **Roles:** `requireRole('doctor')` from `utils/auth.js`. Today only `PATCH /visits/:id/status` is doctor-only.
+- **Clinic scoping:** every service takes `req.user.clinicId`. Load a visit with `visitService.findVisit(clinicId, id)` (another clinic's visit is 404, same as missing) before touching its answers/summary; templates come from `templateRepository.findActiveForVisit(visit)` / `findById(clinicId, id)`. New clinic-scoped routes must do the same. Departments are global.
+- **Demo logins** (seed, local only): doctor `9000000001`, attender `9000000002`, password `demo1234`.
 
 ### STT / Summary
 
@@ -137,7 +159,7 @@ provider was removed once Kimi became the team's chosen engine.
 
 ## Database
 
-PostgreSQL. Enums: `visit_status` (see status engine), `transcript_status` (`pending|done|failed`). Core tables: `departments`, `question_templates`, `questions`, `visits`, `answers`, `summaries`.
+PostgreSQL. Enums: `visit_status` (see status engine), `transcript_status` (`pending|done|failed`). Core tables: `clinics`, `users`, `departments`, `question_templates`, `questions`, `visits`, `answers`, `summaries`. `visits` and `question_templates` have `clinic_id`; tokens are unique per `(clinic_id, visit_date)`.
 
 - Migrations: `db/migrations/NNN_*.sql`, applied in filename sort order, tracked in a `_migrations` table, each wrapped in a transaction. Runner: `db/run-migrations.js` (also invoked from `server.js`). **Migrations are forward-only and must be idempotent** — append a new numbered file, don't edit an applied one.
 - Seeds: `db/seeds/`, run via `db/run-seeds.js`; use `ON CONFLICT DO NOTHING` so they're re-runnable.
@@ -164,3 +186,5 @@ Read the relevant `docs/stories/CLINIC-00X-*.md` before changing a feature — t
 | CLINIC-004 | Mobile | Voice recording, multipart upload, STT |
 | CLINIC-005 | Mobile | Attender review + AI summary preview + submit |
 | CLINIC-006 | Web | Doctor queue + patient detail dashboard |
+| CLINIC-007 | Backend | AI summary generation (pluggable `summaryService` providers) |
+| CLINIC-008 | All | Clinics + logins (in progress on `feature/clinic-008`: backend done, 008.4–008.6 mobile/web login + setup script pending) |

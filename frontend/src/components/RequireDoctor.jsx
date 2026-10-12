@@ -1,15 +1,18 @@
-// Client-side role gate (POC: no real auth). The doctor role is asserted via a
-// constant / ?role= query param. A non-doctor sees a "Doctor access only" guard.
-import { ROLE } from '../utils/apiClient'
+// Route gate (CLINIC-008.5): the doctor dashboard needs a signed-in doctor.
+// No session -> /login (also reached the moment a logout or 401 clears it). An
+// attender account never gets a stored session on the web (see LoginPage); the
+// backend enforces the same on its doctor-only actions.
+import { Navigate } from 'react-router-dom'
+import { useSession, isDoctor } from '../utils/authStore'
 
 export default function RequireDoctor({ children }) {
-  const params = new URLSearchParams(window.location.search)
-  const role = params.get('role') ?? ROLE // defaults to 'doctor' in this POC
-  if (role !== 'doctor') {
+  const session = useSession()
+  if (!session) return <Navigate to="/login" replace />
+  if (!isDoctor(session)) {
     return (
       <div className="guard">
         <h1>Doctor access only</h1>
-        <p>This dashboard is restricted to the doctor role.</p>
+        <p>This dashboard is restricted to doctor accounts.</p>
       </div>
     )
   }

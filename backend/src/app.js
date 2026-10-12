@@ -8,7 +8,6 @@ const app = express();
 
 app.use(cors({ origin: config.corsOrigins }));
 app.use(express.json());
-app.use('/audio', express.static(config.audioDir));
 app.use('/api', routes);
 app.use(errorHandler);
 

@@ -59,6 +59,9 @@ npm run dev                    # port 4000; creates the tables automatically on 
 npm run seed
 ```
 
+The seed also creates two demo logins in "Default Clinic" (local only, never production):
+doctor `9000000001` / `demo1234`, attender `9000000002` / `demo1234`.
+
 **Whisper speech-to-text** (terminal 2)
 
 ```bash
@@ -97,6 +100,26 @@ npm start                      # open the shown URL in Expo Go on your phone
   (Wi-Fi, IPv4 Address).
 - Your phone and laptop must be on the same Wi-Fi.
 - Windows Firewall must allow inbound ports **8081** (Expo) and **4000** (backend).
+
+## Onboarding a clinic
+
+Each clinic has its own patients, tokens and question templates. Create a clinic with its doctor
+and attender (run from the repo root, after `npm install`; it uses `DATABASE_URL` from `backend/.env`).
+In production, run the same commands in the backend container's terminal (Coolify → backend →
+Terminal); the script is in the image and uses the container's `DATABASE_URL`:
+
+```bash
+node scripts/clinic-admin.mjs create-clinic "Sri Clinic, Madurai" --doctor "Dr. Ramesh:9876543210" --attender "Priya:9876500000"
+```
+
+It gives the clinic its own copy of the Default Clinic's active question templates and prints each
+user's password **once** (only a hash is stored) — note them down and share them with the clinic.
+
+To set a new password (this also signs that user out of every device, e.g. a lost phone):
+
+```bash
+node scripts/clinic-admin.mjs reset-password 9876543210
+```
 
 ## 5. Team rules
 

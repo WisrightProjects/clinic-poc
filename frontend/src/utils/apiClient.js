@@ -1,19 +1,24 @@
 // Single place that talks to the REAL backend through the Vite /api proxy.
-// Attaches the doctor role header on every call (POC: no real auth).
+// Attaches the login token (CLINIC-008) as a Bearer header on every call.
 // Throws an Error with .status on non-2xx for the error-state handling.
 
-export const ROLE = 'doctor'
+import { getToken, clearSession } from './authStore'
 
 async function request(path, options = {}) {
+  const token = getToken()
   const res = await fetch(`/api${path}`, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
-      'x-role': ROLE,
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(options.headers || {}),
     },
   })
   if (!res.ok) {
+    // Our token was rejected (expired/invalid): sign out; RequireDoctor then sends
+    // the doctor to /login. A 401 without a token (wrong password on login) is just
+    // a form error, and a late 401 for an older token must not sign out a newer login.
+    if (res.status === 401 && token && token === getToken()) clearSession()
     let message = `API ${res.status}`
     try {
       const body = await res.json()
@@ -27,6 +32,10 @@ async function request(path, options = {}) {
   }
   return res.status === 204 ? null : res.json()
 }
+
+// POST /api/auth/login — { token, user: { id, name, role, clinic: { id, name } } }
+export const login = (mobile, password) =>
+  request('/auth/login', { method: 'POST', body: JSON.stringify({ mobile, password }) })
 
 // GET /api/visits?status= — full queue, or filtered by comma-separated statuses
 export const getVisits = (status) =>

@@ -11,7 +11,10 @@ mobile/
 frontend/
 stt-service/
 docs/
-scripts/
+# scripts/ except the clinic setup script (CLINIC-008.6), which runs in the backend container.
+scripts/*
+!scripts/clinic-admin.mjs
+!scripts/clinic-admin-lib.js
 storage/
 **/uploads
 *.html

@@ -268,7 +268,7 @@ AND no API response ever includes password_hash
 **New files:**
 - `backend/src/repositories/userRepository.js` — `findByMobile`, `findById` (never select `password_hash` except in `findByMobile` for login).
 - `backend/src/repositories/clinicRepository.js` — `create`, `findById`.
-- `backend/src/services/authService.js` — `login(mobile, password)`: bcrypt compare, sign `{ sub: user.id, clinicId, role }`.
+- `backend/src/services/authService.js` — `login(mobile, password)`: bcrypt compare, sign `{ sub: user.id }` only — clinic and role are reloaded from the DB on every request, so they can't go stale in a token.
 - `backend/src/controllers/authController.js` — `POST /api/auth/login`, `GET /api/auth/me`.
 - `backend/src/utils/auth.js` — **replaces `roleGuard.js`**: reads `Authorization: Bearer <token>`, verifies it, loads the user (reject if `is_active` is false), sets `req.user = { id, clinicId, role }`. Plus `requireRole('doctor')` for doctor-only routes.
 
@@ -307,7 +307,7 @@ Pass `req.user.clinicId` from every controller into the service and repository. 
 
 **File:** `scripts/clinic-admin.mjs` **(NEW)** — reads `backend/.env` like the db runners.
 - `node scripts/clinic-admin.mjs create-clinic "Sri Clinic, Madurai" --doctor "Dr. Ramesh:9876543210" --attender "Priya:9876500000"` → creates the clinic, **copies every active template and its questions** into it, creates the users with random passwords, and prints them once.
-- `node scripts/clinic-admin.mjs reset-password 9876543210` → prints a new password.
+- `node scripts/clinic-admin.mjs reset-password 9876543210` → prints a new password. It must also set `users.password_changed_at = now()`, which signs that user out of every device (older tokens are rejected).
 
 ### Part 7: Tests (0.5 day)
 

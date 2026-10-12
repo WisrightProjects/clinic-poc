@@ -3,6 +3,7 @@
 // rollback on failure (AC9) -> advance to the next actionable patient (AC5).
 
 import { useEffect, useMemo, useState } from 'react'
+import { useSession, clearSession } from '../utils/authStore'
 import { useVisitQueue } from '../hooks/useVisitQueue'
 import { useVisitDetail } from '../hooks/useVisitDetail'
 import { setVisitDone } from '../utils/apiClient'
@@ -14,6 +15,7 @@ import AiSummaryCard from '../components/AiSummaryCard'
 import QaList from '../components/QaList'
 
 export default function DoctorDashboardPage() {
+  const user = useSession()?.user
   const { visits, isLoading, error, refetch } = useVisitQueue()
   const [selectedId, setSelectedId] = useState(null)
   const [overrides, setOverrides] = useState({}) // optimistic status by visit id
@@ -98,10 +100,15 @@ export default function DoctorDashboardPage() {
       <header className="topbar">
         <span className="brand">ClinicAI</span>
         <span className="topbar-sub">Doctor Dashboard</span>
+        <span className="topbar-user">
+          {[user?.clinic?.name, user?.name].filter(Boolean).join(' · ')}
+        </span>
+        <button className="topbar-logout" onClick={clearSession}>Logout</button>
       </header>
 
       <div className="layout">
         <QueueRail
+          user={user}
           visits={queue}
           selectedId={selectedId}
           onSelect={setSelectedId}
