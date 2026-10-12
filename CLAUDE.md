@@ -120,9 +120,11 @@ POST  /visits/:id/answers   (multipart, field "audio" — Multer; triggers STT)
 PATCH /visits/:id/status    POST /visits/:id/submit     (PATCH: doctor only, sets 'done' only)
 PUT   /visits/:id/summary   { text } — doctor edits the summary (CLINIC-012). Show summary.display_text; summary_text is the AI original
 GET   /answers/:id/audio    (the recording, own clinic only)
+POST  /visits/:id/reports   (attender; multipart field "report", JPEG/PNG/WEBP by content, 10 MB each, 20 per visit — CLINIC-011)
+GET   /visits/:id/reports   GET /reports/:id/file   DELETE /reports/:id (attender)   (add/delete only before submit)
 ```
 
-`GET /visits/:id` returns `{ visit, template, answers, summary }` (the shape the doctor web consumes).
+`GET /visits/:id` returns `{ visit, template, answers, summary, reports }` (the shape the doctor web consumes).
 
 ### Auth and clinics (CLINIC-008)
 
