@@ -4,6 +4,7 @@
   --bg: #f5f8fa;
   --line: #e8edf2;
   --muted: #6b7c93;
+  --danger: #c0392b;
 }
 
 * { box-sizing: border-box; }
@@ -30,6 +31,38 @@ html, body, #root {
 }
 .brand { font-size: 20px; font-weight: 800; letter-spacing: 0.3px; }
 .topbar-sub { font-size: 14px; color: #aab8cc; }
+.topbar-user { margin-left: auto; font-size: 14px; color: #dbe4f0; text-align: right; }
+.topbar-logout {
+  background: none; border: 1px solid #5a7090; color: #fff; border-radius: 6px;
+  padding: 4px 12px; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.topbar-logout:hover { background: rgba(255, 255, 255, 0.12); }
+
+/* Login page (CLINIC-008.5) — centred card, fills a phone screen */
+.login-page { min-height: 100%; display: flex; align-items: center; justify-content: center; padding: 24px 16px; }
+.login-card {
+  width: 100%; max-width: 380px; background: #fff; border: 1px solid var(--line);
+  border-radius: 12px; padding: 28px 24px; display: flex; flex-direction: column;
+}
+.login-brand { margin: 0; text-align: center; font-size: 30px; font-weight: 800; color: var(--navy); }
+.login-sub { margin: 4px 0 24px; text-align: center; color: var(--muted); font-size: 15px; }
+.login-label { font-size: 13px; font-weight: 700; margin-bottom: 6px; }
+.login-input {
+  border: 1px solid #d9e1ea; border-radius: 8px; padding: 12px 14px; font-size: 16px;
+  margin-bottom: 16px; color: var(--navy); font-family: inherit;
+}
+.login-input:focus { outline: 2px solid var(--teal); outline-offset: -1px; }
+.login-error { color: var(--danger); font-size: 14px; margin-bottom: 12px; }
+.login-btn {
+  background: var(--teal); color: #fff; border: none; border-radius: 8px; padding: 14px;
+  font-size: 16px; font-weight: 700; cursor: pointer;
+}
+.login-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+@media (max-width: 640px) {
+  .topbar { flex-wrap: wrap; padding: 12px 16px; }
+  .topbar-sub { display: none; }
+}
 
 /* Two-pane layout */
 .layout { flex: 1; display: flex; min-height: 0; }
