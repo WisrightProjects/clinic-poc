@@ -1,14 +1,15 @@
 // Purpose: Home / Patient Queue screen — the attender's landing screen.
-// Shows visits grouped by date, newest day first (tap a row to resume its
+// Shows visits grouped by queue day, newest first, with patients away for tests in a
+// "Waiting for tests" group on top (tap a row to resume its
 // intake), and a "New Patient" button to start a fresh registration. This is the
 // hub that links into the CLINIC-003 flow. Settings (question template) is
 // reachable via the header gear configured in AppNavigator. Data comes from
 // GET /visits via useVisitQueue.
 //
 // Tokens restart at 1 each day, so a flat list showed the same token number
-// repeating with no context; grouping by visit_date makes each day read 1, 2, 3…
+// repeating with no context; grouping by queue_date makes each day read 1, 2, 3…
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -24,6 +25,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useVisitQueue } from '../hooks/useVisitQueue';
 import { useSession, clearSession } from '../auth/authStore';
+import { TestRequestAlerts } from '../components/TestRequestAlerts';
+import { TESTS_GROUP, groupKey, isInQueueOn } from '../utils/queue';
+import { errorMessage } from '../utils/apiError';
 
 const NAVY = '#1a3050';
 const TEAL = '#0a8f8f';
@@ -37,6 +41,7 @@ const STATUS_STYLE = {
   answering: { bg: '#e6f7f7', fg: TEAL, label: 'Answering' },
   answered: { bg: '#e8f0fe', fg: '#1a56c4', label: 'Answered' },
   summarised: { bg: '#e6ffed', fg: '#2f855a', label: 'Summarised' },
+  tests_requested: { bg: '#fff1d6', fg: '#9a5b00', label: 'Waiting for tests' }, // CLINIC-014
   done: { bg: '#38a169', fg: '#ffffff', label: 'Done' },
 };
 
@@ -75,26 +80,25 @@ function shortDate(key) {
   return new Date(y, m - 1, d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 }
 
-// Bucket visits by visit_date (date part only), newest day first. Within a day,
-// order by token so it reads 1, 2, 3… Shape matches SectionList's sections prop.
+// Bucket visits by queue group (see utils/queue.js): "Waiting for tests" first, then each
+// queue day, newest first. Within a group, order by queue token so it reads 1, 2, 3…
+// Shape matches SectionList's sections prop.
 function buildSections(visits) {
   const buckets = new Map();
   for (const v of visits) {
-    const key = (v.visit_date || '').slice(0, 10) || 'unknown';
+    const key = groupKey(v);
     if (!buckets.has(key)) buckets.set(key, []);
     buckets.get(key).push(v);
   }
   return [...buckets.entries()]
-    .sort((a, b) => {
-      if (a[0] === b[0]) return 0;
-      if (a[0] === 'unknown') return 1; // undated always last, whatever it sorts as
-      if (b[0] === 'unknown') return -1;
-      return a[0] < b[0] ? 1 : -1; // real dates newest first
+    .sort(([a], [b]) => {
+      if (a === TESTS_GROUP || b === TESTS_GROUP) return a === TESTS_GROUP ? -1 : 1;
+      return a < b ? 1 : -1; // real dates newest first
     })
     .map(([key, items]) => ({
       key,
-      title: formatDate(key),
-      data: [...items].sort((x, y) => (x.token_number ?? 0) - (y.token_number ?? 0)),
+      title: key === TESTS_GROUP ? STATUS_STYLE.tests_requested.label : formatDate(key),
+      data: [...items].sort((x, y) => x.queue_token - y.queue_token),
     }));
 }
 
@@ -125,9 +129,11 @@ const TOKEN_STYLE = {
   done: { bg: '#d3dae2', fg: '#5a6b80' },
   current: { bg: '#1a56c4', fg: '#ffffff' },
   next: { bg: '#f6b83f', fg: '#5a4300' },
+  tests: { bg: '#ffe3b3', fg: '#7a4a00' }, // away for tests (CLINIC-014)
 };
 function tokenState(status) {
   if (status === 'done') return 'done';
+  if (status === 'tests_requested') return 'tests';
   if (status === 'waiting') return 'next';
   if (status === 'answering' || status === 'answered' || status === 'summarised') return 'current';
   return null;
@@ -190,12 +196,12 @@ export default function HomeScreen() {
   // Header count reflects TODAY's queue only — tokens reset daily, so the total
   // across all days isn't a meaningful "queue size". Older days still appear in
   // the list (collapsed), but the count is today's.
-  const todayCount = visits.filter((v) => (v.visit_date || '').slice(0, 10) === today).length;
+  const todayCount = visits.filter((v) => isInQueueOn(v, today)).length;
 
   // A day is open by default if it's Today or Yesterday. Computed live each
   // render (not seeded once), so it stays correct across a midnight boundary —
   // the new day's section opens on its own instead of staying collapsed.
-  const defaultOpen = (key) => key === today || key === yesterday;
+  const defaultOpen = (key) => key === TESTS_GROUP || key === today || key === yesterday;
 
   // Track only the user's explicit toggles (key -> open?), layered over the live
   // defaults above. Keeps the caret functional on every day (incl. today) with
@@ -211,7 +217,8 @@ export default function HomeScreen() {
   // Collapsed sections keep their header but render no rows (data: []). `count`
   // carries the real total so the header badge still shows it while collapsed.
   // Today/Yesterday keep the date alongside the relative label (see shortDate).
-  const sections = buildSections(visits).map((s) => ({
+  const grouped = useMemo(() => buildSections(visits), [visits]);
+  const sections = grouped.map((s) => ({
     key: s.key,
     title:
       s.key === today
@@ -229,10 +236,15 @@ export default function HomeScreen() {
       <TouchableOpacity
         style={styles.row}
         activeOpacity={0.7}
-        onPress={() => navigation.navigate('QuestionList', { visitId: item.id })}
+        // A patient away for tests opens the "Back in queue" screen, not the intake list.
+        onPress={() =>
+          navigation.navigate(item.status === 'tests_requested' ? 'BackInQueue' : 'QuestionList', {
+            visitId: item.id,
+          })
+        }
       >
         <View style={[styles.tokenBadge, tk && { backgroundColor: tk.bg }]}>
-          <Text style={[styles.tokenText, tk && { color: tk.fg }]}>{item.token_number}</Text>
+          <Text style={[styles.tokenText, tk && { color: tk.fg }]}>{item.queue_token}</Text>
         </View>
         <View style={styles.rowBody}>
           <View style={styles.line1}>
@@ -284,6 +296,8 @@ export default function HomeScreen() {
         </TouchableOpacity>
       </View>
 
+      <TestRequestAlerts visits={visits} onChanged={() => reload({ silent: true })} />
+
       {loading ? (
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={NAVY} />
@@ -291,9 +305,9 @@ export default function HomeScreen() {
       ) : error ? (
         <View style={styles.centered}>
           <Text style={styles.errorText}>
-            {error?.response?.data?.error?.message ?? error.message ?? 'Failed to load queue'}
+            {errorMessage(error, 'Failed to load queue')}
           </Text>
-          <TouchableOpacity style={styles.retryBtn} onPress={reload}>
+          <TouchableOpacity style={styles.retryBtn} onPress={() => reload()}>
             <Text style={styles.retryText}>Retry</Text>
           </TouchableOpacity>
         </View>

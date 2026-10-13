@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const { withTransaction } = require('./transaction');
 const { AppError } = require('../utils/errors');
 
 async function withQuestions(template) {
@@ -38,10 +39,7 @@ async function findById(clinicId, id) {
 // them — deleting an answered question would orphan patient data, so we reject
 // that with a 409 instead of letting the FK raise a raw 500.
 async function updateQuestions(clinicId, templateId, questions) {
-  const client = await db.connect();
-  try {
-    await client.query('BEGIN');
-
+  await withTransaction(async client => {
     const { rows: existing } = await client.query(
       'SELECT id FROM questions WHERE template_id = $1',
       [templateId]
@@ -81,15 +79,8 @@ async function updateQuestions(clinicId, templateId, questions) {
       }
       await client.query('DELETE FROM questions WHERE id = ANY($1)', [removedIds]);
     }
-
-    await client.query('COMMIT');
-    return findById(clinicId, templateId);
-  } catch (err) {
-    await client.query('ROLLBACK');
-    throw err;
-  } finally {
-    client.release();
-  }
+  });
+  return findById(clinicId, templateId);
 }
 
 module.exports = { findActiveByDepartmentId, findActiveForVisit, findById, updateQuestions };

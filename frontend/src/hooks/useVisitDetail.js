@@ -2,10 +2,10 @@
 // visitId changes — never on a queue poll — so the open panel is not reset or
 // re-fetched by background refreshes (AC3).
 //
-// The API returns { visit, template, answers, summary, reports } where questions live in
+// The API returns { visit, template, answers, summary, reports, test_requests } where questions live in
 // template.questions and transcripts in answers. We merge them by question_id
 // and sort by order_index (same shape the mobile app derives). Output:
-// { visit, qa, summary, reports, isLoading, error, refetch, saveSummary }.
+// { visit, qa, summary, reports, testRequests, isLoading, error, refetch, saveSummary }.
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { getVisit, saveSummary as putSummary } from '../utils/apiClient'
@@ -18,14 +18,15 @@ export function useVisitDetail(visitId) {
   // already clicked away from must not replace the current patient's data.
   const latestId = useRef(visitId)
 
-  const load = useCallback(async () => {
+  // silent = refresh the data in place, without flipping the page to "Loading patient…".
+  const load = useCallback(async ({ silent = false } = {}) => {
     latestId.current = visitId
     if (!visitId) {
       setData(null)
       return
     }
     const isCurrent = () => latestId.current === visitId
-    setIsLoading(true)
+    if (!silent) setIsLoading(true)
     setError(null)
     try {
       const result = await getVisit(visitId)
@@ -33,7 +34,7 @@ export function useVisitDetail(visitId) {
     } catch (e) {
       if (isCurrent()) setError(e)
     } finally {
-      if (isCurrent()) setIsLoading(false)
+      if (!silent && isCurrent()) setIsLoading(false)
     }
   }, [visitId])
 
@@ -71,6 +72,7 @@ export function useVisitDetail(visitId) {
     qa,
     summary: data?.summary ?? null,
     reports: data?.reports ?? [],
+    testRequests: data?.test_requests ?? [], // CLINIC-014 history, newest first
     isLoading,
     error,
     refetch: load,

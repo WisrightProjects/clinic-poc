@@ -6,6 +6,7 @@ export const STATUS_UI = {
   answering:  { label: 'Answering',  bg: '#e6f7f7', fg: '#0a8f8f' },
   answered:   { label: 'Answered',   bg: '#e8f0fe', fg: '#1a56c4' },
   summarised: { label: 'Summarised', bg: '#e6ffed', fg: '#2f855a' },
+  tests_requested: { label: 'Waiting for tests', bg: '#fff1d6', fg: '#9a5b00' }, // CLINIC-014
   done:       { label: 'Done',       bg: '#38a169', fg: '#ffffff' },
 }
 

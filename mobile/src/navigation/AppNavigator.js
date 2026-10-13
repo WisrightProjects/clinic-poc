@@ -13,6 +13,7 @@ import QuestionListScreen from '../screens/QuestionListScreen';
 import RecordingScreen from '../screens/RecordingScreen';
 import ReviewSubmitScreen from '../screens/ReviewSubmitScreen';
 import SentScreen from '../screens/SentScreen';
+import BackInQueueScreen from '../screens/BackInQueueScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -76,6 +77,13 @@ export function AppNavigator() {
         name="Review"
         component={ReviewSubmitScreen}
         options={{ title: 'Review & Submit' }}
+      />
+
+      {/* CLINIC-014 — a patient back from tests: put them back in today's queue */}
+      <Stack.Screen
+        name="BackInQueue"
+        component={BackInQueueScreen}
+        options={{ title: 'Back from tests' }}
       />
 
       {/* CLINIC-005 — sent confirmation */}
