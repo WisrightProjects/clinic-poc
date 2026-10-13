@@ -2,7 +2,7 @@
 // rail + detail panel, and handles Done: optimistic chip/stat update -> PATCH ->
 // rollback on failure (AC9) -> advance to the next actionable patient (AC5).
 
-import { useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import { useSession, clearSession } from '../utils/authStore'
 import { useVisitQueue } from '../hooks/useVisitQueue'
 import { useVisitDetail } from '../hooks/useVisitDetail'
@@ -23,7 +23,7 @@ export default function DoctorDashboardPage() {
   const [selectedId, setSelectedId] = useState(null)
   const [overrides, setOverrides] = useState({}) // optimistic status by visit id
   const [doneError, setDoneError] = useState(null)
-  const [marking, setMarking] = useState(false)
+  const [markingId, setMarkingId] = useState(null) // the visit whose Done is in flight
 
   // Apply optimistic overrides on top of the polled queue (token order kept).
   const queue = useMemo(
@@ -89,18 +89,25 @@ export default function DoctorDashboardPage() {
     refetch()
   }
 
+  // A Done error belongs to the patient it happened on.
+  function selectPatient(id) {
+    setDoneError(null)
+    setSelectedId(id)
+  }
+
   async function handleDone() {
-    if (!selected || marking) return
+    if (!selected || markingId) return
     const id = selected.id
-    setMarking(true)
+    setMarkingId(id)
     setDoneError(null)
     setOverrides((p) => ({ ...p, [id]: 'done' })) // optimistic
     try {
       await setVisitDone(id)
       await refetch()
-      // Advance to the next actionable patient in token order.
+      // Advance to the next actionable patient in token order — only if the doctor is
+      // still on this patient (never override a selection made while Done was saving).
       const next = queue.find((v) => v.id !== id && isActionable(v.status))
-      setSelectedId(next?.id ?? null)
+      setSelectedId((cur) => (cur === id ? (next?.id ?? null) : cur))
     } catch (e) {
       setOverrides((p) => {
         const n = { ...p }
@@ -109,7 +116,7 @@ export default function DoctorDashboardPage() {
       })
       setDoneError(e?.message ?? 'Could not mark done. Please retry.')
     } finally {
-      setMarking(false)
+      setMarkingId(null)
     }
   }
 
@@ -129,7 +136,7 @@ export default function DoctorDashboardPage() {
           user={user}
           visits={queue}
           selectedId={selectedId}
-          onSelect={setSelectedId}
+          onSelect={selectPatient}
           isLoading={isLoading}
           error={error}
           onRetry={refetch}
@@ -146,10 +153,15 @@ export default function DoctorDashboardPage() {
           ) : detail.error ? (
             <div className="placeholder placeholder--error">
               <p>Could not load this patient.</p>
-              <button className="link-btn" onClick={detail.refetch}>Retry</button>
+              <button className="link-btn" onClick={() => detail.refetch()}>Retry</button>
             </div>
           ) : detail.visit ? (
-            <>
+            // Keyed by patient, so switching patients remounts the whole detail: an open
+            // summary edit, the send-for-tests dialog and loaded photos never carry over.
+            // One key on the wrapper — sibling components must never share a key, which
+            // left the previous patient's panels on screen (CR-003). useVisitDetail only
+            // returns data for the selected visit, so nothing stale renders under it.
+            <Fragment key={selectedId}>
               <PatientHeader visit={selected ?? detail.visit} />
               <StatsStrip
                 seenToday={seenToday}
@@ -158,32 +170,30 @@ export default function DoctorDashboardPage() {
                 total={detail.qa.length}
               />
               <TestRequestPanel
-                key={selectedId}
                 visit={selected ?? detail.visit}
                 requests={detail.testRequests}
                 onChanged={handleTestsChanged}
               />
               <AiSummaryCard
-                key={selectedId}
                 summary={detail.summary}
                 status={(selected ?? detail.visit).status}
                 onSave={handleSummarySave}
               />
               <QaList qa={detail.qa} />
-              <ReportsList key={selectedId} reports={detail.reports} />
+              <ReportsList reports={detail.reports} />
 
               {doneError ? <div className="done-error">{doneError}</div> : null}
               <div className="action-bar">
                 <button
                   className="done-btn"
                   onClick={handleDone}
-                  disabled={!canMarkDone || marking}
+                  disabled={!canMarkDone || markingId !== null}
                   title={canMarkDone ? '' : 'Only a summarised patient can be marked done'}
                 >
-                  {marking ? 'Marking…' : (selected ?? detail.visit).status === 'done' ? 'Done ✓' : 'Mark Done'}
+                  {markingId === selectedId ? 'Marking…' : (selected ?? detail.visit).status === 'done' ? 'Done ✓' : 'Mark Done'}
                 </button>
               </div>
-            </>
+            </Fragment>
           ) : null}
         </main>
       </div>
