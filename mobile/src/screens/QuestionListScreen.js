@@ -86,6 +86,7 @@ export default function QuestionListScreen() {
                 visitId,
                 questionId: item.id,
                 questionText: item.text,
+                typedText: item.typedText,
                 index: index + 1,
                 total,
               })

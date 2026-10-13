@@ -2,7 +2,8 @@
 // character counter and Save; the typed text is stored by the server as a finished
 // transcript (no recording, nothing to wait for). Save goes back to the intake list, which
 // reloads on focus. A failed save keeps the text so it can be retried.
-// Props: { visitId, questionId, questionText, index, total, onCancel }  (onCancel = "Record instead")
+// Props: { visitId, questionId, questionText, initialText?, index, total, onCancel }
+// (onCancel = "Record instead"; initialText pre-fills the box when a typed answer is retaken)
 
 import React, { useState } from 'react';
 import {
@@ -20,14 +21,15 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { saveTextAnswer } from '../api/answerApi';
 import { QuestionCard } from './QuestionCard';
+import { errorMessage } from '../utils/apiError';
 
 const NAVY = '#1a3050';
 const TEAL = '#0a8f8f';
 const MAX_TEXT = 2000; // matches the backend (MAX_ANSWER_TEXT_LENGTH); the server's 422 is the real guard
 
-export function TypedAnswerForm({ visitId, questionId, questionText, index, total, onCancel }) {
+export function TypedAnswerForm({ visitId, questionId, questionText, initialText, index, total, onCancel }) {
   const navigation = useNavigation();
-  const [text, setText] = useState('');
+  const [text, setText] = useState(initialText ?? '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
@@ -40,7 +42,7 @@ export function TypedAnswerForm({ visitId, questionId, questionText, index, tota
       await saveTextAnswer(visitId, questionId, text.trim());
       navigation.goBack(); // list reloads on focus → shows the typed answer + Done
     } catch (err) {
-      setError(err?.response?.data?.error?.message ?? err?.message ?? 'Could not save the answer. Please retry.');
+      setError(errorMessage(err, 'Could not save the answer. Please retry.'));
       setSaving(false);
     }
   }

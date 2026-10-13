@@ -26,6 +26,7 @@ import { Waveform } from '../components/Waveform';
 import { RecordTimer } from '../components/RecordTimer';
 import { QuestionCard } from '../components/QuestionCard';
 import { TypedAnswerForm } from '../components/TypedAnswerForm';
+import { errorMessage } from '../utils/apiError';
 
 const NAVY = '#1a3050';
 const TEAL = '#0a8f8f';
@@ -34,12 +35,13 @@ const RED = '#e53e3e';
 export default function RecordingScreen() {
   const navigation = useNavigation();
   const route = useRoute();
-  const { visitId, questionId, questionText, index, total } = route.params;
+  const { visitId, questionId, questionText, typedText, index, total } = route.params;
 
   const rec = useAudioRecorder();
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState(null);
-  const [typing, setTyping] = useState(false); // "Type instead" (CLINIC-009)
+  // "Type instead" (CLINIC-009); a typed answer being retaken opens straight in the text box.
+  const [typing, setTyping] = useState(Boolean(typedText));
 
   const doUpload = useCallback(
     async (fileUri) => {
@@ -54,7 +56,7 @@ export default function RecordingScreen() {
         navigation.goBack(); // list reloads on focus → shows transcript + Done
       } catch (err) {
         // AC6/AC10: keep the local file, surface a retry action
-        setUploadError(err?.response?.data?.error?.message ?? err?.message ?? 'Could not save the answer. Please retry.');
+        setUploadError(errorMessage(err, 'Could not save the answer. Please retry.'));
         setUploading(false);
       }
     },
@@ -74,6 +76,7 @@ export default function RecordingScreen() {
         visitId={visitId}
         questionId={questionId}
         questionText={questionText}
+        initialText={typedText}
         index={index}
         total={total}
         onCancel={() => setTyping(false)}

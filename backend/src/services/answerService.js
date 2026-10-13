@@ -4,12 +4,18 @@ const answerRepository = require('../repositories/answerRepository');
 const templateRepository = require('../repositories/templateRepository');
 const sttService = require('./sttService');
 const visitService = require('./visitService');
+const statusEngine = require('./statusEngine');
 const { AppError } = require('../utils/errors');
 
 // The visit must be in the caller's clinic (else 404) and the question in its template
-// (else 400). A rejected upload's file is deleted by the errorHandler.
+// (else 400), and the visit not yet submitted (else 409). A rejected upload's file is deleted by the errorHandler.
 async function loadTarget(clinicId, visitId, questionId) {
   const visit = await visitService.findVisit(clinicId, visitId);
+  // Once sent to the doctor the answers must match the AI summary they were written from,
+  // including while the patient is away for tests.
+  if (statusEngine.isSubmitted(visit.status)) {
+    throw new AppError('ANSWERS_LOCKED', 'Answers cannot be changed after the visit is sent to the doctor', 409);
+  }
   const template = await templateRepository.findActiveForVisit(visit);
   if (!template || !template.questions.some(q => q.id === Number(questionId))) {
     throw new AppError('BAD_REQUEST', 'questionId is not a question for this visit', 400);
