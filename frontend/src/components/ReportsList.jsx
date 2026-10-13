@@ -2,7 +2,7 @@
 // and a full-size viewer you can zoom. Nothing here reads the images — the doctor just
 // looks at them. The same object URL (see hooks/useReportImages.js) feeds the thumbnail
 // and the viewer.
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useReportImages } from '../hooks/useReportImages'
 
 const MIN_ZOOM = 1
@@ -33,6 +33,7 @@ function Viewer({ reports, images, index, onIndex, onClose }) {
   // preventDefault, so Ctrl+wheel would also zoom the whole browser page — use a native
   // listener that can cancel it.
   const stageRef = useRef(null)
+  const imgRef = useRef(null)
   useEffect(() => {
     const stage = stageRef.current
     function onWheel(e) {
@@ -43,6 +44,24 @@ function Viewer({ reports, images, index, onIndex, onClose }) {
     stage.addEventListener('wheel', onWheel, { passive: false })
     return () => stage.removeEventListener('wheel', onWheel)
   }, [])
+
+  // Zoom 1 = the whole photo fits the stage (CSS: max-width/max-height 100%). Zooming works
+  // from that fitted size, so the width in px of the fitted photo is measured here and
+  // multiplied by the zoom. Re-measured when the photo loads and when the window resizes.
+  const [fitWidth, setFitWidth] = useState(null)
+  const measure = useCallback(() => {
+    const stage = stageRef.current
+    const img = imgRef.current
+    if (!stage || !img || !img.naturalWidth) return
+    const ratio = img.naturalWidth / img.naturalHeight
+    setFitWidth(Math.min(stage.clientWidth, stage.clientHeight * ratio))
+  }, [])
+  useEffect(() => {
+    window.addEventListener('resize', measure)
+    return () => window.removeEventListener('resize', measure)
+  }, [measure])
+  // Zoom 1 is sized by CSS (fits the stage); above it, a multiple of the fitted width.
+  const zoomedWidth = zoom > MIN_ZOOM && fitWidth ? zoom * fitWidth : null
 
   return (
     <div className="rv-overlay" role="dialog" aria-modal="true" aria-label="Report photo" onClick={onClose}>
@@ -58,7 +77,14 @@ function Viewer({ reports, images, index, onIndex, onClose }) {
 
       <div className="rv-stage" ref={stageRef} onClick={(e) => e.stopPropagation()}>
         {isLoaded(src) ? (
-          <img className="rv-img" src={src} alt={`Previous report ${index + 1}`} style={{ width: `${zoom * 100}%` }} />
+          <img
+            ref={imgRef}
+            className={zoomedWidth ? 'rv-img rv-img--zoomed' : 'rv-img'}
+            src={src}
+            alt={`Previous report ${index + 1}`}
+            onLoad={measure}
+            style={zoomedWidth ? { width: zoomedWidth } : undefined}
+          />
         ) : (
           <div className="rv-msg">{src === 'error' ? 'Could not load this photo.' : 'Loading…'}</div>
         )}
