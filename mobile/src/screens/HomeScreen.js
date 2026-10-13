@@ -8,12 +8,15 @@
 //
 // Tokens restart at 1 each day, so a flat list showed the same token number
 // repeating with no context; grouping by queue_date makes each day read 1, 2, 3…
+// The list is one day at a time (CLINIC-015): today by default, another day from the chip
+// strip under the header; Waiting for tests is always included.
 
 import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
   SectionList,
+  ScrollView,
   ActivityIndicator,
   TouchableOpacity,
   StyleSheet,
@@ -179,11 +182,50 @@ function RowSubtitle({ visit }) {
   return hint ? <Text style={styles.subHint}>{hint}</Text> : null;
 }
 
+// Pick the queue's day (CLINIC-015): Today, Yesterday, then the days before, back
+// DAYS_BACK days. A chip strip, so no extra date-picker package is needed.
+const DAYS_BACK = 14;
+function DayStrip({ today, selected, onSelect }) {
+  const days = [];
+  for (let i = 0; i < DAYS_BACK; i++) {
+    const d = new Date();
+    d.setDate(d.getDate() - i); // JS rolls month/year back correctly
+    days.push(dayKey(d));
+  }
+  const label = (key, i) => (i === 0 ? 'Today' : i === 1 ? 'Yesterday' : shortDate(key));
+  return (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      style={styles.dayStripWrap}
+      contentContainerStyle={styles.dayStrip}
+    >
+      {days.map((key, i) => {
+        const active = key === selected;
+        return (
+          <TouchableOpacity
+            key={key}
+            style={[styles.dayChip, active && styles.dayChipActive]}
+            onPress={() => onSelect(key)}
+            accessibilityState={{ selected: active }}
+          >
+            <Text style={[styles.dayChipText, active && styles.dayChipTextActive]}>{label(key, i)}</Text>
+          </TouchableOpacity>
+        );
+      })}
+    </ScrollView>
+  );
+}
+
 export default function HomeScreen() {
   const navigation = useNavigation();
-  const { visits, loading, error, reload } = useVisitQueue();
   const today = todayKey();
   const yesterday = yesterdayKey();
+  // The day whose queue is shown (CLINIC-015): today unless the attender picks another day
+  // from the strip below the header. Not remembered — reopening the app starts on today.
+  const [pickedDate, setPickedDate] = useState(null);
+  const viewDate = pickedDate ?? today;
+  const { visits, loading, error, reload } = useVisitQueue(viewDate);
   const clinicName = useSession().session?.user?.clinic?.name;
 
   // Clearing the session makes App.js swap in the Login screen (CLINIC-008.4).
@@ -193,15 +235,16 @@ export default function HomeScreen() {
       { text: 'Logout', style: 'destructive', onPress: clearSession },
     ]);
 
-  // Header count reflects TODAY's queue only — tokens reset daily, so the total
-  // across all days isn't a meaningful "queue size". Older days still appear in
-  // the list (collapsed), but the count is today's.
-  const todayCount = visits.filter((v) => isInQueueOn(v, today)).length;
+  // The server sends one day's queue plus everyone waiting for tests, so the header count is
+  // the shown day's queue only — tokens reset daily, so the total across days isn't a
+  // meaningful "queue size".
+  const isToday = viewDate === today;
+  const dayCount = visits.filter((v) => isInQueueOn(v, viewDate)).length;
 
-  // A day is open by default if it's Today or Yesterday. Computed live each
+  // The shown day (and Waiting for tests) are open by default. Computed live each
   // render (not seeded once), so it stays correct across a midnight boundary —
   // the new day's section opens on its own instead of staying collapsed.
-  const defaultOpen = (key) => key === TESTS_GROUP || key === today || key === yesterday;
+  const defaultOpen = (key) => key === TESTS_GROUP || key === viewDate;
 
   // Track only the user's explicit toggles (key -> open?), layered over the live
   // defaults above. Keeps the caret functional on every day (incl. today) with
@@ -288,7 +331,7 @@ export default function HomeScreen() {
           <Text style={styles.heading}>Patient Queue</Text>
           {clinicName ? <Text style={styles.clinicName}>{clinicName}</Text> : null}
           <Text style={styles.subheading}>
-            {todayCount} {todayCount === 1 ? 'patient' : 'patients'} in today's queue
+            {dayCount} {dayCount === 1 ? 'patient' : 'patients'} in {isToday ? "today's queue" : `the queue on ${shortDate(viewDate)}`}
           </Text>
         </View>
         <TouchableOpacity
@@ -299,6 +342,8 @@ export default function HomeScreen() {
           <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
       </View>
+
+      <DayStrip today={today} selected={viewDate} onSelect={(d) => setPickedDate(d === today ? null : d)} />
 
       <TestRequestAlerts visits={visits} onChanged={() => reload({ silent: true })} />
 
@@ -317,8 +362,10 @@ export default function HomeScreen() {
         </View>
       ) : visits.length === 0 ? (
         <View style={styles.centered}>
-          <Text style={styles.emptyTitle}>No patients yet</Text>
-          <Text style={styles.emptyBody}>Tap “New Patient” below to register the first visit.</Text>
+          <Text style={styles.emptyTitle}>{isToday ? 'No patients yet' : 'No patients on this day'}</Text>
+          {isToday ? (
+            <Text style={styles.emptyBody}>Tap “New Patient” below to register the first visit.</Text>
+          ) : null}
         </View>
       ) : (
         <SectionList
@@ -360,6 +407,20 @@ const styles = StyleSheet.create({
   heading: { fontSize: 22, fontWeight: '700', color: NAVY },
   subheading: { fontSize: 13, color: '#6b7c93', marginTop: 2 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
+  dayStripWrap: { flexGrow: 0, flexShrink: 0 },
+  dayStrip: { paddingHorizontal: 16, paddingBottom: 8, gap: 8 },
+  dayChip: {
+    minHeight: 36,
+    justifyContent: 'center',
+    paddingHorizontal: 14,
+    borderRadius: 18,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#d9e1ea',
+  },
+  dayChipActive: { backgroundColor: TEAL, borderColor: TEAL },
+  dayChipText: { fontSize: 13, fontWeight: '600', color: '#6b7c93' },
+  dayChipTextActive: { color: '#ffffff' },
   listContent: { paddingHorizontal: 16, paddingBottom: 12 },
   sectionHdr: {
     flexDirection: 'row',

@@ -8,17 +8,8 @@
 // default; older days start collapsed behind a caret so the rail stays short.
 import { useState } from 'react'
 import StatusChip from './StatusChip'
-import { TESTS_GROUP, groupKey, isInQueueOn, oldTokenDay } from '../utils/queue'
+import { TESTS_GROUP, dayKey, todayKey, groupKey, isInQueueOn, oldTokenDay } from '../utils/queue'
 
-// Local calendar day as YYYY-MM-DD, so "Today"/"Yesterday" match the wall clock
-// without a timezone shift.
-function dayKey(d) {
-  const p = (n) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
-}
-function todayKey() {
-  return dayKey(new Date())
-}
 function yesterdayKey() {
   const d = new Date()
   d.setDate(d.getDate() - 1) // JS rolls month/year back correctly
@@ -96,15 +87,16 @@ function groupLabel(key, today, yesterday) {
   return formatDate(key)
 }
 
-export default function QueueRail({ user, visits, selectedId, onSelect, isLoading, error, onRetry }) {
+export default function QueueRail({ user, visits, selectedId, onSelect, viewDate, onDateChange, isLoading, error, onRetry }) {
   const groups = groupByDate(visits)
   const today = todayKey()
   const yesterday = yesterdayKey()
+  const isToday = viewDate === today
 
-  // The count badge reflects TODAY's queue only — tokens reset daily, so an
-  // all-days total isn't a meaningful "queue size". Older days still show in the
-  // rail (collapsed); only the header number is scoped to today.
-  const todayCount = visits.filter((v) => isInQueueOn(v, today)).length
+  // The server sends one day's queue (CLINIC-015) plus everyone waiting for tests, so the
+  // count badge is the shown day's queue only — tokens reset daily, so an all-days total
+  // isn't a meaningful "queue size".
+  const dayCount = visits.filter((v) => isInQueueOn(v, viewDate)).length
 
   // A day is open by default if it's Today, Yesterday, or holds the selected
   // patient (the page auto-selects the first actionable visit, which may sit in
@@ -112,7 +104,7 @@ export default function QueueRail({ user, visits, selectedId, onSelect, isLoadin
   // so it stays correct across the 5s poll and a midnight boundary.
   const selected = visits.find((x) => x.id === selectedId)
   const selectedKey = selected ? groupKey(selected) : null
-  const defaultOpen = (key) => key === TESTS_GROUP || key === today || key === yesterday || key === selectedKey
+  const defaultOpen = (key) => key === TESTS_GROUP || key === viewDate || key === selectedKey
 
   // We track only the user's explicit toggles (key -> open?), layered over the
   // live defaults above. This keeps the caret functional on every day (incl. the
@@ -134,8 +126,23 @@ export default function QueueRail({ user, visits, selectedId, onSelect, isLoadin
       </div>
 
       <div className="rail-head">
-        <span className="rail-title">Today's Queue</span>
-        <span className="rail-count">{todayCount}</span>
+        <span className="rail-title">{isToday ? "Today's Queue" : 'Queue'}</span>
+        <span className="rail-count">{dayCount}</span>
+      </div>
+
+      {/* Pick another day (CLINIC-015); "Today" returns. Not remembered across visits. */}
+      <div className="rail-day">
+        <input
+          type="date"
+          className="rail-day-input"
+          aria-label="Queue day"
+          value={viewDate}
+          max={today}
+          onChange={(e) => e.target.value && onDateChange(e.target.value)}
+        />
+        {!isToday ? (
+          <button type="button" className="link-btn rail-day-today" onClick={() => onDateChange(today)}>Today</button>
+        ) : null}
       </div>
 
       {isLoading ? (
@@ -146,7 +153,7 @@ export default function QueueRail({ user, visits, selectedId, onSelect, isLoadin
           <button className="link-btn" onClick={onRetry}>Retry</button>
         </div>
       ) : visits.length === 0 ? (
-        <div className="rail-msg">No patients in the queue yet</div>
+        <div className="rail-msg">{isToday ? 'No patients in the queue yet' : 'No patients in the queue on this day'}</div>
       ) : (
         <div className="rail-groups">
           {groups.map((g) => {

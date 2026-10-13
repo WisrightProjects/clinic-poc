@@ -3,7 +3,8 @@
 // the attender returns to Home (same pattern as useQuestionList). While Home is focused
 // and the app is in the foreground it also refreshes quietly every POLL_MS (no spinner),
 // so the alert for a doctor's "send for tests" request shows up within about 10 seconds
-// (CLINIC-014 AC2).
+// (CLINIC-014 AC2). `date` (YYYY-MM-DD) is the day whose queue is shown (CLINIC-015); changing
+// it reloads, and a slow reply for a day the attender has left is dropped.
 // Output: { visits, loading, error, reload }
 
 import { useState, useCallback, useRef } from 'react';
@@ -13,29 +14,32 @@ import { getVisits } from '../api/visitApi';
 
 const POLL_MS = 8000;
 
-export function useVisitQueue() {
+export function useVisitQueue(date) {
   const [visits, setVisits] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const inFlight = useRef(false);
+  const currentDate = useRef(date);
 
   // silent = a background refresh: no spinner, a failed poll keeps what is on screen,
   // and a poll is skipped while the previous request is still running.
   const load = useCallback(async ({ silent = false } = {}) => {
     if (silent && inFlight.current) return;
     inFlight.current = true;
+    currentDate.current = date;
     if (!silent) setLoading(true);
     try {
-      const rows = await getVisits();
+      const rows = await getVisits({ date });
+      if (currentDate.current !== date) return; // moved to another day meanwhile
       setVisits(Array.isArray(rows) ? rows : []);
       setError(null);
     } catch (err) {
-      if (!silent) setError(err);
+      if (!silent && currentDate.current === date) setError(err);
     } finally {
       inFlight.current = false;
-      if (!silent) setLoading(false);
+      if (!silent && currentDate.current === date) setLoading(false);
     }
-  }, []);
+  }, [date]);
 
   // Load when Home gains focus, then poll while it stays focused and the app is active.
   useFocusEffect(

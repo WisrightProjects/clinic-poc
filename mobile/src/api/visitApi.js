@@ -27,14 +27,14 @@ export function getVisitDetail(id) {
 }
 
 /**
- * Fetch the patient queue — all visits, ordered by token number.
- * @param {string} [status]  Optional visit_status filter (e.g. 'waiting')
- * @returns {Promise<Array>} Visit rows (id, token_number, patient_name, status, …)
+ * Fetch one day's patient queue (CLINIC-015), ordered by queue place, plus everyone
+ * waiting for tests whatever their day.
+ * @param {{ date?: string, status?: string }} [filters]  date = YYYY-MM-DD (today when
+ *   omitted); status = optional visit_status filter (e.g. 'waiting')
+ * @returns {Promise<Array>} Visit rows (id, queue_token, patient_name, status, …)
  */
-export function getVisits(status) {
-  return apiClient
-    .get('/visits', { params: status ? { status } : undefined })
-    .then((r) => r.data);
+export function getVisits({ date, status } = {}) {
+  return apiClient.get('/visits', { params: { date, status } }).then((r) => r.data);
 }
 
 /**

@@ -2,6 +2,7 @@ const db = require('../config/db');
 const { withTransaction } = require('./transaction');
 const testRequests = require('./testRequestRepository');
 const { LATEST_FIRST } = require('./summaryRepository');
+const { CLINIC_TIME_ZONE } = require('../utils/queueDate');
 
 // Every read is scoped to the caller's clinic (CLINIC-008): another clinic's visit
 // comes back null, so callers answer 404 and ids can't be probed.
@@ -45,17 +46,20 @@ const LATEST_TEST_REQUEST = `
      SELECT ${testRequests.COLUMNS} FROM visit_test_requests t ${testRequests.JOIN_NAMES}
       WHERE t.visit_id = v.id ORDER BY ${testRequests.NEWEST_FIRST} LIMIT 1) x) AS latest_test_request`;
 
-// An empty statusFilter means every status. Ordered by place in the queue
-// (queue_date, queue_token): first in, first out, and a patient back from tests is
-// at the end of the day they returned.
-async function list(clinicId, statusFilter) {
+// One day of the queue (CLINIC-015): the visits whose queue place is on `date`, plus every
+// patient waiting for tests whatever their day (they have their own "Waiting for tests"
+// group). An empty `statuses` means every status. Ordered by place in the queue
+// (queue_date, queue_token): first in, first out, and a patient back from tests is at the
+// end of the day they returned. Uses the (clinic_id, queue_date, queue_token) index.
+async function list(clinicId, { date, statuses }) {
   const { rows } = await db.query(
     `SELECT v.*, ${PROGRESS_COLUMNS}, ${SUMMARY_COLUMN}, ${LATEST_TEST_REQUEST}
        FROM visits v
       WHERE v.clinic_id = $1
+        AND (v.queue_date = $3::date OR v.status = 'tests_requested')
         AND (cardinality($2::visit_status[]) = 0 OR v.status = ANY($2::visit_status[]))
       ORDER BY v.queue_date DESC, v.queue_token`,
-    [clinicId, statusFilter]
+    [clinicId, statuses, date]
   );
   return rows;
 }
@@ -70,9 +74,9 @@ async function updateStatus(id, status) {
 
 const TOKEN_LOCK_KEY = 20240001;
 
-// "Today" for the queue, in one place. CLINIC-015 must make it the clinic's local
-// (IST) date so the queue doesn't switch days at 5:30 am server time.
-const TODAY = 'CURRENT_DATE';
+// "Today" for the queue, in one place: the clinic's local (IST) date, not the server's, so the
+// queue doesn't switch days at 5:30 am (CLINIC-015). Same zone as utils/queueDate.js.
+const TODAY = `(now() AT TIME ZONE '${CLINIC_TIME_ZONE}')::date`;
 
 // The next place in today's queue for the clinic whose id is SQL parameter clinicParam.
 // queue_token is the token the patient is shown and called by; token_number only keeps

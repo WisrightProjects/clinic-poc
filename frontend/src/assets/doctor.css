@@ -100,6 +100,14 @@ html, body, #root {
 .rail-title { font-size: 12px; font-weight: 800; letter-spacing: 0.6px; text-transform: uppercase; color: var(--muted); }
 .rail-count { background: var(--bg); border-radius: 10px; padding: 1px 9px; font-size: 12px; font-weight: 700; color: var(--navy); }
 
+/* Pick the queue's day (CLINIC-015) */
+.rail-day { display: flex; align-items: center; gap: 4px; padding: 8px 16px; border-bottom: 1px solid var(--line); }
+.rail-day-input {
+  flex: 1; min-width: 0; font: inherit; font-size: 14px; color: var(--navy);
+  border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; background: #fff;
+}
+.rail-day-today { margin-left: 4px; font-size: 14px; min-height: 36px; }
+
 /* Date grouping. Each day is its own section; the header sticks while scrolling
    so you always know which day (and token series) you're looking at. */
 .rail-groups { display: flex; flex-direction: column; }
@@ -380,6 +388,9 @@ html, body, #root {
   .dm-name { font-size: 20px; overflow-wrap: anywhere; }
   .dm-sub { font-size: 15px; }
   .rail-name { font-size: 16px; }
+  /* The day picker (CLINIC-015) is a control: at least 44px to tap, 16px text. */
+  .rail-day-input { min-height: 44px; font-size: 16px; }
+  .rail-day-today { min-height: 44px; font-size: 16px; }
   .qa-q { font-size: 16px; }
   .qa-a { font-size: 15px; padding-left: 0; overflow-wrap: anywhere; }
   .sum-pending, .tr-state { font-size: 15px; }
