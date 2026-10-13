@@ -26,7 +26,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useVisitQueue } from '../hooks/useVisitQueue';
 import { useSession, clearSession } from '../auth/authStore';
 import { TestRequestAlerts } from '../components/TestRequestAlerts';
-import { TESTS_GROUP, groupKey, isInQueueOn } from '../utils/queue';
+import { TESTS_GROUP, groupKey, isInQueueOn, oldTokenDay } from '../utils/queue';
 import { errorMessage } from '../utils/apiError';
 
 const NAVY = '#1a3050';
@@ -232,6 +232,7 @@ export default function HomeScreen() {
 
   const renderRow = ({ item }) => {
     const tk = TOKEN_STYLE[tokenState(item.status)];
+    const tokenDay = oldTokenDay(item, today); // "Token 1 · 12 Oct" for a patient away for tests
     return (
       <TouchableOpacity
         style={styles.row}
@@ -256,6 +257,9 @@ export default function HomeScreen() {
               <StatusPill status={item.status} />
             </View>
           </View>
+          {tokenDay ? (
+            <Text style={styles.tokenDay}>Token {item.queue_token} · {shortDate(tokenDay)}</Text>
+          ) : null}
           <RowSubtitle visit={item} />
         </View>
       </TouchableOpacity>
@@ -412,6 +416,7 @@ const styles = StyleSheet.create({
   // Two-line AI summary excerpt under the name; status hint when there's none.
   summaryText: { marginTop: 6, fontSize: 13, lineHeight: 18, color: '#41506b' },
   summaryTag: { color: TEAL, fontWeight: '700', fontSize: 12 },
+  tokenDay: { marginTop: 4, fontSize: 12.5, fontWeight: '700', color: '#6b7c93' },
   subHint: { marginTop: 6, fontSize: 12.5, color: '#6b7c93', fontStyle: 'italic' },
   pill: { borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4 },
   pillText: { fontSize: 12, fontWeight: '700' },

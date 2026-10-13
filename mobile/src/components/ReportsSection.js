@@ -3,7 +3,7 @@
 // each. Photos are not read by any AI here — the doctor just sees them on the dashboard.
 // `editable` is false once the visit is submitted: the backend rejects adds/removes then.
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { useReports } from '../hooks/useReports';
 import { reportImageSource } from '../api/reportApi';
+import { addedSince } from '../utils/reports';
 
 const NAVY = '#1a3050';
 const TEAL = '#0a8f8f';
@@ -54,14 +55,27 @@ function Thumbnail({ report, editable, disabled, onRemove }) {
 }
 
 // title / hint: the heading and the empty-state line (the Back from tests screen reuses this
-// section to add test results, CLINIC-014).
+// section to add test results, CLINIC-014). onBusyChange(busy): called when an upload/remove
+// starts and ends; pass a stable function (a state setter). since: an ISO time — only photos
+// added at or after it are listed and counted (CLINIC-017.3); the older ones are not shown.
 export function ReportsSection({
   visitId,
   editable,
   title = 'Previous reports',
   hint = 'Optional — add photos of any old reports the patient brought.',
+  onBusyChange,
+  since,
 }) {
-  const { reports, remaining, busy, error, addFromCamera, addFromGallery, remove } = useReports(visitId);
+  const { reports: allReports, remaining, busy, error, addFromCamera, addFromGallery, remove } = useReports(visitId);
+  // `remaining` still counts every photo: the server's 20-per-visit limit includes the older ones.
+  const reports = addedSince(allReports, since);
+
+  // Lets the screen hold its own actions (Back in queue, CLINIC-017.2) while a photo is
+  // uploading or being removed; cleared again if this section goes away mid-way.
+  useEffect(() => {
+    onBusyChange?.(busy);
+    return () => onBusyChange?.(false);
+  }, [busy, onBusyChange]);
 
   const onAdd = () =>
     Alert.alert('Add report', 'Photograph the patient\'s previous reports or pick them from the gallery.', [
