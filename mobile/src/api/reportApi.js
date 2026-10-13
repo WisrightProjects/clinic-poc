@@ -40,10 +40,15 @@ export function deleteReport(reportId) {
  * The <Image source> for a report photo. The file route needs the login token, and React
  * Native's Image can send headers itself, so the image library downloads and caches the
  * photo — nothing is held in JS memory.
+ * It is an ARRAY on purpose: on Android, Image only passes `headers` to the native view
+ * for an array source (RN 0.85 Image.android.js); a plain { uri, headers } object loses
+ * the token and the server answers 401.
  */
 export function reportImageSource(reportId) {
-  return {
-    uri: `${apiClient.defaults.baseURL}/reports/${reportId}/file`,
-    headers: { Authorization: `Bearer ${getToken()}` },
-  };
+  return [
+    {
+      uri: `${apiClient.defaults.baseURL}/reports/${reportId}/file`,
+      headers: { Authorization: `Bearer ${getToken()}` },
+    },
+  ];
 }
