@@ -15,6 +15,7 @@ import { getVisitDetail } from '../api/visitApi';
 import { listReports } from '../api/reportApi';
 import { requeueVisit } from '../api/testRequestApi';
 import { errorMessage } from '../utils/apiError';
+import { addedSince } from '../utils/reports';
 
 const NAVY = '#1a3050';
 const TEAL = '#0a8f8f';
@@ -61,8 +62,7 @@ export default function BackInQueueScreen() {
   // brought old reports. Read fresh, since photos were just added in the section below.
   const countResults = async () => {
     if (!latest) return 0;
-    const reports = await listReports(visitId);
-    return reports.filter((r) => new Date(r.created_at) >= new Date(latest.requested_at)).length;
+    return addedSince(await listReports(visitId), latest.requested_at).length;
   };
 
   const requeue = async () => {
@@ -138,8 +138,9 @@ export default function BackInQueueScreen() {
             visitId={visitId}
             editable={waiting}
             title="Test results"
-            hint="Add photos of the test results the patient brought."
+            hint="No results added yet. Add photos of the test results the patient brought."
             onBusyChange={setUploading}
+            since={latest?.requested_at}
           />
         </View>
 

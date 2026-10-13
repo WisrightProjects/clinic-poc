@@ -9,7 +9,7 @@
   },
   "jest": {
     "testEnvironment": "node",
-    "testMatch": ["**/__tests__/clinic003*.test.js"],
+    "testMatch": ["**/__tests__/clinic003*.test.js", "**/__tests__/clinic017*.test.js"],
     "transform": {
       "^.+\\.js$": "babel-jest"
     }
