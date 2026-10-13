@@ -38,9 +38,15 @@ async function request(path, options = {}) {
 export const login = (mobile, password) =>
   request('/auth/login', { method: 'POST', body: JSON.stringify({ mobile, password }) })
 
-// GET /api/visits?status= — full queue, or filtered by comma-separated statuses
-export const getVisits = (status) =>
-  request(`/visits${status ? `?status=${encodeURIComponent(status)}` : ''}`)
+// GET /api/visits?date=&status= — one day's queue (CLINIC-015; today when no date) plus
+// everyone waiting for tests, optionally filtered by comma-separated statuses
+export const getVisits = ({ date, status } = {}) => {
+  const query = new URLSearchParams()
+  if (date) query.set('date', date)
+  if (status) query.set('status', status)
+  const qs = query.toString()
+  return request(`/visits${qs ? `?${qs}` : ''}`)
+}
 
 // GET /api/visits/:id — { visit, template, answers, summary, reports, test_requests }
 export const getVisit = (id) => request(`/visits/${id}`)

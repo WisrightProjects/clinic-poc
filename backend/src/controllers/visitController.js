@@ -7,7 +7,7 @@ async function create(req, res) {
 }
 
 async function list(req, res) {
-  const visits = await visitService.list(req.user.clinicId, req.query.status);
+  const visits = await visitService.list(req.user.clinicId, req.query.status, req.query.date);
   res.json(visits);
 }
 

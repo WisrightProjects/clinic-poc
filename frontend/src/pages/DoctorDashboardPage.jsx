@@ -15,11 +15,16 @@ import AiSummaryCard from '../components/AiSummaryCard'
 import QaList from '../components/QaList'
 import ReportsList from '../components/ReportsList'
 import TestRequestPanel from '../components/TestRequestPanel'
-import { isInQueueOn } from '../utils/queue'
+import { isInQueueOn, todayKey } from '../utils/queue'
 
 export default function DoctorDashboardPage() {
   const user = useSession()?.user
-  const { visits, isLoading, error, refetch } = useVisitQueue()
+  // The day whose queue is shown (CLINIC-015): today unless the doctor picks another day.
+  // Not remembered — reopening the page starts on today again.
+  const today = todayKey()
+  const [pickedDate, setPickedDate] = useState(null)
+  const viewDate = pickedDate ?? today
+  const { visits, isLoading, error, refetch } = useVisitQueue(viewDate)
   const [selectedId, setSelectedId] = useState(null)
   const [overrides, setOverrides] = useState({}) // optimistic status by visit id
   const [doneError, setDoneError] = useState(null)
@@ -58,20 +63,13 @@ export default function DoctorDashboardPage() {
   const detail = useVisitDetail(selectedId)
   const selected = queue.find((v) => v.id === selectedId) ?? null
 
-  // "Seen today" / "Remaining" are day stats, so scope them to today's visits.
-  // The queue holds every date (tokens restart daily), so without this filter
-  // these counted all-time done/actionable and mislabelled them as today.
-  const today = (() => {
-    const d = new Date()
-    const p = (n) => String(n).padStart(2, '0')
-    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
-  })()
-  // A returned patient counts on the day they re-joined the queue; a patient still away
-  // for tests is not in today's queue.
-  const todaysVisits = queue.filter((v) => isInQueueOn(v, today))
+  // "Seen" / "Remaining" are day stats, so scope them to the day shown. The queue also holds
+  // everyone waiting for tests (any day), who are not part of a day's queue.
+  // A returned patient counts on the day they re-joined the queue.
+  const dayVisits = queue.filter((v) => isInQueueOn(v, viewDate))
 
-  const seenToday = todaysVisits.filter((v) => v.status === 'done').length
-  const remaining = todaysVisits.filter((v) => isActionable(v.status)).length
+  const seenToday = dayVisits.filter((v) => v.status === 'done').length
+  const remaining = dayVisits.filter((v) => isActionable(v.status)).length
   const answeredCount = detail.qa.filter((q) => q.transcript && q.transcript.trim()).length
 
   const canMarkDone = selected && selected.status === 'summarised'
@@ -137,6 +135,8 @@ export default function DoctorDashboardPage() {
           visits={queue}
           selectedId={selectedId}
           onSelect={selectPatient}
+          viewDate={viewDate}
+          onDateChange={(d) => setPickedDate(d === today ? null : d)}
           isLoading={isLoading}
           error={error}
           onRetry={refetch}
@@ -166,6 +166,7 @@ export default function DoctorDashboardPage() {
               <StatsStrip
                 seenToday={seenToday}
                 remaining={remaining}
+                isToday={viewDate === today}
                 answered={answeredCount}
                 total={detail.qa.length}
               />

@@ -90,6 +90,14 @@ html, body, #root {
 .rail-title { font-size: 12px; font-weight: 800; letter-spacing: 0.6px; text-transform: uppercase; color: var(--muted); }
 .rail-count { background: var(--bg); border-radius: 10px; padding: 1px 9px; font-size: 12px; font-weight: 700; color: var(--navy); }
 
+/* Pick the queue's day (CLINIC-015) */
+.rail-day { display: flex; align-items: center; gap: 4px; padding: 8px 16px; border-bottom: 1px solid var(--line); }
+.rail-day-input {
+  flex: 1; min-width: 0; font: inherit; font-size: 14px; color: var(--navy);
+  border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; background: #fff;
+}
+.rail-day-today { margin-left: 4px; font-size: 14px; min-height: 36px; }
+
 /* Date grouping. Each day is its own section; the header sticks while scrolling
    so you always know which day (and token series) you're looking at. */
 .rail-groups { display: flex; flex-direction: column; }

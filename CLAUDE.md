@@ -116,7 +116,7 @@ GET   /health
 POST  /auth/login           GET /auth/me
 GET   /departments
 GET   /templates            PUT /templates/:id
-POST  /visits               GET /visits   (?status=csv)   GET /visits/:id
+POST  /visits               GET /visits   (?date=YYYY-MM-DD&status=csv)   GET /visits/:id
 POST  /visits/:id/answers   (multipart, field "audio" — Multer; triggers STT)
 PATCH /visits/:id/status    POST /visits/:id/submit     (PATCH: doctor only, sets 'done' only)
 PUT   /visits/:id/summary   { text } — doctor edits the summary (CLINIC-012). Show summary.display_text; summary_text is the AI original
@@ -127,7 +127,7 @@ POST  /visits/:id/test-request { note } (doctor)   POST /test-requests/:id/ackno
 POST  /visits/:id/requeue (attender — end of today's queue)   (CLINIC-014)
 ```
 
-`GET /visits/:id` returns `{ visit, template, answers, summary, reports, test_requests }` (the shape the doctor web consumes). Visits carry `queue_date`/`queue_token` — their place in the queue and **the token the patient is shown and called by** (a patient back from tests gets today's date and a new token at the end) — besides `visit_date`/`token_number`, which only keep the registration day's number. `GET /visits` is ordered by queue place and each row carries `latest_test_request` (same fields as the detail's `test_requests` entries, or null). Status lists live in `statusEngine` (`isSubmitted`, `canEditReports`); multi-statement writes use `repositories/transaction.js` `withTransaction`.
+`GET /visits/:id` returns `{ visit, template, answers, summary, reports, test_requests }` (the shape the doctor web consumes). Visits carry `queue_date`/`queue_token` — their place in the queue and **the token the patient is shown and called by** (a patient back from tests gets today's date and a new token at the end) — besides `visit_date`/`token_number`, which only keep the registration day's number. `GET /visits` returns **one day's queue** (CLINIC-015: `?date=`, default today in IST — "today" is the clinic's IST day, in `utils/queueDate.js` and the SQL `TODAY`) plus every patient waiting for tests whatever their day; it is ordered by queue place and each row carries `latest_test_request` (same fields as the detail's `test_requests` entries, or null). Status lists live in `statusEngine` (`isSubmitted`, `canEditReports`); multi-statement writes use `repositories/transaction.js` `withTransaction`.
 
 ### Auth and clinics (CLINIC-008)
 

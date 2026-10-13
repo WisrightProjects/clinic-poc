@@ -9,6 +9,7 @@ const summaryService = require('./summaryService');
 const { AppError } = require('../utils/errors');
 const { validateNewVisit } = require('../utils/visitValidation');
 const { validateSummaryEdit } = require('../utils/summaryValidation');
+const { parseQueueDate } = require('../utils/queueDate');
 
 // Every entry point takes the signed-in user's clinicId (CLINIC-008). A visit from
 // another clinic is NOT_FOUND, exactly like a missing one, so ids can't be probed.
@@ -23,9 +24,11 @@ async function create(clinicId, { patientName, age, sex, departmentId }) {
   return visitRepository.createWithToken(clinicId, clean);
 }
 
-async function list(clinicId, statusQuery) {
+// One day's queue (CLINIC-015): the visits whose queue place is on `dateQuery` (today, in the
+// clinic's time zone, when not given), plus every patient waiting for tests, whatever day.
+async function list(clinicId, statusQuery, dateQuery) {
   const statusFilter = statusQuery ? statusQuery.split(',').map(s => s.trim()) : [];
-  return visitRepository.list(clinicId, statusFilter);
+  return visitRepository.list(clinicId, { date: parseQueueDate(dateQuery), statuses: statusFilter });
 }
 
 async function getById(clinicId, id) {

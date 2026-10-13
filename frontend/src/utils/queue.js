@@ -3,6 +3,13 @@
 // their original visit_date / token_number but gets today's queue_date and a token at the end.
 // Keep in step with mobile/src/utils/queue.js.
 
+// A local calendar day as YYYY-MM-DD, so "today" matches the wall clock without a timezone shift.
+export const dayKey = (d) => {
+  const p = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+}
+export const todayKey = () => dayKey(new Date())
+
 // Patients the doctor sent for tests leave the day queue and form their own group.
 export const TESTS_GROUP = 'tests'
 
