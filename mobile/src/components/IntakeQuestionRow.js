@@ -1,6 +1,7 @@
 // Purpose: Single row in the intake question list — shows answered/pending state.
 // Mirrors clinic-flow.html M-01 q-item / qn-done / qbtn-record styling.
-// Props: { index, item, onRecord }
+// Props: { index, item, onRecord, locked }  (locked = visit already sent to the doctor:
+// no Record / Retake buttons, the answer text stays visible)
 
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
@@ -8,7 +9,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 const NAVY = '#1a3050';
 const TEAL = '#0a8f8f';
 
-export function IntakeQuestionRow({ index, item, onRecord }) {
+export function IntakeQuestionRow({ index, item, onRecord, locked = false }) {
   const preview =
     item.answered && item.transcript
       ? item.transcript.length > 60
@@ -36,7 +37,7 @@ export function IntakeQuestionRow({ index, item, onRecord }) {
       {/* Record (pending) / Retake (answered). Both open the recording screen;
           the backend replaces the existing answer on re-upload (CLINIC-004 AC9),
           so Retake makes "Edit Answers" actually editable. */}
-      {item.answered ? (
+      {locked ? null : item.answered ? (
         <TouchableOpacity style={styles.retakeBtn} onPress={onRecord} activeOpacity={0.75}>
           <Text style={styles.retakeBtnText}>Retake</Text>
         </TouchableOpacity>
