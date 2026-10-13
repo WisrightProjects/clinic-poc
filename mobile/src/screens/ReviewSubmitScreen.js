@@ -84,7 +84,8 @@ export default function ReviewSubmitScreen() {
   // doctor closes it). Lock Send so it can't be fired again — the summary already
   // exists and re-sending would not regenerate it. (Re-enabling on edit is a
   // separate, backend-touching change we deliberately scoped out.)
-  const alreadySent = visit?.status === 'summarised' || visit?.status === 'done';
+  // 'tests_requested' (the doctor sent the patient for tests) is also already sent.
+  const alreadySent = ['summarised', 'tests_requested', 'done'].includes(visit?.status);
 
   return (
     <SafeAreaView style={styles.flex} edges={['bottom']}>
