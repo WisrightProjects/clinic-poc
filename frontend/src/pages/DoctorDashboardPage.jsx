@@ -1,11 +1,18 @@
-// Composition root for /doctor. Owns selected-visit state, composes the queue
-// rail + detail panel, and handles Done: optimistic chip/stat update -> PATCH ->
-// rollback on failure (AC9) -> advance to the next actionable patient (AC5).
+// Composition root for /doctor. Owns the selected visit (kept in the URL,
+// /doctor/:visitId), composes the queue rail + detail panel, and handles Done: optimistic
+// chip/stat update -> PATCH -> rollback on failure (AC9) -> advance to the next actionable
+// patient (AC5).
+//
+// Phone layout (CLINIC-010, under 768px): the queue and the patient are shown one at a
+// time — the queue until a patient is open, then the patient with a Back to queue control.
+// Because the open patient is in the URL, the phone's own back button does the same.
 
-import { Fragment, useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useSession, clearSession } from '../utils/authStore'
 import { useVisitQueue } from '../hooks/useVisitQueue'
 import { useVisitDetail } from '../hooks/useVisitDetail'
+import { useMediaQuery, PHONE_QUERY } from '../hooks/useMediaQuery'
 import { setVisitDone } from '../utils/apiClient'
 import { isActionable } from '../utils/statusMap'
 import QueueRail from '../components/QueueRail'
@@ -20,7 +27,12 @@ import { isInQueueOn } from '../utils/queue'
 export default function DoctorDashboardPage() {
   const user = useSession()?.user
   const { visits, isLoading, error, refetch } = useVisitQueue()
-  const [selectedId, setSelectedId] = useState(null)
+  const navigate = useNavigate()
+  const location = useLocation()
+  const isPhone = useMediaQuery(PHONE_QUERY)
+  // The open patient comes from the URL; anything that isn't a number counts as none.
+  const { visitId } = useParams()
+  const selectedId = /^\d+$/.test(visitId ?? '') ? Number(visitId) : null
   const [overrides, setOverrides] = useState({}) // optimistic status by visit id
   const [doneError, setDoneError] = useState(null)
   const [markingId, setMarkingId] = useState(null) // the visit whose Done is in flight
@@ -47,13 +59,22 @@ export default function DoctorDashboardPage() {
   }, [visits])
 
   // Auto-select the first actionable patient only when nothing is selected yet
-  // (never override the doctor's selection on a background poll — AC3).
+  // (never override the doctor's selection on a background poll — AC3). Not on a phone:
+  // there the queue is the starting view, and Back to queue must not reopen a patient.
   useEffect(() => {
-    if (!selectedId && queue.length) {
+    if (!isPhone && !selectedId && queue.length) {
       const first = queue.find((v) => isActionable(v.status)) ?? queue[0]
-      setSelectedId(first?.id ?? null)
+      if (first) navigate(`/doctor/${first.id}`, { replace: true })
     }
-  }, [queue, selectedId])
+  }, [queue, selectedId, isPhone, navigate])
+
+  // Phone: back to the queue. Undo the step into the patient when it came from the queue
+  // (so the phone's back button and this control agree); a patient opened directly by
+  // link has no queue behind it, so go to the queue instead.
+  function backToQueue() {
+    if (location.key !== 'default') navigate(-1)
+    else navigate('/doctor', { replace: true })
+  }
 
   const detail = useVisitDetail(selectedId)
   const selected = queue.find((v) => v.id === selectedId) ?? null
@@ -92,8 +113,15 @@ export default function DoctorDashboardPage() {
   // A Done error belongs to the patient it happened on.
   function selectPatient(id) {
     setDoneError(null)
-    setSelectedId(id)
+    navigate(`/doctor/${id}`)
   }
+
+  // The patient open right now, for handleDone to check after its await (the closure's
+  // selectedId is the one from when Done was tapped).
+  const openIdRef = useRef(selectedId)
+  useEffect(() => {
+    openIdRef.current = selectedId
+  }, [selectedId])
 
   async function handleDone() {
     if (!selected || markingId) return
@@ -104,10 +132,13 @@ export default function DoctorDashboardPage() {
     try {
       await setVisitDone(id)
       await refetch()
-      // Advance to the next actionable patient in token order — only if the doctor is
-      // still on this patient (never override a selection made while Done was saving).
-      const next = queue.find((v) => v.id !== id && isActionable(v.status))
-      setSelectedId((cur) => (cur === id ? (next?.id ?? null) : cur))
+      // Advance to the next actionable patient in token order (on a phone, back to the queue)
+      // — only if the doctor is still on this patient (never override a selection made
+      // while Done was saving).
+      if (openIdRef.current === id) {
+        const next = queue.find((v) => v.id !== id && isActionable(v.status))
+        navigate(isPhone || !next ? '/doctor' : `/doctor/${next.id}`, { replace: true })
+      }
     } catch (e) {
       setOverrides((p) => {
         const n = { ...p }
@@ -131,7 +162,7 @@ export default function DoctorDashboardPage() {
         <button className="topbar-logout" onClick={clearSession}>Logout</button>
       </header>
 
-      <div className="layout">
+      <div className={`layout${selectedId ? ' layout--detail' : ''}`}>
         <QueueRail
           user={user}
           visits={queue}
@@ -143,6 +174,9 @@ export default function DoctorDashboardPage() {
         />
 
         <main className="main">
+          {isPhone && selectedId ? (
+            <button className="link-btn back-btn" onClick={backToQueue}>‹ Back to queue</button>
+          ) : null}
           {!selectedId ? (
             <div className="placeholder">
               <h2>Select a patient</h2>
@@ -169,15 +203,17 @@ export default function DoctorDashboardPage() {
                 answered={answeredCount}
                 total={detail.qa.length}
               />
-              <TestRequestPanel
-                visit={selected ?? detail.visit}
-                requests={detail.testRequests}
-                onChanged={handleTestsChanged}
-              />
+              {/* Summary right after the patient (CLINIC-010 reading order), then the actions
+                  that follow from it. */}
               <AiSummaryCard
                 summary={detail.summary}
                 status={(selected ?? detail.visit).status}
                 onSave={handleSummarySave}
+              />
+              <TestRequestPanel
+                visit={selected ?? detail.visit}
+                requests={detail.testRequests}
+                onChanged={handleTestsChanged}
               />
               <QaList qa={detail.qa} />
               <ReportsList reports={detail.reports} />
