@@ -8,7 +8,7 @@
 // default; older days start collapsed behind a caret so the rail stays short.
 import { useState } from 'react'
 import StatusChip from './StatusChip'
-import { TESTS_GROUP, groupKey, isInQueueOn } from '../utils/queue'
+import { TESTS_GROUP, groupKey, isInQueueOn, oldTokenDay } from '../utils/queue'
 
 // Local calendar day as YYYY-MM-DD, so "Today"/"Yesterday" match the wall clock
 // without a timezone shift.
@@ -169,6 +169,7 @@ export default function QueueRail({ user, visits, selectedId, onSelect, isLoadin
                   <ul className="rail-list">
                     {g.items.map((v) => {
                       const p = progress(v)
+                      const tokenDay = oldTokenDay(v, today) // "Token 1 · 12 Oct" for a patient away for tests
                       return (
                         <li
                           key={v.id}
@@ -178,6 +179,9 @@ export default function QueueRail({ user, visits, selectedId, onSelect, isLoadin
                           <span className="rail-token" data-token={tokenState(v.status) || undefined}>{v.queue_token}</span>
                           <div className="rail-body">
                             <span className="rail-name">{v.patient_name}</span>
+                            {tokenDay ? (
+                              <span className="rail-tokenday">Token {v.queue_token} · {shortDate(tokenDay)}</span>
+                            ) : null}
                             {p.total > 0 ? (
                               <span className="rail-prog" data-state={p.state}>
                                 <span className="rail-prog-track">

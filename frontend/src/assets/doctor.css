@@ -135,6 +135,7 @@ html, body, #root {
 
 /* Intake progress badge: a slim fill + "answered/total", tucked under the name.
    Colour tracks state — idle grey, in-progress teal, complete green. */
+.rail-tokenday { display: block; margin-top: 2px; font-size: 12px; font-weight: 700; color: var(--muted); }
 .rail-prog { display: flex; align-items: center; gap: 8px; margin-top: 5px; }
 .rail-prog-track { width: 62px; height: 5px; border-radius: 3px; background: #dde4ec; overflow: hidden; flex-shrink: 0; }
 .rail-prog-fill { height: 100%; border-radius: 3px; background: var(--teal); }
