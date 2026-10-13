@@ -42,11 +42,16 @@ export function useQuestionList(visitId) {
 
   const items = [...questions]
     .sort((a, b) => a.order_index - b.order_index)
-    .map((q) => ({
-      ...q,
-      answered: answeredIds.has(q.id),
-      transcript: answers.find((a) => a.question_id === q.id)?.transcript ?? null,
-    }));
+    .map((q) => {
+      const answer = answers.find((a) => a.question_id === q.id);
+      return {
+        ...q,
+        answered: answeredIds.has(q.id),
+        transcript: answer?.transcript ?? null,
+        // A typed answer has no recording; its text pre-fills the box when retaken.
+        typedText: answer && !answer.audio_path ? answer.transcript : null,
+      };
+    });
 
   const total = items.length;
   // Answered count is derived from answers array — not from visit.status (AC12)

@@ -21,3 +21,8 @@ export const groupKey = (v) => (v.status === 'tests_requested' ? TESTS_GROUP : q
 
 // True when the visit is waiting in the queue for the given day (not away for tests).
 export const isInQueueOn = (v, day) => groupKey(v) === day
+
+// The day (YYYY-MM-DD) of a token that is not from `today` — only for a patient away for
+// tests, whose token keeps the day they were queued (CLINIC-017.4), so two "Token 1" from
+// different days can be told apart. null when there is nothing to add.
+export const oldTokenDay = (v, today) => (v.status === 'tests_requested' && queueDay(v) !== today ? queueDay(v) : null)

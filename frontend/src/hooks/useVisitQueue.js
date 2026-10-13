@@ -31,7 +31,7 @@ export function useVisitQueue(date, intervalMs = 5000) {
     load()
     const id = setInterval(load, intervalMs)
     return () => clearInterval(id) // stop polling on unmount (AC2)
-  }, [load, intervalMs])
+  }, [load, date, intervalMs])
 
   const isLoading = state.date !== date // first load of this day only
   return { visits: isLoading ? [] : state.visits, isLoading, error: isLoading ? null : state.error, refetch: load }

@@ -63,7 +63,9 @@ export async function waitForAnswerTranscript(
   return null; // timed out; caller proceeds, the list refreshes on next focus
 }
 
-export async function uploadAnswer(visitId, questionId, fileUri) {
+// Posts one answer to the backend with the transient-network retry described above.
+// addAnswerPart appends the answer itself: the recording ("audio") or typed text ("text").
+async function postAnswer(visitId, questionId, addAnswerPart) {
   let lastErr;
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     // Build a FRESH FormData each attempt — a streamed request body can't be reused.
@@ -71,7 +73,7 @@ export async function uploadAnswer(visitId, questionId, fileUri) {
     // Append questionId BEFORE the file: multer's filename() only sees body fields
     // parsed earlier in the multipart stream, so the saved file is named correctly.
     form.append('questionId', String(questionId)); // AC5: backend reads req.body.questionId
-    form.append('audio', { uri: fileUri, name: 'answer.m4a', type: 'audio/m4a' });
+    addAnswerPart(form);
 
     try {
       const res = await apiClient.post(`/visits/${visitId}/answers`, form, {
@@ -87,4 +89,19 @@ export async function uploadAnswer(visitId, questionId, fileUri) {
     }
   }
   throw lastErr; // unreachable, but keeps the contract explicit
+}
+
+export function uploadAnswer(visitId, questionId, fileUri) {
+  return postAnswer(visitId, questionId, (form) =>
+    form.append('audio', { uri: fileUri, name: 'answer.m4a', type: 'audio/m4a' })
+  );
+}
+
+/**
+ * Save a typed answer (CLINIC-009): a multipart "text" field on the same endpoint as a
+ * recording. The server stores it as a finished transcript (nothing to wait for), replacing
+ * any earlier answer to the question. Safe to retry.
+ */
+export function saveTextAnswer(visitId, questionId, text) {
+  return postAnswer(visitId, questionId, (form) => form.append('text', text));
 }
