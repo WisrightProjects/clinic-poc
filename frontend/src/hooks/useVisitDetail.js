@@ -42,9 +42,15 @@ export function useVisitDetail(visitId) {
     load()
   }, [load])
 
+  // Only data for the visit asked for. Right after the selection changes, `data` still holds
+  // the previous patient until the effect above loads the new one; treat that as loading,
+  // so one patient's summary, tests or photos never render under another's name.
+  const current = visitId && data?.visit?.id === Number(visitId) ? data : null
+  const loading = isLoading || (Boolean(visitId) && !current && !error)
+
   // Merge questions (template) with answers (transcripts) — ordered.
-  const questions = data?.template?.questions ?? []
-  const answers = data?.answers ?? []
+  const questions = current?.template?.questions ?? []
+  const answers = current?.answers ?? []
   const byQuestion = new Map(answers.map((a) => [a.question_id, a]))
   const qa = [...questions]
     .sort((a, b) => a.order_index - b.order_index)
@@ -68,12 +74,12 @@ export function useVisitDetail(visitId) {
   )
 
   return {
-    visit: data?.visit ?? null,
+    visit: current?.visit ?? null,
     qa,
-    summary: data?.summary ?? null,
-    reports: data?.reports ?? [],
-    testRequests: data?.test_requests ?? [], // CLINIC-014 history, newest first
-    isLoading,
+    summary: current?.summary ?? null,
+    reports: current?.reports ?? [],
+    testRequests: current?.test_requests ?? [], // CLINIC-014 history, newest first
+    isLoading: loading,
     error,
     refetch: load,
     saveSummary,
