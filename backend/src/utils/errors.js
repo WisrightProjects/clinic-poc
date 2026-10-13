@@ -1,10 +1,12 @@
 const fs = require('fs');
 
 class AppError extends Error {
-  constructor(code, message, httpStatus = 500) {
+  // headers: optional response headers sent with the error (e.g. Retry-After).
+  constructor(code, message, httpStatus = 500, headers = null) {
     super(message);
     this.code = code;
     this.httpStatus = httpStatus;
+    this.headers = headers;
   }
 }
 
@@ -21,6 +23,7 @@ function errorHandler(err, req, res, _next) {
     if (file && !file.stored) fs.promises.unlink(file.path).catch(() => {});
   }
   if (err.code === PG_INVALID_TEXT) err = new AppError('BAD_REQUEST', 'Invalid value in request', 400);
+  if (err.headers) res.set(err.headers);
   const status = err.httpStatus || 500;
   const code = err.code || 'INTERNAL_ERROR';
   const message = err.message || 'An unexpected error occurred';

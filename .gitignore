@@ -9,6 +9,8 @@ __pycache__/
 
 # Environment variables
 backend/.env
+# Local secrets file at the repo root (SARVAM_API_KEY, DATABASE_URL) — never commit.
+/env
 .env
 
 # Audio uploads
