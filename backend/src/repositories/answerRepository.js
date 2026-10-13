@@ -1,24 +1,33 @@
 const db = require('../config/db');
 
-async function upsert(visitId, questionId, audioPath, transcriptStatus) {
+// One answer per (visit, question). A retake — by either method — fully replaces the old
+// answer (CLINIC-009 AC3): audio_path AND transcript are both overwritten.
+//   recorded: { audioPath, transcript: null, status: 'pending' }  (transcribed in the background)
+//   typed:    { audioPath: null, transcript: text, status: 'done' }
+async function upsert(visitId, questionId, { audioPath, transcript, status }) {
   const { rows } = await db.query(
-    `INSERT INTO answers (visit_id, question_id, audio_path, transcript_status)
-     VALUES ($1, $2, $3, $4)
+    `INSERT INTO answers (visit_id, question_id, audio_path, transcript, transcript_status)
+     VALUES ($1, $2, $3, $4, $5)
      ON CONFLICT (visit_id, question_id) DO UPDATE
        SET audio_path = EXCLUDED.audio_path,
+           transcript = EXCLUDED.transcript,
            transcript_status = EXCLUDED.transcript_status,
-           transcript = NULL,
            created_at = now()
      RETURNING *`,
-    [visitId, questionId, audioPath, transcriptStatus]
+    [visitId, questionId, audioPath, transcript, status]
   );
   return rows[0];
 }
 
-async function setTranscript(answerId, transcript, status) {
+// Called by the background transcription for the recording it transcribed. Only applies
+// while the answer still points at that recording: if the attender has since retaken it
+// (a new recording, or typed text), the late result is dropped (returns undefined) instead
+// of overwriting the newer answer.
+async function setTranscript(answerId, audioPath, transcript, status) {
   const { rows } = await db.query(
-    `UPDATE answers SET transcript = $1, transcript_status = $2 WHERE id = $3 RETURNING *`,
-    [transcript, status, answerId]
+    `UPDATE answers SET transcript = $1, transcript_status = $2
+      WHERE id = $3 AND audio_path = $4 RETURNING *`,
+    [transcript, status, answerId, audioPath]
   );
   return rows[0];
 }

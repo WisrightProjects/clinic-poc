@@ -1,5 +1,6 @@
 // Purpose: Gated submit button — disabled until all questions are answered (AC4).
-// Props: { disabled, onPress }
+// Props: { disabled, sent, onPress }  (sent = the visit is already with the doctor: the
+// button reads "View summary", stays enabled and still opens the Review screen)
 // When disabled: dimmed + helper text "Answer all questions to continue"
 // When enabled: active teal button
 
@@ -8,10 +9,14 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 
 const TEAL = '#0a8f8f';
 
-export function SendToDoctorButton({ disabled, onPress }) {
+export function SendToDoctorButton({ disabled, sent, onPress }) {
+  // Already sent: stays enabled as "View summary" so the attender can still read the summary
+  // on the Review screen (which shows "Sent to Doctor ✓" and cannot send again); no helper
+  // text. Only a visit that is not fully answered yet is disabled.
+  disabled = disabled && !sent;
   return (
     <View style={styles.container}>
-      {disabled && (
+      {disabled && !sent && (
         <Text style={styles.helperText}>Answer all questions to continue</Text>
       )}
       <TouchableOpacity
@@ -21,7 +26,7 @@ export function SendToDoctorButton({ disabled, onPress }) {
         accessibilityState={{ disabled }}
       >
         <Text style={[styles.buttonText, disabled && styles.buttonTextDisabled]}>
-          Send to Doctor
+          {sent ? 'View summary' : 'Send to Doctor'}
         </Text>
       </TouchableOpacity>
     </View>

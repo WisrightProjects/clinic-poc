@@ -33,6 +33,9 @@ export default function QuestionListScreen() {
 
   const { items, answeredCount, total, percent, allAnswered, loading, error, reload, visit } =
     useQuestionList(visitId);
+  // Once sent to the doctor (summarised / tests_requested / done) the intake is read-only:
+  // the server refuses changes (409 ANSWERS_LOCKED).
+  const locked = !EDITABLE_STATUSES.includes(visit?.status);
 
   if (loading) {
     return (
@@ -81,21 +84,27 @@ export default function QuestionListScreen() {
           <IntakeQuestionRow
             index={index + 1}
             item={item}
-            onRecord={() =>
-              navigation.navigate('Recording', {
-                visitId,
-                questionId: item.id,
-                questionText: item.text,
-                index: index + 1,
-                total,
-              })
+            locked={locked}
+            onRecord={
+              locked
+                ? undefined
+                : () =>
+                    navigation.navigate('Recording', {
+                      visitId,
+                      questionId: item.id,
+                      questionText: item.text,
+                      typedText: item.typedText,
+                      index: index + 1,
+                      total,
+                    })
             }
           />
         )}
         style={styles.flex}
       />
-      <ReportsSection visitId={visitId} editable={EDITABLE_STATUSES.includes(visit?.status)} />
+      <ReportsSection visitId={visitId} editable={!locked} />
       <SendToDoctorButton
+        sent={locked}
         disabled={!allAnswered}
         onPress={() => navigation.navigate('Review', { visitId })}
       />
