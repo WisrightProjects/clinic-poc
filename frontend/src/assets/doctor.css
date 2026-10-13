@@ -52,6 +52,16 @@ html, body, #root {
   margin-bottom: 16px; color: var(--navy); font-family: inherit;
 }
 .login-input:focus { outline: 2px solid var(--teal); outline-offset: -1px; }
+/* Password field with a show/hide eye button inside its right edge */
+.login-password { position: relative; display: flex; flex-direction: column; }
+.login-password .login-input { padding-right: 48px; }
+.login-eye {
+  /* same height as the input: from its top down to its 16px bottom margin */
+  position: absolute; top: 0; bottom: 16px; right: 0; width: 46px; display: flex; align-items: center;
+  justify-content: center; background: none; border: none; color: var(--muted); cursor: pointer; padding: 0;
+}
+.login-eye:hover { color: var(--navy); }
+.login-eye:focus-visible { outline: 2px solid var(--teal); outline-offset: -2px; border-radius: 8px; }
 .login-error { color: var(--danger); font-size: 14px; margin-bottom: 12px; }
 .login-btn {
   background: var(--teal); color: #fff; border: none; border-radius: 8px; padding: 14px;

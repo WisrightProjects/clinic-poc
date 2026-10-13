@@ -34,6 +34,7 @@ function loginErrorMessage(err) {
 export default function LoginScreen() {
   const [mobile, setMobile] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const passwordRef = useRef(null);
@@ -89,20 +90,31 @@ export default function LoginScreen() {
           />
 
           <Text style={styles.label}>Password</Text>
-          <TextInput
-            ref={passwordRef}
-            style={styles.input}
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            autoCapitalize="none"
-            autoCorrect={false}
-            placeholder="Password"
-            placeholderTextColor="#9aa7b8"
-            returnKeyType="go"
-            onSubmitEditing={onSubmit}
-            editable={!submitting}
-          />
+          <View style={styles.passwordWrap}>
+            <TextInput
+              ref={passwordRef}
+              style={[styles.input, styles.passwordInput]}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
+              autoCapitalize="none"
+              autoCorrect={false}
+              placeholder="Password"
+              placeholderTextColor="#9aa7b8"
+              returnKeyType="go"
+              onSubmitEditing={onSubmit}
+              editable={!submitting}
+            />
+            <TouchableOpacity
+              style={styles.eyeBtn}
+              onPress={() => setShowPassword((v) => !v)}
+              accessibilityRole="button"
+              accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <EyeIcon open={!showPassword} />
+            </TouchableOpacity>
+          </View>
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -124,6 +136,17 @@ export default function LoginScreen() {
   );
 }
 
+// Eye drawn with plain views (no icon library): an eye = password hidden, tap to show;
+// an eye with a slash = password shown, tap to hide.
+function EyeIcon({ open }) {
+  return (
+    <View style={styles.eye}>
+      <View style={styles.eyePupil} />
+      {open ? null : <View style={styles.eyeSlash} />}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: '#f5f8fa' },
   content: { flexGrow: 1, justifyContent: 'center', padding: 24 },
@@ -140,6 +163,34 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: NAVY,
     marginBottom: 16,
+  },
+  passwordWrap: { justifyContent: 'center' },
+  passwordInput: { paddingRight: 52 },
+  eyeBtn: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    width: 48,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  eye: {
+    width: 22,
+    height: 14,
+    borderWidth: 2,
+    borderColor: '#6b7c93',
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  eyePupil: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#6b7c93' },
+  eyeSlash: {
+    position: 'absolute',
+    width: 26,
+    height: 2,
+    backgroundColor: '#6b7c93',
+    transform: [{ rotate: '-35deg' }],
   },
   error: { color: '#c0392b', fontSize: 14, marginBottom: 12 },
   button: {

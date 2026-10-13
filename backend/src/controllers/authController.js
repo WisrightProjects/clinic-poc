@@ -2,7 +2,7 @@ const authService = require('../services/authService');
 
 async function login(req, res) {
   const { mobile, password } = req.body || {};
-  const result = await authService.login(mobile, password);
+  const result = await authService.login(mobile, password, req.ip);
   res.json(result);
 }
 
