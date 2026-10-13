@@ -20,6 +20,15 @@
         "EXPO_PUBLIC_API_URL": "https://api-doctorattender.wisright.com/api"
       }
     },
+    "local-preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "http://192.168.1.37:4000/api"
+      }
+    },
     "production": {
       "android": {
         "buildType": "app-bundle"

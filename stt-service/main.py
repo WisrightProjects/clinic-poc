@@ -67,9 +67,13 @@ def transcribe(file: UploadFile = File(...), language: str = Form(None)):
         # Whisper (especially the "small" model) hallucinates training-data phrases on
         # silence — most infamously "Thank you for watching!". condition_on_previous_text
         # is disabled so one segment's guess can't bias the next into a repetition loop.
+        # task="translate" always outputs English regardless of spoken language — Whisper's
+        # own multilingual training handles this far more reliably than transcribing to the
+        # source language and asking a downstream LLM to translate the text afterward.
         segments, info = model.transcribe(
             tmp_path,
             language=language or None,
+            task="translate",
             vad_filter=True,
             vad_parameters=dict(min_silence_duration_ms=500),
             condition_on_previous_text=False,

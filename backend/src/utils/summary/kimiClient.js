@@ -24,7 +24,10 @@ async function summarise(visit, qa, language) {
         Authorization: `Bearer ${config.kimiApiKey}`,
         'Content-Type': 'application/json',
       },
-      timeout: 60000, // cloud API; generous headroom but well under the mobile submit timeout
+      // 100s: headroom for self-hosted local models (e.g. Ollama on CPU, which can run
+      // far slower than the cloud API under load) while staying under the mobile
+      // client's 120s submit timeout (mobile/src/api/visitApi.js).
+      timeout: 100000,
     }
   );
   const text = (response.data?.choices?.[0]?.message?.content || '').trim();
