@@ -27,6 +27,8 @@ export default function BackInQueueScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [sending, setSending] = useState(false);
+  const [uploading, setUploading] = useState(false); // a result photo is being added / removed
+  const [checking, setChecking] = useState(false); // counting the results (blocks a double tap)
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -50,6 +52,9 @@ export default function BackInQueueScreen() {
   const visit = data?.visit;
   const latest = data?.test_requests?.[0];
   const waiting = visit?.status === 'tests_requested';
+  // Back in queue waits for a photo still uploading (else the server has no result to count
+  // yet and the attender is wrongly warned) and for the counting itself (no double tap).
+  const blocked = !waiting || sending || uploading || checking;
 
   // Results = reports added after the doctor's request. Older reports (photographed during
   // intake) don't count, or the "no results" warning would never show for a patient who
@@ -76,10 +81,13 @@ export default function BackInQueueScreen() {
 
   const onBackInQueue = async () => {
     let resultCount = 0;
+    setChecking(true);
     try {
       resultCount = await countResults();
     } catch {
       // Can't tell: don't block the attender — the warning below just asks them to confirm.
+    } finally {
+      setChecking(false);
     }
     if (resultCount > 0) return requeue();
     Alert.alert(
@@ -131,6 +139,7 @@ export default function BackInQueueScreen() {
             editable={waiting}
             title="Test results"
             hint="Add photos of the test results the patient brought."
+            onBusyChange={setUploading}
           />
         </View>
 
@@ -141,12 +150,12 @@ export default function BackInQueueScreen() {
 
       <View style={styles.footer}>
         <TouchableOpacity
-          style={[styles.btn, (!waiting || sending) && styles.btnDisabled]}
+          style={[styles.btn, blocked && styles.btnDisabled]}
           onPress={onBackInQueue}
-          disabled={!waiting || sending}
+          disabled={blocked}
           activeOpacity={0.85}
         >
-          {sending ? <ActivityIndicator color="#ffffff" /> : <Text style={styles.btnText}>Back in queue</Text>}
+          {sending || checking ?<ActivityIndicator color="#ffffff" /> : <Text style={styles.btnText}>Back in queue</Text>}
         </TouchableOpacity>
       </View>
     </SafeAreaView>
