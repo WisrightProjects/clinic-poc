@@ -7,7 +7,7 @@
 // time — the queue until a patient is open, then the patient with a Back to queue control.
 // Because the open patient is in the URL, the phone's own back button does the same.
 
-import { useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useSession, clearSession } from '../utils/authStore'
 import { useVisitQueue } from '../hooks/useVisitQueue'
@@ -35,7 +35,7 @@ export default function DoctorDashboardPage() {
   const selectedId = /^\d+$/.test(visitId ?? '') ? Number(visitId) : null
   const [overrides, setOverrides] = useState({}) // optimistic status by visit id
   const [doneError, setDoneError] = useState(null)
-  const [marking, setMarking] = useState(false)
+  const [markingId, setMarkingId] = useState(null) // the visit whose Done is in flight
 
   // Apply optimistic overrides on top of the polled queue (token order kept).
   const queue = useMemo(
@@ -110,18 +110,35 @@ export default function DoctorDashboardPage() {
     refetch()
   }
 
+  // A Done error belongs to the patient it happened on.
+  function selectPatient(id) {
+    setDoneError(null)
+    navigate(`/doctor/${id}`)
+  }
+
+  // The patient open right now, for handleDone to check after its await (the closure's
+  // selectedId is the one from when Done was tapped).
+  const openIdRef = useRef(selectedId)
+  useEffect(() => {
+    openIdRef.current = selectedId
+  }, [selectedId])
+
   async function handleDone() {
-    if (!selected || marking) return
+    if (!selected || markingId) return
     const id = selected.id
-    setMarking(true)
+    setMarkingId(id)
     setDoneError(null)
     setOverrides((p) => ({ ...p, [id]: 'done' })) // optimistic
     try {
       await setVisitDone(id)
       await refetch()
-      // Advance to the next actionable patient in token order — on a phone, back to the queue.
-      const next = queue.find((v) => v.id !== id && isActionable(v.status))
-      navigate(isPhone || !next ? '/doctor' : `/doctor/${next.id}`, { replace: true })
+      // Advance to the next actionable patient in token order (on a phone, back to the queue)
+      // — only if the doctor is still on this patient (never override a selection made
+      // while Done was saving).
+      if (openIdRef.current === id) {
+        const next = queue.find((v) => v.id !== id && isActionable(v.status))
+        navigate(isPhone || !next ? '/doctor' : `/doctor/${next.id}`, { replace: true })
+      }
     } catch (e) {
       setOverrides((p) => {
         const n = { ...p }
@@ -130,7 +147,7 @@ export default function DoctorDashboardPage() {
       })
       setDoneError(e?.message ?? 'Could not mark done. Please retry.')
     } finally {
-      setMarking(false)
+      setMarkingId(null)
     }
   }
 
@@ -150,7 +167,7 @@ export default function DoctorDashboardPage() {
           user={user}
           visits={queue}
           selectedId={selectedId}
-          onSelect={(id) => navigate(`/doctor/${id}`)}
+          onSelect={selectPatient}
           isLoading={isLoading}
           error={error}
           onRetry={refetch}
@@ -170,10 +187,15 @@ export default function DoctorDashboardPage() {
           ) : detail.error ? (
             <div className="placeholder placeholder--error">
               <p>Could not load this patient.</p>
-              <button className="link-btn" onClick={detail.refetch}>Retry</button>
+              <button className="link-btn" onClick={() => detail.refetch()}>Retry</button>
             </div>
           ) : detail.visit ? (
-            <>
+            // Keyed by patient, so switching patients remounts the whole detail: an open
+            // summary edit, the send-for-tests dialog and loaded photos never carry over.
+            // One key on the wrapper — sibling components must never share a key, which
+            // left the previous patient's panels on screen (CR-003). useVisitDetail only
+            // returns data for the selected visit, so nothing stale renders under it.
+            <Fragment key={selectedId}>
               <PatientHeader visit={selected ?? detail.visit} />
               <StatsStrip
                 seenToday={seenToday}
@@ -184,32 +206,30 @@ export default function DoctorDashboardPage() {
               {/* Summary right after the patient (CLINIC-010 reading order), then the actions
                   that follow from it. */}
               <AiSummaryCard
-                key={selectedId}
                 summary={detail.summary}
                 status={(selected ?? detail.visit).status}
                 onSave={handleSummarySave}
               />
               <TestRequestPanel
-                key={selectedId}
                 visit={selected ?? detail.visit}
                 requests={detail.testRequests}
                 onChanged={handleTestsChanged}
               />
               <QaList qa={detail.qa} />
-              <ReportsList key={selectedId} reports={detail.reports} />
+              <ReportsList reports={detail.reports} />
 
               {doneError ? <div className="done-error">{doneError}</div> : null}
               <div className="action-bar">
                 <button
                   className="done-btn"
                   onClick={handleDone}
-                  disabled={!canMarkDone || marking}
+                  disabled={!canMarkDone || markingId !== null}
                   title={canMarkDone ? '' : 'Only a summarised patient can be marked done'}
                 >
-                  {marking ? 'Marking…' : (selected ?? detail.visit).status === 'done' ? 'Done ✓' : 'Mark Done'}
+                  {markingId === selectedId ? 'Marking…' : (selected ?? detail.visit).status === 'done' ? 'Done ✓' : 'Mark Done'}
                 </button>
               </div>
-            </>
+            </Fragment>
           ) : null}
         </main>
       </div>
