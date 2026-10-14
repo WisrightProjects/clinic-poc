@@ -133,12 +133,14 @@ export default function ReviewSubmitScreen() {
           <Text style={styles.footerHint}>Answer all questions before sending</Text>
         ) : null}
 
-        <TouchableOpacity
-          style={styles.editBtn}
-          onPress={() => navigation.navigate('QuestionList', { visitId })}
-        >
-          <Text style={styles.editBtnText}>Edit Answers</Text>
-        </TouchableOpacity>
+        {!alreadySent && (
+          <TouchableOpacity
+            style={styles.editBtn}
+            onPress={() => navigation.navigate('QuestionList', { visitId })}
+          >
+            <Text style={styles.editBtnText}>Edit Answers</Text>
+          </TouchableOpacity>
+        )}
 
         <TouchableOpacity
           style={[styles.sendBtn, (!allAnswered || sending || alreadySent) && styles.sendBtnDisabled]}
