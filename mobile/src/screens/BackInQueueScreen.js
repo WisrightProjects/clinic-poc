@@ -2,8 +2,8 @@
 // note and lets the attender add the test results as photos (the CLINIC-011 reports section,
 // allowed while the visit is waiting for tests). "Back in queue" puts the patient at the END
 // of today's queue (POST /visits/:id/requeue; the original date, answers, summary and note
-// are kept). If no result was added since the doctor's request, the attender is warned but
-// can still re-queue. Opened from the "Waiting for tests" section on Home.
+// are kept). At least one result photo added since the doctor's request is required (the
+// server enforces it too). Opened from the "Waiting for tests" section on Home.
 
 import React, { useCallback, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, StyleSheet } from 'react-native';
@@ -84,20 +84,14 @@ export default function BackInQueueScreen() {
     setChecking(true);
     try {
       resultCount = await countResults();
-    } catch {
-      // Can't tell: don't block the attender — the warning below just asks them to confirm.
+    } catch (err) {
+      Alert.alert('Could not check test results', errorMessage(err, 'Please retry.'));
+      return;
     } finally {
       setChecking(false);
     }
     if (resultCount > 0) return requeue();
-    Alert.alert(
-      'No test results uploaded',
-      'The doctor will not see any results for this patient. Put them back in the queue anyway?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Back in queue', onPress: requeue },
-      ]
-    );
+    Alert.alert('Test results required', 'Add at least one photo of the test results before putting the patient back in the queue.');
   };
 
   if (loading && !data) {
@@ -138,7 +132,7 @@ export default function BackInQueueScreen() {
             visitId={visitId}
             editable={waiting}
             title="Test results"
-            hint="No results added yet. Add photos of the test results the patient brought."
+            hint="Required — add photos of the test results the patient brought."
             onBusyChange={setUploading}
             since={latest?.requested_at}
           />

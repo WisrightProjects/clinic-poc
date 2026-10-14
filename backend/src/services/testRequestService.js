@@ -37,11 +37,17 @@ async function acknowledge(clinicId, testRequestId, userId) {
 }
 
 // Back in queue: a new place at the end of today's queue, the request marked
-// returned — one transaction under the clinic's token lock.
+// returned — one transaction under the clinic's token lock. At least one test result
+// photo must have been added since the doctor's request.
+// (Upload and requeue don't share a lock; a result can't be deleted once the visit is
+// back, so counting inside the transaction is enough.)
 async function requeue(clinicId, visitId) {
   const visit = await visitService.findVisit(clinicId, visitId);
   statusEngine.assertTransition(visit.status, 'summarised');
   const requeued = await visitRepository.withTokenLock(clinicId, async client => {
+    if (!(await testRequestRepository.countResultsSinceOpenRequest(client, visit.id))) {
+      throw new AppError('RESULTS_REQUIRED', 'Add at least one test result before putting the patient back in the queue', 409);
+    }
     const row = await visitRepository.requeue(client, clinicId, visit.id);
     if (row) await testRequestRepository.markReturned(client, visit.id);
     return row;

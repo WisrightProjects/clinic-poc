@@ -67,6 +67,18 @@ async function markReturned(client, visitId) {
   );
 }
 
+// Result photos added since the visit's open request (CLINIC-017.3: older photos are the
+// intake reports and don't count). Pass the requeue transaction's client.
+async function countResultsSinceOpenRequest(client, visitId) {
+  const { rows } = await client.query(
+    `SELECT COUNT(*)::int AS n FROM visit_reports r
+      WHERE r.visit_id = $1 AND r.created_at >= (
+        SELECT MAX(requested_at) FROM visit_test_requests WHERE visit_id = $1 AND returned_at IS NULL)`,
+    [visitId]
+  );
+  return rows[0].n;
+}
+
 // The visit's requests, newest first (the doctor's earlier notes, CLINIC-014 AC5).
 async function findByVisitId(visitId) {
   const { rows } = await db.query(
@@ -77,4 +89,4 @@ async function findByVisitId(visitId) {
   return rows;
 }
 
-module.exports = { COLUMNS, JOIN_NAMES, NEWEST_FIRST, requestTests, acknowledge, findByIdForClinic, markReturned, findByVisitId };
+module.exports = { COLUMNS, JOIN_NAMES, NEWEST_FIRST, requestTests, acknowledge, findByIdForClinic, markReturned, countResultsSinceOpenRequest, findByVisitId };
