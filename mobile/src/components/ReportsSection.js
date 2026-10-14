@@ -12,6 +12,8 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  Modal,
+  StatusBar,
   StyleSheet,
 } from 'react-native';
 import { useReports } from '../hooks/useReports';
@@ -21,21 +23,23 @@ import { addedSince } from '../utils/reports';
 const NAVY = '#1a3050';
 const TEAL = '#0a8f8f';
 
-function Thumbnail({ report, editable, disabled, onRemove }) {
+function Thumbnail({ report, editable, disabled, onRemove, onOpen }) {
   // 'loading' | 'loaded' | 'failed'. The Image downloads (and caches) the photo itself,
   // sending the login token in its headers; the placeholder covers it until it is ready.
   const [status, setStatus] = useState('loading');
 
   return (
     <View style={styles.thumbWrap}>
-      <Image
-        source={reportImageSource(report.id)}
-        style={styles.thumb}
-        onLoad={() => setStatus('loaded')}
-        onError={() => setStatus('failed')}
-      />
+      <TouchableOpacity onPress={onOpen} activeOpacity={0.8} accessibilityLabel="View report photo">
+        <Image
+          source={reportImageSource(report.id)}
+          style={styles.thumb}
+          onLoad={() => setStatus('loaded')}
+          onError={() => setStatus('failed')}
+        />
+      </TouchableOpacity>
       {status !== 'loaded' ? (
-        <View style={[styles.thumb, styles.thumbPlaceholder]}>
+        <View style={[styles.thumb, styles.thumbPlaceholder]} pointerEvents="none">
           {status === 'failed' ? <Text style={styles.thumbFail}>!</Text> : <ActivityIndicator size="small" color={NAVY} />}
         </View>
       ) : null}
@@ -69,6 +73,7 @@ export function ReportsSection({
   const { reports: allReports, remaining, busy, error, addFromCamera, addFromGallery, remove } = useReports(visitId);
   // `remaining` still counts every photo: the server's 20-per-visit limit includes the older ones.
   const reports = addedSince(allReports, since);
+  const [previewId, setPreviewId] = useState(null);
 
   // Lets the screen hold its own actions (Back in queue, CLINIC-017.2) while a photo is
   // uploading or being removed; cleared again if this section goes away mid-way.
@@ -107,7 +112,14 @@ export function ReportsSection({
       {reports.length > 0 ? (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.strip}>
           {reports.map((r) => (
-            <Thumbnail key={r.id} report={r} editable={editable} disabled={busy} onRemove={() => onRemove(r)} />
+            <Thumbnail
+              key={r.id}
+              report={r}
+              editable={editable}
+              disabled={busy}
+              onRemove={() => onRemove(r)}
+              onOpen={() => setPreviewId(r.id)}
+            />
           ))}
         </ScrollView>
       ) : (
@@ -115,6 +127,22 @@ export function ReportsSection({
       )}
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
+
+      <Modal visible={previewId != null} transparent animationType="fade" onRequestClose={() => setPreviewId(null)}>
+        <StatusBar backgroundColor="rgba(0,0,0,0.95)" />
+        <View style={styles.previewBackdrop}>
+          {previewId != null ? (
+            <Image source={reportImageSource(previewId)} style={styles.previewImage} resizeMode="contain" />
+          ) : null}
+          <TouchableOpacity
+            style={styles.previewClose}
+            onPress={() => setPreviewId(null)}
+            accessibilityLabel="Close preview"
+          >
+            <Text style={styles.previewCloseText}>×</Text>
+          </TouchableOpacity>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -152,6 +180,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   removeText: { color: '#ffffff', fontSize: 16, lineHeight: 18, fontWeight: '800' },
+  previewBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.95)', justifyContent: 'center' },
+  previewImage: { width: '100%', height: '85%' },
+  previewClose: {
+    position: 'absolute',
+    top: 40,
+    right: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  previewCloseText: { color: '#ffffff', fontSize: 28, lineHeight: 32, fontWeight: '700' },
   hint: { fontSize: 12.5, color: '#6b7c93', paddingBottom: 6 },
   error: { fontSize: 13, color: '#c0392b', paddingTop: 4, paddingBottom: 2 },
 });
