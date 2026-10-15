@@ -111,7 +111,7 @@ AND the original visit date, answers, summary and doctor note are kept
 GIVEN a returning patient
 WHEN the attender uploads the test results (as reports, CLINIC-011) and taps "Back in queue"
 THEN the AI summary is regenerated to include the new results (subject to CLINIC-016's dispute rules)
-AND if no results were uploaded, the attender is warned but can still re-queue
+AND if no results were uploaded since the doctor's request, re-queue is refused (409 RESULTS_REQUIRED) and the attender is asked to add at least one photo
 ```
 
 ### AC5: Doctor sees everything in one place

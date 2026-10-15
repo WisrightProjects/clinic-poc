@@ -132,7 +132,7 @@ export default function NewPatientScreen() {
         {/* Sex */}
         <Text style={styles.label}>Sex</Text>
         <View style={[styles.pickerWrap, fieldErrors.sex && styles.inputError]}>
-          <Picker selectedValue={sex} onValueChange={setSex}>
+          <Picker selectedValue={sex} onValueChange={setSex} style={styles.picker} dropdownIconColor={NAVY}>
             <Picker.Item label="Select…" value="" />
             <Picker.Item label="Male (M)" value="M" />
             <Picker.Item label="Female (F)" value="F" />
@@ -148,6 +148,8 @@ export default function NewPatientScreen() {
           <Picker
             selectedValue={departmentId}
             onValueChange={(val) => setDepartmentId(val || null)}
+            style={styles.picker}
+            dropdownIconColor={NAVY}
           >
             <Picker.Item label="Select department…" value={null} />
             {departments.map((d) => (
@@ -197,6 +199,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     overflow: 'hidden',
   },
+  picker: { height: 50, color: NAVY },
   fieldError: { fontSize: 12, color: '#c0392b', marginTop: 3 },
   errorBanner: {
     backgroundColor: '#fdecea',
