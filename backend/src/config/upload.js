@@ -17,4 +17,7 @@ const storage = multer.diskStorage({
   },
 });
 
-module.exports = multer({ storage });
+// 5 MB per recording: the app caps an answer at 2 minutes (about 1-2 MB), and the server caps
+// the file too, so an upload sent around the app can't fill the disk or run up a paid
+// transcription. Over the limit → 413 FILE_TOO_LARGE (errorHandler).
+module.exports = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } });

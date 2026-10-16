@@ -27,11 +27,8 @@ async function summarise(visit, qa, language) {
       timeout: 60000, // cloud API; generous headroom but well under the mobile submit timeout
     }
   );
-  const text = (response.data?.choices?.[0]?.message?.content || '').trim();
-  // An empty reply would be stored as a blank summary that submit never regenerates;
-  // throw so summaryService records the marked fallback instead.
-  if (!text) throw new Error('Kimi returned an empty summary');
-  return text;
+  // An empty reply is caught by summaryService (stored as the marked fallback).
+  return (response.data?.choices?.[0]?.message?.content || '').trim();
 }
 
 module.exports = { summarise };
