@@ -2,10 +2,14 @@ const config = require('../config');
 const answerRepository = require('../repositories/answerRepository');
 const templateRepository = require('../repositories/templateRepository');
 const kimiClient = require('../utils/summary/kimiClient');
+const geminiClient = require('../utils/summary/geminiClient');
 
-// Kept for the 'mock' provider and as the fallback when a real provider errors.
+// The 'mock' provider's canned demo text.
 const MOCK_SUMMARY =
   'Patient presents with fever for 3 days and a severe headache. No medication taken prior to visit. No known allergies. No significant past history — BP normal, no diabetes. Requires physical examination. Consider CBC and fever panel.';
+// Stored when a real provider fails: it must never read like this patient's findings (the demo
+// text above would show a doctor symptoms the patient never reported).
+const FALLBACK_SUMMARY = "AI summary not available for this patient. Please read the patient's answers below.";
 
 // The visit's ordered question/transcript pairs for the LLM.
 async function buildQA(visit) {
@@ -18,29 +22,27 @@ async function buildQA(visit) {
   return qa;
 }
 
+// The real AI providers. 'claude' / 'sarvam' (paid LLMs) plug in here later — same shape.
+const PROVIDERS = new Map([['kimi', kimiClient], ['gemini', geminiClient]]);
+
 // Returns { summaryText, generatedBy }. Provider chosen by config.summaryProvider.
 async function generate(visit) {
-  if (config.summaryProvider === 'mock') {
-    return { summaryText: MOCK_SUMMARY, generatedBy: 'mock' };
-  }
+  const client = PROVIDERS.get(config.summaryProvider);
+  // 'mock', or an unknown/blank provider — safe canned text instead of crashing.
+  if (!client) return { summaryText: MOCK_SUMMARY, generatedBy: 'mock' };
 
   const qa = await buildQA(visit);
   try {
-    switch (config.summaryProvider) {
-      // 'claude' / 'sarvam' (paid LLMs) plug in here later — same shape as kimiClient.
-      case 'kimi': {
-        const summaryText = await kimiClient.summarise(visit, qa, config.summaryLanguage);
-        return { summaryText, generatedBy: 'kimi' };
-      }
-      default:
-        // Unknown/blank provider — degrade to safe canned text instead of crashing.
-        return { summaryText: MOCK_SUMMARY, generatedBy: 'mock' };
-    }
+    const summaryText = await client.summarise(visit, qa, config.summaryLanguage);
+    // An empty reply would be stored as a blank summary that submit never regenerates;
+    // treat it as a failure so the marked fallback is stored instead.
+    if (!summaryText) throw new Error('empty summary');
+    return { summaryText, generatedBy: config.summaryProvider };
   } catch (err) {
     // Provider unreachable/errored — never break submit; store a marked fallback.
     // Log so a misconfigured provider is visible (otherwise the canned text looks real).
     console.error(`[summary] provider "${config.summaryProvider}" failed, using fallback:`, err.message);
-    return { summaryText: MOCK_SUMMARY, generatedBy: 'mock-fallback' };
+    return { summaryText: FALLBACK_SUMMARY, generatedBy: 'mock-fallback' };
   }
 }
 

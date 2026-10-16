@@ -23,6 +23,13 @@ function errorHandler(err, req, res, _next) {
     if (file && !file.stored) fs.promises.unlink(file.path).catch(() => {});
   }
   if (err.code === PG_INVALID_TEXT) err = new AppError('BAD_REQUEST', 'Invalid value in request', 400);
+  // An upload over its route's multer limit (size, an unexpected field) is the client's
+  // mistake, not a crash. Routes may map their own wording first (reportUpload does).
+  if (err.name === 'MulterError') {
+    err = err.code === 'LIMIT_FILE_SIZE'
+      ? new AppError('FILE_TOO_LARGE', 'The uploaded file is too large', 413)
+      : new AppError('BAD_REQUEST', err.message, 400);
+  }
   if (err.headers) res.set(err.headers);
   const status = err.httpStatus || 500;
   const code = err.code || 'INTERNAL_ERROR';

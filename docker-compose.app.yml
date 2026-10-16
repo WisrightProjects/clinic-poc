@@ -62,20 +62,29 @@ services:
       # Set it in Coolify as a Secret (a long random value, at least 32 characters).
       JWT_SECRET: ${JWT_SECRET:-}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-}  # empty = 30d (config default)
-      STT_PROVIDER: whisper
+      # Speech-to-text: 'whisper' (the sidecar below, free), 'gemini' (paid, GEMINI_API_KEY) or
+      # 'sarvam' (paid, SARVAM_API_KEY). The whisper sidecar still starts with the stack either way.
+      STT_PROVIDER: ${STT_PROVIDER:-whisper}
+      SARVAM_API_KEY: ${SARVAM_API_KEY:-}
       WHISPER_URL: http://whisper:8000
       STT_LANGUAGE: auto
       # Doctor-web origin(s), comma-separated. The mobile app calls the backend directly,
       # so if phones hit it cross-origin add that host here too. Set the real domain in Coolify.
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080,http://localhost:8081}
-      # Summaries: 'mock' = canned text (no LLM). For real AI summaries set SUMMARY_PROVIDER=kimi
-      # and KIMI_API_KEY in Coolify. Every knob below must be listed here to reach the
+      # Summaries: 'mock' = canned text (no LLM). For real AI summaries set SUMMARY_PROVIDER=gemini
+      # and GEMINI_API_KEY (or =kimi and KIMI_API_KEY) in Coolify. Every knob below must be listed here to reach the
       # container — an env var Coolify sets but compose does not declare is silently dropped.
       SUMMARY_PROVIDER: ${SUMMARY_PROVIDER:-mock}
       KIMI_API_KEY: ${KIMI_API_KEY:-}
       KIMI_BASE_URL: ${KIMI_BASE_URL:-https://api.moonshot.ai/v1}
       KIMI_MODEL: ${KIMI_MODEL:-kimi-k2.6}
       KIMI_THINKING: ${KIMI_THINKING:-disabled}
+      # Google Gemini (STT_PROVIDER and/or SUMMARY_PROVIDER = gemini). Set the key in Coolify as a
+      # Secret, from a Google project with billing ON (free-tier requests may be used by Google).
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.5-flash-lite}
+      # Languages a patient may answer in (Gemini STT picks one per answer). Empty = "Tamil, Hindi or English".
+      GEMINI_LANGUAGES: ${GEMINI_LANGUAGES:-}
       SUMMARY_LANGUAGE: ${SUMMARY_LANGUAGE:-English}
       AUDIO_DIR: /app/uploads
       REPORTS_DIR: ${REPORTS_DIR:-/app/uploads/reports}

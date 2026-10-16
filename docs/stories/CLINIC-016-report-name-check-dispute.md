@@ -6,8 +6,8 @@
 **Priority:** P1 (High)
 **Effort:** 3 days (24 hours), plus the AI reading part, which depends on CLINIC-013
 **Who:** 👨‍💻 **Senior** with **Uday Augustin** (approach, AI name reading, matching) · 🧑‍🎓 **Junior** (dispute labels, include/exclude switch) — see Work Split
-**Sprint:** Phase 3 — Trial Readiness
-**Status:** Draft — technical approach to be decided (Manoj + Uday Augustin), after CLINIC-013
+**Sprint:** After the clinic trial (moved out of Trial Readiness by Manoj, 2026-10-16)
+**Status:** Draft — not needed for the trial; technical approach to be decided (Manoj + Uday Augustin) later
 **Depends On:** CLINIC-011 (report upload), CLINIC-013 (which model reads the name from a report photo)
 **Migration number reserved:** `010_report_dispute.sql`
 
