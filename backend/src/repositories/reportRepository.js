@@ -37,6 +37,15 @@ async function findByVisitId(visitId) {
   return rows;
 }
 
+// The visit's photo files in upload order, for the AI summary to read (CLINIC-018).
+async function findFilesByVisitId(visitId) {
+  const { rows } = await db.query(
+    `SELECT ${COLUMNS}, r.file_path FROM visit_reports r WHERE r.visit_id = $1 ORDER BY r.id`,
+    [visitId]
+  );
+  return rows;
+}
+
 // client: pass a transaction's client to count inside it.
 async function countByVisitId(visitId, client = db) {
   const { rows } = await client.query('SELECT COUNT(*)::int AS n FROM visit_reports WHERE visit_id = $1', [visitId]);
@@ -59,4 +68,4 @@ async function remove(id) {
   await db.query('DELETE FROM visit_reports WHERE id = $1', [id]);
 }
 
-module.exports = { createMany, findByVisitId, countByVisitId, findByIdForClinic, remove };
+module.exports = { createMany, findByVisitId, findFilesByVisitId, countByVisitId, findByIdForClinic, remove };

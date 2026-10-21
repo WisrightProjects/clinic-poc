@@ -5,6 +5,7 @@
 jest.mock('../config', () => ({ sttProvider: 'gemini', summaryProvider: 'gemini', summaryLanguage: 'English' }));
 jest.mock('../repositories/answerRepository', () => ({ findByVisitId: jest.fn() }));
 jest.mock('../repositories/templateRepository', () => ({ findActiveForVisit: jest.fn() }));
+jest.mock('../repositories/reportRepository', () => ({ findFilesByVisitId: jest.fn(async () => []) }));
 jest.mock('../utils/stt/geminiClient', () => ({ transcribe: jest.fn() }));
 jest.mock('../utils/summary/geminiClient', () => ({ summarise: jest.fn() }));
 

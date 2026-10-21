@@ -14,6 +14,9 @@ const API_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
 const AUDIO_MIME = { '.m4a': 'audio/mp4', '.mp4': 'audio/mp4', '.aac': 'audio/aac', '.mp3': 'audio/mp3', '.wav': 'audio/wav', '.ogg': 'audio/ogg', '.flac': 'audio/flac' };
 const audioMimeType = ext => AUDIO_MIME[String(ext).toLowerCase()] || 'audio/mp4';
 
+// A file sent inside the request (audio for STT, report photos for the summary), base64.
+const inlinePart = (mimeType, data) => ({ inline_data: { mime_type: mimeType, data } });
+
 // The reply text, or an error message when the reply can't be trusted: no candidate (blocked),
 // or one that stopped for any reason but finishing (cut off at MAX_TOKENS, SAFETY, …) — a
 // half transcript or summary must not be saved as if complete.
@@ -40,18 +43,21 @@ const MIN_ATTEMPT_MS = 10000;
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 // Send `parts` (text and/or inline audio) and return the reply text. `task` names the stage
-// in errors ("Gemini STT error: …").
-async function generate(task, parts) {
+// in errors ("Gemini STT error: …"). `deadline` (a Date.now() time) lets several calls that
+// serve one request share one time limit (CLINIC-018: photo checks + summary).
+async function generate(task, parts, deadline = Date.now() + DEADLINE_MS) {
   if (!config.geminiApiKey) throw new Error('GEMINI_API_KEY is not configured');
-  const deadline = Date.now() + DEADLINE_MS;
   for (let attempt = 0; ; attempt++) {
+    const timeLeft = deadline - Date.now();
+    // axios treats a timeout of 0 as "no timeout", so never start without time left.
+    if (timeLeft <= 0) throw new Error(`Gemini ${task} error: out of time`);
     let data;
     try {
       ({ data } = await axios.post(
         `${API_URL}/${encodeURIComponent(config.geminiModel)}:generateContent`,
         { contents: [{ parts }] },
         { headers: { 'x-goog-api-key': config.geminiApiKey, 'Content-Type': 'application/json' },
-          timeout: Math.min(60000, deadline - Date.now()) }
+          timeout: Math.min(60000, timeLeft) }
       ));
     } catch (err) {
       const delay = RETRY_DELAYS_MS[attempt];
@@ -67,4 +73,4 @@ async function generate(task, parts) {
   }
 }
 
-module.exports = { generate, audioMimeType, readReply };
+module.exports = { generate, audioMimeType, inlinePart, readReply, DEADLINE_MS };

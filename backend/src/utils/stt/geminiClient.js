@@ -35,7 +35,7 @@ async function transcribe(filePath) {
   const data = (await fs.promises.readFile(filePath)).toString('base64');
   const reply = await gemini.generate('STT', [
     { text: buildPrompt(config.geminiLanguages) },
-    { inline_data: { mime_type: gemini.audioMimeType(path.extname(filePath)), data } },
+    gemini.inlinePart(gemini.audioMimeType(path.extname(filePath)), data),
   ]);
   return parseReply(reply); // an empty transcript is rejected in sttService
 }

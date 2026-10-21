@@ -2,8 +2,8 @@
 // The doctor sends a waiting patient (summarised) for tests with a note; the attender
 // is alerted, tells the patient ("Informed patient"), and when the patient returns
 // with results (uploaded as reports, CLINIC-011) puts them back at the end of that
-// day's queue. The summary is kept as is: the AI can't read report photos yet, and
-// regenerating would only repeat it and hide the doctor's edit (decided 2026-10-10).
+// day's queue. Back in queue then remakes the summary in the background so it includes
+// the results (CLINIC-018) — unless the doctor edited it (visitService.refreshSummary).
 //
 // Each status change is checked twice on purpose: assertTransition first, for a clear
 // 409 message; then the SQL only updates a visit still in the expected status, so a
@@ -53,6 +53,9 @@ async function requeue(clinicId, visitId) {
     return row;
   });
   if (!requeued) throw changedMeanwhile();
+  // Not awaited: the patient is back in the queue at once; the new summary follows.
+  visitService.refreshSummary(visit).catch(err =>
+    console.error(`[summary] refresh after tests failed for visit ${visit.id}:`, err.message));
   return requeued;
 }
 
