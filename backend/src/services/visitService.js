@@ -95,6 +95,22 @@ async function submit(clinicId, visitId) {
   return summary; // return the summary row so the client can render it without a reload
 }
 
+// CLINIC-018: after Back in queue, remake the summary so it includes the test result photos.
+// Skipped when the provider can't read photos (it would only repeat the summary) and when the
+// doctor has edited the summary (their edit is never hidden). Not stored if, by the time the AI
+// answers, the patient is no longer waiting in the queue (marked done, or sent for tests again).
+// When the AI fails it throws and the earlier summary stays (better than the "not available"
+// note). Returns the new row or null.
+async function refreshSummary(visit) {
+  if (!summaryService.readsReports()) return null;
+  const current = await summaryRepository.findByVisitId(visit.id);
+  if (!current || current.edited_text) return null;
+  const remade = await summaryService.regenerate(visit);
+  if (!remade) return null;
+  return summaryRepository.createIfUnedited(visit.id, current.id, remade.summaryText, remade.generatedBy,
+    status => status === 'summarised');
+}
+
 // CLINIC-012: the doctor saves an edited summary. The AI's original (summary_text) is
 // kept; the edit is stored beside it with who and when. Another clinic's visit is 404;
 // only a submitted visit can be edited (AC1).
@@ -127,4 +143,4 @@ async function maybeAdvance(visit, template) {
   }
 }
 
-module.exports = { findVisit, create, list, getById, updateStatus, submit, editSummary, maybeAdvance };
+module.exports = { findVisit, create, list, getById, updateStatus, submit, refreshSummary, editSummary, maybeAdvance };

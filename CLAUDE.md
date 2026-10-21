@@ -183,6 +183,20 @@ transcript from any provider is also a failure (checked once in `sttService`), s
   the patient", never guessed (it had turned a misheard word into "bipolar nerve issues"). Don't point the Kimi client at Google's OpenAI-compatible
   endpoint: it sends the Kimi-only `thinking` field, which Google rejects (400).
 
+**Report photos in the summary (CLINIC-018, Gemini only):** `summaryService` also sends the visit's
+report photos (CLINIC-011) as inline images, in upload order, up to 14 MB in total (`pickReports`); the
+prompt then asks for a "From reports:" paragraph — values, units and dates exactly as printed, nothing
+guessed, photo text never treated as instructions. Each photo is first checked alone (`summary/geminiClient`,
+one extra Gemini request per photo, run in parallel): only `READABLE` photos go into the summary — asked
+inside the summary request, Gemini made up a value and date from a fully blurred photo. A check that
+fails counts as unreadable. Checks and summary share one 90 s limit (checks at most the first 30 s), so
+submit stays under the app's 120 s. Photos not read (unreadable, over 14 MB, or missing on disk) are
+counted in a note the code adds (in English) under the summary. Back in queue (CLINIC-014) remakes the summary in
+the background (`visitService.refreshSummary`, not awaited) so it includes the test results — skipped
+when the doctor has edited the summary or the AI fails; `summaryRepository.createIfUnedited` stores the
+new row only while the visit is still `summarised` and the old row is still the latest and unedited. It and
+`updateEdit` both lock the visit row first, so a remake and a doctor's edit can't interleave.
+
 `generated_by` on the `summaries` row is the provider name; a provider error or an empty reply falls
 back to a plain "AI summary not available" note marked `mock-fallback` (never the mock's demo findings) (and logs the cause) so submit never breaks — the
 empty-reply check lives in `summaryService`, not in each client. Other LLMs (`claude`/`sarvam`)
