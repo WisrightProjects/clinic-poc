@@ -10,7 +10,17 @@
 # the postgres container, or add a host port mapping in a local override file — no service
 # publishes a host port here, so the reverse proxy is the only way in.
 services:
-  postgres:
+  # Deliberately NOT named `postgres`. Coolify attaches every compose container to its
+  # shared `coolify` network and aliases it there by bare service name — and Coolify's
+  # own control-plane database, `coolify-db`, already claims the alias `postgres`. With
+  # two containers answering one name, Docker DNS round-robins, so roughly half of the
+  # backend's new connections landed on coolify-db and died with
+  #   28P01 password authentication failed for user "postgres"
+  # intermittently, and invisibly: coolify-db logged those failures, not this container,
+  # so this DB's log stayed clean while the app looked like it had the wrong password.
+  # Keep this service name unique. The named volume below is keyed off the `volumes:`
+  # entry, not the service name, so renaming the service does not move or drop data.
+  clinic-postgres:
     image: postgres:16
     environment:
       POSTGRES_DB: doctor_attender
@@ -21,7 +31,7 @@ services:
     volumes:
       - clinic-db:/var/lib/postgresql/data
     # No published port. The backend reaches it on the private compose network at
-    # postgres:5432; publishing it would expose the database on the host's public IP.
+    # clinic-postgres:5432; publishing it would expose the database on the host's public IP.
     # For local psql/seeding, add a port mapping in a local override file, not here.
     expose:
       - "5432"
@@ -57,7 +67,7 @@ services:
       # It must include the database name, e.g. postgresql://user:pass@host:5432/doctor_attender
       # — a URL ending at the port connects to no named database and the backend will fail.
       # When unset, falls back to the bundled postgres service for local `docker compose up`.
-      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/doctor_attender}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@clinic-postgres:5432/doctor_attender}
       # Signs login tokens (CLINIC-008). Required — the backend refuses to start without it.
       # Set it in Coolify as a Secret (a long random value, at least 32 characters).
       JWT_SECRET: ${JWT_SECRET:-}
@@ -94,7 +104,7 @@ services:
     volumes:
       - clinic-uploads:/app/uploads
     depends_on:
-      postgres:
+      clinic-postgres:
         condition: service_healthy
       whisper:
         # Gate on the sidecar's healthcheck: the model takes ~30-60s to load, and until
