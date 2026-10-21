@@ -1,13 +1,16 @@
 const gemini = require('../gemini');
-const { buildSummaryPrompt, notReadNote } = require('./prompt');
+const { buildSummaryPrompt, notReadNote, OTHER_RESULTS_LINE, NOT_LISTED_NOTE } = require('./prompt');
 
 // AI summary with Gemini, from the visit's real Q&A (prompt.js). Same shape as kimiClient.
 // reports (CLINIC-018): { images: [{ mimeType, data (base64) }], notRead } — the visit's
-// report photos go in the same request, after the prompt, so the summary adds "From reports:".
+// report photos go in the same request, after the prompt, so the summary adds a From reports part.
 
 // Each photo is first checked on its own: asked inside the summary request, Gemini made up a
 // value and date from a fully blurred photo; asked alone, it called it unreadable 3/3 times
 // (and the sharp reports readable 6/6). Only READABLE photos go into the summary.
+// Keep this strict: a looser wording ("a page cut off at the edge does not matter") let a fully
+// blurred photo through as READABLE, and the summary then made up a value. This wording passed
+// phone screenshots of a PDF (part of the next page at the edges) 9/9 (2026-10-21).
 const READABILITY_PROMPT = [
   'Look at this photo of a medical report. Can every test name, value and date on it be read',
   'sharply, character by character, without guessing? Answer with exactly one word:',
@@ -34,7 +37,18 @@ async function summarise(visit, qa, language, reports = { images: [], notRead: 0
     ...images.map(img => gemini.inlinePart(img.mimeType, img.data)),
   ], deadline);
   // An empty reply stays empty, so summaryService treats it as a failure.
-  return summary && notRead ? `${summary}\n\n${notReadNote(notRead)}` : summary;
+  if (!summary) return summary;
+  return [withReportsNote(summary, images.length), ...(notRead ? [notReadNote(notRead)] : [])].join('\n\n');
 }
 
-module.exports = { summarise, readsReports: true, isReadable };
+// After the AI's list of abnormal results, the code adds the fixed "Other results" line; it is
+// not needed when the AI found none abnormal, and if the AI wrote no From reports part although
+// photos were sent, the doctor is told to check them instead.
+function withReportsNote(summary, photosSent) {
+  if (!photosSent) return summary;
+  if (!/From reports/i.test(summary)) return `${summary}\n\n${NOT_LISTED_NOTE}`;
+  if (/none marked abnormal/i.test(summary)) return summary;
+  return `${summary}\n${OTHER_RESULTS_LINE}`;
+}
+
+module.exports = { summarise, readsReports: true, isReadable, withReportsNote };

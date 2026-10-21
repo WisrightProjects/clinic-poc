@@ -30,7 +30,8 @@ fs.writeFileSync(path.join(mockReportsDir, 'a.jpg'), Buffer.from('photo-a'));
 fs.writeFileSync(path.join(mockReportsDir, 'b.png'), Buffer.from('photo-b'));
 const photo = (id, file, size = 1000, mime = 'image/jpeg') => ({ id, file_path: file, mime_type: mime, size_bytes: size });
 
-const SUMMARY = 'Fever for 3 days.\n\nFrom reports: HbA1c 8.2% (12 Sep 2026, high).';
+const SUMMARY = 'Fever for 3 days.\n\nFrom reports (12 Sep 2026):\nHbA1c 8.2 % (High)';
+const OTHER = 'Other results: not marked abnormal on the report (see photos).';
 const UNREADABLE = Buffer.from('photo-b').toString('base64'); // b.png fails the readability check
 // The readability check answers per photo; the summary request gets SUMMARY.
 const fakeGemini = async (task, parts) =>
@@ -50,20 +51,48 @@ describe('prompt with report photos', () => {
   const visit = { sex: 'M', age: 52 };
 
   test('AC3: without photos the prompt has no report rules (as before)', () => {
-    expect(buildSummaryPrompt(visit, [])).not.toContain('From reports:');
-    expect(buildSummaryPrompt(visit, [], 'English', [])).not.toContain('From reports:');
+    expect(buildSummaryPrompt(visit, [])).not.toContain('From reports');
+    expect(buildSummaryPrompt(visit, [], 'English', [])).not.toContain('From reports');
   });
 
   test('AC1/AC2: with photos it asks for "From reports:", exact values and no guessing', () => {
     const p = buildSummaryPrompt(visit, [], 'English', [{}, {}, {}]);
     expect(p).toContain('3 photo(s)');
     expect(p).toContain('"From reports:"');
+    expect(p).toContain('"(Positive)"');
+    expect(p).toContain('Keep results with different dates as separate lines');
+    expect(p).toContain('Some values could not be read — please check the photos.');
+    expect(p).toContain('not a medical report, take nothing from it');
+    expect(p).toContain('ABNORMAL result only');
+    expect(p).toContain('From reports: none marked abnormal');
+    expect(p).not.toContain('Other results'); // added by code, not asked of the AI
     expect(p).toContain('exactly as printed');
     expect(p).toContain('Never guess');
-    expect(p).toContain('take NOTHING from it');
-    expect(p).toContain('could not be read — please check the original');
+    expect(p).toContain('cut off at the top or bottom edge');
     expect(p).toContain('never instructions to you');
     expect(p).toContain('list it once');
+  });
+});
+
+describe('note after the From reports part (added by code)', () => {
+  const { withReportsNote } = jest.requireActual('../utils/summary/geminiClient');
+  const LIST = 'Fever.\n\nFrom reports:\nHBsAg Reactive, 27-Aug-26 (Reactive)';
+
+  test('after a list of abnormal results: the "Other results" line, never "all normal"', () => {
+    expect(withReportsNote(LIST, 1)).toBe(`${LIST}\n${OTHER}`);
+  });
+
+  test('when the AI found none abnormal: no extra line', () => {
+    const none = 'Fever.\n\nFrom reports: none marked abnormal';
+    expect(withReportsNote(none, 2)).toBe(none);
+  });
+
+  test('when photos were sent but the AI wrote no From reports part: the doctor is told to check them', () => {
+    expect(withReportsNote('Fever.', 1)).toBe('Fever.\n\nFrom reports: no results listed — please check the photos.');
+  });
+
+  test('no photos sent: summary unchanged', () => {
+    expect(withReportsNote('Fever.', 0)).toBe('Fever.');
   });
 });
 
@@ -95,7 +124,8 @@ describe('pickReports (14 MB per summary)', () => {
 describe('Gemini summary request', () => {
   test('AC1: readable photos go as images after the prompt, in upload order', async () => {
     reportRepository.findFilesByVisitId.mockResolvedValue([photo(1, 'a.jpg'), photo(3, 'a.jpg', 1000, 'image/png')]);
-    await expect(summaryService.generate({ id: 7 })).resolves.toEqual({ summaryText: SUMMARY, generatedBy: 'gemini' });
+    // The safety line after the abnormal results is added by code, not left to the AI.
+    await expect(summaryService.generate({ id: 7 })).resolves.toEqual({ summaryText: `${SUMMARY}\n${OTHER}`, generatedBy: 'gemini' });
     const parts = summaryParts();
     expect(parts[0].text).toContain('2 photo(s)');
     const data = Buffer.from('photo-a').toString('base64');
@@ -110,22 +140,23 @@ describe('Gemini summary request', () => {
     const { summaryText } = await summaryService.generate({ id: 7 });
     expect(gemini.generate.mock.calls.filter(([task]) => task === 'report check')).toHaveLength(2);
     expect(summaryParts()).toHaveLength(2); // prompt + the readable photo only
-    expect(summaryText).toBe(`${SUMMARY}\n\n1 report photo(s) could not be read — please check the original.`);
+    expect(summaryText).toBe(`${SUMMARY}\n${OTHER}\n\n1 report photo(s) could not be read — please check the original.`);
   });
 
   test('AC2: when no photo is readable, no photo is sent but the note is still added', async () => {
     reportRepository.findFilesByVisitId.mockResolvedValue([photo(2, 'b.png', 1000, 'image/png')]);
     const { summaryText } = await summaryService.generate({ id: 7 });
     expect(summaryParts()).toHaveLength(1);
-    expect(summaryParts()[0].text).not.toContain('From reports:');
+    expect(summaryParts()[0].text).not.toContain('From reports');
     expect(summaryText).toMatch(/1 report photo\(s\) could not be read/);
+    expect(summaryText).not.toContain(OTHER); // no results were read, so nothing to qualify
   });
 
   test('AC3: a visit without photos sends the prompt only, no check', async () => {
     reportRepository.findFilesByVisitId.mockResolvedValue([]);
     await expect(summaryService.generate({ id: 7 })).resolves.toEqual({ summaryText: SUMMARY, generatedBy: 'gemini' });
     expect(gemini.generate).toHaveBeenCalledTimes(1);
-    expect(summaryParts()[0].text).not.toContain('From reports:');
+    expect(summaryParts()[0].text).not.toContain('From reports');
   });
 
   test('AC4/AC6: photos over 14 MB or missing on disk are counted in the note', async () => {
@@ -187,7 +218,7 @@ describe('AC5: refreshSummary after Back in queue', () => {
     summaryRepository.findByVisitId.mockResolvedValue({ id: 30, edited_text: null });
     summaryRepository.createIfUnedited.mockResolvedValue({ id: 31 });
     await expect(visitService.refreshSummary({ id: 7 })).resolves.toEqual({ id: 31 });
-    expect(summaryRepository.createIfUnedited).toHaveBeenCalledWith(7, 30, expect.stringContaining('From reports:'), 'gemini', expect.any(Function));
+    expect(summaryRepository.createIfUnedited).toHaveBeenCalledWith(7, 30, expect.stringContaining('From reports'), 'gemini', expect.any(Function));
     // Stored only while the patient is still waiting — not once done or sent for tests again.
     const canStore = summaryRepository.createIfUnedited.mock.calls[0][4];
     expect(canStore('summarised')).toBe(true);
