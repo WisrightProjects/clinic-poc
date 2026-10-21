@@ -46,7 +46,7 @@ cd frontend && npm install && npm run dev
 cd mobile && npm install && npm start          # or: npm run android
 ```
 
-Key env (`backend/.env`, see `backend/.env.example`): `DATABASE_URL`, `PORT=4000`, `STT_PROVIDER` (`whisper`|`sarvam`, default `whisper`), `WHISPER_URL`, `STT_LANGUAGE`, `SUMMARY_PROVIDER` (`mock`|`kimi`, default `mock`) + `KIMI_*`/`SUMMARY_LANGUAGE`, `AUDIO_DIR`, `CORS_ORIGINS`. (`USE_MOCK_SUMMARY` is legacy and has no effect.) `JWT_SECRET` (≥ 32 chars), `JWT_EXPIRES_IN`. `config/index.js` throws on boot if `DATABASE_URL` or `JWT_SECRET` is missing. `STT_PROVIDER=whisper` needs the `stt-service/` sidecar running (see its README).
+Key env (`backend/.env`, see `backend/.env.example`): `DATABASE_URL`, `PORT=4000`, `STT_PROVIDER` (`whisper`|`sarvam`|`gemini`, default `whisper`), `WHISPER_URL`, `STT_LANGUAGE`, `SUMMARY_PROVIDER` (`mock`|`kimi`|`gemini`, default `mock`) + `KIMI_*`/`SUMMARY_LANGUAGE`, `GEMINI_API_KEY`/`GEMINI_MODEL`, `AUDIO_DIR`, `CORS_ORIGINS`. (`USE_MOCK_SUMMARY` is legacy and has no effect.) `JWT_SECRET` (≥ 32 chars), `JWT_EXPIRES_IN`. `config/index.js` throws on boot if `DATABASE_URL` or `JWT_SECRET` is missing. `STT_PROVIDER=whisper` needs the `stt-service/` sidecar running (see its README).
 
 ### Full Docker stack (mirrors the Coolify deployment)
 
@@ -117,7 +117,7 @@ POST  /auth/login           GET /auth/me
 GET   /departments
 GET   /templates            PUT /templates/:id
 POST  /visits               GET /visits   (?date=YYYY-MM-DD&status=csv)   GET /visits/:id
-POST  /visits/:id/answers   (multipart, field "audio" — Multer; triggers STT)
+POST  /visits/:id/answers   (multipart, field "audio" — Multer, 5 MB max; triggers STT)
 PATCH /visits/:id/status    POST /visits/:id/submit     (PATCH: doctor only, sets 'done' only)
 PUT   /visits/:id/summary   { text } — doctor edits the summary (CLINIC-012). Show summary.display_text; summary_text is the AI original
 GET   /answers/:id/audio    (the recording, own clinic only)
@@ -141,28 +141,53 @@ POST  /visits/:id/requeue (attender — end of today's queue)   (CLINIC-014)
 
 ### STT / Summary
 
-`services/sttService.js` dispatches on `STT_PROVIDER` (`whisper` | `sarvam`, default `whisper`):
+`services/sttService.js` dispatches on `STT_PROVIDER` (`whisper` | `sarvam` | `gemini`, default `whisper`):
 - **whisper** (free, open-source) → `utils/stt/whisperClient.js` POSTs the audio to the
   `stt-service/` faster-whisper sidecar (`WHISPER_URL`, default `http://localhost:8000`). The
   sidecar must be running — start it with `docker compose -f docker-compose.stt.yml up` or per
   `stt-service/README.md`. `STT_LANGUAGE` (default `auto`) controls language detection (`ta`/`hi`/`en`).
 - **sarvam** (paid) → `utils/stt/sarvamClient.js`, needs `SARVAM_API_KEY`.
+- **gemini** (paid, Google) → `utils/stt/geminiClient.js` sends the recording inline to Gemini
+  (`utils/gemini.js`: `GEMINI_API_KEY`, `GEMINI_MODEL` default `gemini-3.5-flash-lite`). It detects
+  the language and writes Tamil / Hindi / English each in its own script, word for word; unclear
+  parts come back as `[unclear]`; `STT_LANGUAGE` is not used. One request per answer: Gemini first
+  names the language (from `GEMINI_LANGUAGES`, default `Tamil, Hindi or English`), then writes the
+  transcript in that script (`<language> | <transcript>`, the label is dropped), so a patient can
+  switch language per answer — 24/24 English, Tamil and Hindi test answers correct. **Telugu is not
+  proven yet**: Telugu spoken by a Tamil speaker was named "Tamil" (it worked when the clinic language
+  was set to `Telugu, English`); test with a native Telugu speaker before a Telugu clinic. An empty reply or one that stopped
+  early (blocked, cut off) is an error, so the answer is marked `failed`; quota/server errors
+  (429/5xx) are retried twice, all within 90 s (under the app's 120 s submit timeout); a timeout is
+  never retried (Google may already have billed it). Provider names are trimmed and lower-cased. No temperature/thinking overrides (see `utils/gemini.js`). The key's Google project must have
+  **billing on** for real patients — on the free tier Google may use the requests to improve its products.
+
+Recordings are capped at 2 minutes in the app and **5 MB on the server** (`config/upload.js`), so an
+upload sent around the app can't fill the disk or run up a paid transcription. `errorHandler` turns any
+multer limit error into 413 `FILE_TOO_LARGE` (size) or 400 `BAD_REQUEST` (e.g. an unexpected field).
 
 There is **no STT mock** — a provider must be running to transcribe; if none responds, the answer
-is saved with `transcript_status='failed'` (handled in `answerService`, no crash).
+is saved with `transcript_status='failed'` (handled in `answerService`, no crash). An empty
+transcript from any provider is also a failure (checked once in `sttService`), so the attender can retake it.
 
-`services/summaryService.js` dispatches on `SUMMARY_PROVIDER` (`mock` | `kimi`, default `mock`):
+`services/summaryService.js` dispatches on `SUMMARY_PROVIDER` (`mock` | `kimi` | `gemini`, default `mock`):
 - **mock** → one canned paragraph (no LLM call). Also the safe default for any unknown/blank provider.
 - **kimi** (paid, Moonshot AI) → `utils/summary/kimiClient.js` builds a prompt from the visit's real
   Q&A (`utils/summary/prompt.js`) and POSTs to an OpenAI-compatible Chat Completions endpoint
   (`KIMI_BASE_URL` ending in `/v1`, `KIMI_API_KEY`, `KIMI_MODEL`); output language via
   `SUMMARY_LANGUAGE` (default English, even from Tamil answers). Note: this sends patient Q&A to an
   external API.
+- **gemini** (paid, Google) → `utils/summary/geminiClient.js`, the same prompt sent through
+  `utils/gemini.js` (same key and model as Gemini STT). The team's chosen engine (CLINIC-013 tests:
+  correct on every test patient, about 1 s). The prompt (all providers) tells the model that answers
+  come from speech recognition: a garbled answer is reported as "answer unclear — please check with
+  the patient", never guessed (it had turned a misheard word into "bipolar nerve issues"). Don't point the Kimi client at Google's OpenAI-compatible
+  endpoint: it sends the Kimi-only `thinking` field, which Google rejects (400).
 
-`generated_by` on the `summaries` row is the provider name; a provider error falls back to the canned
-text marked `mock-fallback` (and logs the cause) so submit never breaks. Other LLMs (`claude`/`sarvam`)
-plug into the same `summaryService` switch later (see `docs/stories/CLINIC-007`). The earlier free Ollama
-provider was removed once Kimi became the team's chosen engine.
+`generated_by` on the `summaries` row is the provider name; a provider error or an empty reply falls
+back to a plain "AI summary not available" note marked `mock-fallback` (never the mock's demo findings) (and logs the cause) so submit never breaks — the
+empty-reply check lives in `summaryService`, not in each client. Other LLMs (`claude`/`sarvam`)
+plug into the same `summaryService` provider map later (see `docs/stories/CLINIC-007`). An earlier free
+Ollama provider was removed; a local Phi-4-mini retried in CLINIC-013 invented facts and missed allergies.
 
 ## Database
 

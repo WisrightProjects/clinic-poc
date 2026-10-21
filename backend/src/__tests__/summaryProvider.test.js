@@ -43,6 +43,12 @@ describe('buildSummaryPrompt', () => {
     expect(buildSummaryPrompt(visit, qa)).toContain('Include important negatives');
   });
 
+  test('tells the model to flag an unclear answer for the doctor instead of guessing', () => {
+    const p = buildSummaryPrompt(visit, qa);
+    expect(p).toContain('do not guess what it means');
+    expect(p).toContain('answer unclear — please check with the patient');
+  });
+
   test('handles unknown demographics and empty Q&A without throwing', () => {
     const p = buildSummaryPrompt({}, []);
     expect(p).toContain('Patient: unknown');
