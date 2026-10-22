@@ -2,7 +2,7 @@
 
 **Story ID:** CLINIC-018
 **Epic:** Patient Intake
-**Feature:** When the summary is made, Gemini reads the visit's report photos (CLINIC-011) together with the patient's answers and adds a **"From reports:"** part with the key results. When a patient comes back from tests (CLINIC-014), the summary is made again so it includes the test results.
+**Feature:** When the summary is made, Gemini reads the visit's report photos (CLINIC-011) together with the patient's answers and adds a **"From reports:"** part listing the abnormal results (High, Low, Positive…). When a patient comes back from tests (CLINIC-014), the summary is made again so it includes the test results.
 **Priority:** P1 (High) — requested by the client for the demo (2026-10-21)
 **Effort:** 1.5 days (12 hours)
 **Who:** 👨‍💻 **Senior**
@@ -19,7 +19,7 @@
 ## Story Overview
 
 **As a** doctor
-**I want** the AI summary to include the key results from the patient's reports
+**I want** the AI summary to include the abnormal results from the patient's reports
 **So that** I see the important numbers before the consultation without opening every photo
 
 **As an** attender
@@ -43,9 +43,13 @@
 GIVEN a visit with report photos and SUMMARY_PROVIDER=gemini
 WHEN the attender submits
 THEN Gemini receives the answers and the photos in one request
-AND the summary ends with a "From reports:" part listing the key results with their values, units and the report date
-AND a value the report marks as high/low/abnormal is called out
+AND the summary ends with a "From reports:" part listing ONLY the abnormal results with value, unit, date and the label "(High)", "(Low)" or the report's own word ("(Positive)", "(Reactive)"…)
+AND a result counts as abnormal only when the report marks it or it is outside the reference range printed beside it
+AND the code adds "Other results: not marked abnormal on the report (see photos)." after the list (not left to the AI); if the AI found none abnormal it writes "From reports: none marked abnormal"; if it wrote no From reports part, the code adds "From reports: no results listed — please check the photos."
+AND if the AI leaves out a value it cannot read sharply, it writes "Some values could not be read — please check the photos."
 ```
+
+> **Changed 2026-10-21 after testing with the client's sample (phone screenshots of a PDF):** only abnormal results are listed (Manoj chose the short version); values are judged one by one, so a page cut off at the screenshot's edge no longer makes the AI drop the whole photo.
 
 ### AC2: Only what the page says
 ```gherkin
@@ -96,7 +100,7 @@ THEN missing photos are skipped, and a Gemini failure stores the usual fallback 
 |---|---|
 | `backend/src/repositories/reportRepository.js` | `findFilesByVisitId` — file path, type and size of a visit's photos, in upload order |
 | `backend/src/services/summaryService.js` | Loads the photos (within 14 MB) for providers that read images (Gemini) and passes them to the client; `readsReports()` |
-| `backend/src/utils/summary/prompt.js` | `buildSummaryPrompt(visit, qa, language, reports)` — the "From reports:" rules when photos are attached |
+| `backend/src/utils/summary/prompt.js` | `buildSummaryPrompt(visit, qa, language, images)` — the "From reports:" rules (abnormal results only) when photos are attached; the fixed notes (`OTHER_RESULTS_LINE`, `NOT_LISTED_NOTE`, `notReadNote`) |
 | `backend/src/utils/summary/geminiClient.js` | Adds the photos as `inline_data` image parts after the prompt |
 | `backend/src/services/visitService.js` + `summaryRepository.js` | `refreshSummary(visit)` + `createIfUnedited` — the new summary row is stored only if the latest one is still the same, unedited row |
 | `backend/src/services/testRequestService.js` | After Back in queue, starts `refreshSummary` in the background (errors logged) |
