@@ -35,6 +35,14 @@ describe('buildSummaryPrompt', () => {
     expect(p).toContain('never as a confirmed fact');
   });
 
+  test('CLINIC-019: keeps readings and doses exactly, vitals only when asked, never invented', () => {
+    const p = buildSummaryPrompt(visit, qa);
+    expect(p).toContain('exactly as given; never round or drop them');
+    expect(p).toContain('Only if one of the questions asks for today\'s vitals');
+    expect(p).toContain('"Vitals: not recorded"');
+    expect(p).toContain('do not list them all as present');
+  });
+
   test('tells the model not to add diagnoses the patient did not state', () => {
     expect(buildSummaryPrompt(visit, qa)).toContain('Do not add diagnoses');
   });

@@ -9,7 +9,7 @@
 **Sprint:** After the clinic trial (moved out of Trial Readiness by Manoj, 2026-10-16)
 **Status:** Draft — not needed for the trial; technical approach to be decided (Manoj + Uday Augustin) later
 **Depends On:** CLINIC-011 (report upload), CLINIC-013 (which model reads the name from a report photo)
-**Migration number reserved:** `010_report_dispute.sql`
+**Migration number reserved:** `011_report_dispute.sql`
 
 > **Decided (manager, 2026-10-10):** the system should alert on a **name mismatch during image upload or AI generation**. On mismatch it informs the attender — *"This report has a different name"* — marks the report **"Report in Dispute"**, and offers to upload a new report or record later. In AI summarisation, the doctor or attender can choose to **Include or Exclude disputed reports**. The exact technical logic is for the team to decide.
 
@@ -39,7 +39,7 @@
 | Task | Who | Effort |
 |---|---|---|
 | Choose the approach (A/B/C) and the model for reading names | 👨‍💻 Senior + **Uday Augustin** | after CLINIC-013 |
-| Name extraction from report photos, matching function + unit tests, migration `010` | 👨‍💻 Senior | 2 days |
+| Name extraction from report photos, matching function + unit tests, migration `011` | 👨‍💻 Senior | 2 days |
 | Mobile: mismatch alert, "Report in Dispute" label, replace report | 🧑‍🎓 Junior | 0.5 day |
 | Doctor web + summary: dispute labels, "Include disputed reports" switch | 🧑‍🎓 Junior | 0.5 day |
 
@@ -104,7 +104,7 @@ THEN disputed reports are shown with a "Report in Dispute" label and the name fo
 
 For matching, normalise both names (lowercase, remove initials/dots/titles, handle Tamil↔English transliteration where possible), then compare by token overlap with a threshold; fall back to "unclear" rather than "mismatch" when unsure. The matching function should be **pure and unit-tested** with real name variations.
 
-**Database** — `010_report_dispute.sql`: add to `visit_reports`: `extracted_name TEXT`, `name_check TEXT CHECK (name_check IN ('match','mismatch','unclear','pending'))`, `disputed BOOLEAN DEFAULT false`, `confirmed_by INT REFERENCES users(id)`. Add `summaries.included_disputed BOOLEAN DEFAULT false`.
+**Database** — `011_report_dispute.sql`: add to `visit_reports`: `extracted_name TEXT`, `name_check TEXT CHECK (name_check IN ('match','mismatch','unclear','pending'))`, `disputed BOOLEAN DEFAULT false`, `confirmed_by INT REFERENCES users(id)`. Add `summaries.included_disputed BOOLEAN DEFAULT false`.
 
 ---
 

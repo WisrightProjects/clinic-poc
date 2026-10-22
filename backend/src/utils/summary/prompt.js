@@ -50,6 +50,10 @@ function buildSummaryPrompt(visit, qa, language = 'English', images) {
     `Keep the patient's uncertainty: if they say "I think", "not sure" or "I don't know", write it as possible or unknown, never as a confirmed fact.`,
     `Do not add diagnoses, types or medical terms the patient did not state (for example write "thyroid problem on tablets", not "hypothyroidism").`,
     `Include important negatives the patient reported (for example no allergies, no smoking).`,
+    // CLINIC-019: the physician lists ask for doses, sugar/BP readings with dates and today's
+    // vitals — the point of the pilot, so they must survive a short summary unchanged.
+    `Copy every number the answers give (medicine doses, sugar, HbA1c, BP and temperature readings, with their dates) exactly as given; never round or drop them. Only if one of the questions asks for today's vitals: add one line "Vitals: ..." with the values as answered, or "Vitals: not recorded" if the answer says so; never invent a value.`,
+    `If a question lists several symptoms and the answer only says yes or some without naming them, write that the patient said yes but which ones is not clear — do not list them all as present.`,
     // A misheard recording can come through as garbled text; guessing from it produced a
     // made-up diagnosis ("bipolar nerve issues") in testing (CLINIC-013).
     `The answers come from speech recognition and may contain misheard words. Only report what an answer clearly says in plain words. If an answer is garbled, partial or does not make sense, do not guess what it means and never turn a misheard word into a medical term: write "${UNCLEAR_NOTE}" for that question.`,
