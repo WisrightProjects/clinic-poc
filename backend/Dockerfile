@@ -10,7 +10,7 @@
 #   /app/backend/node_modules  <- backend deps (express, multer, ...)
 #   /app/db/                   <- migration runner + .sql files
 #
-FROM node:20-slim
+FROM node:24-slim
 
 WORKDIR /app
 
