@@ -1,5 +1,5 @@
 # Build the Vite app, then serve the static bundle with nginx (which also proxies /api).
-FROM node:20-slim AS build
+FROM node:24-slim AS build
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci
