@@ -3,10 +3,12 @@
 // answers go through loadTarget, which rejects a submitted visit with 409 ANSWERS_LOCKED.
 
 jest.mock('../config', () => ({ audioDir: 'audio' })); // the real one needs DATABASE_URL / JWT_SECRET
-jest.mock('../services/visitService', () => ({ findVisit: jest.fn(), maybeAdvance: jest.fn() }));
+// saveAnswer (the locked save + status step) is tested in visitSaveAnswer.test.js; here it just runs the write.
+jest.mock('../services/visitService', () => ({ findVisit: jest.fn(), saveAnswer: jest.fn((id, t, write) => write('client')) }));
 jest.mock('../repositories/templateRepository', () => ({ findForVisit: jest.fn() }));
 jest.mock('../repositories/answerRepository', () => ({ upsert: jest.fn(), setTranscript: jest.fn() }));
 jest.mock('../services/sttService', () => ({ transcribe: jest.fn() }));
+jest.mock('../repositories/visitRepository', () => ({ setSections: jest.fn() }));
 
 const visitService = require('../services/visitService');
 const templateRepository = require('../repositories/templateRepository');

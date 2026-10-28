@@ -3,6 +3,7 @@ const path = require('path');
 const config = require('../config');
 const answerRepository = require('../repositories/answerRepository');
 const templateRepository = require('../repositories/templateRepository');
+const questionFlow = require('../utils/questionFlow');
 const reportRepository = require('../repositories/reportRepository');
 const kimiClient = require('../utils/summary/kimiClient');
 const geminiClient = require('../utils/summary/geminiClient');
@@ -19,7 +20,9 @@ async function buildQA(visit) {
   const template = await templateRepository.findForVisit(visit);
   const answers = await answerRepository.findByVisitId(visit.id);
   const byQuestion = new Map(answers.map((a) => [a.question_id, a]));
-  const qa = [...(template?.questions || [])]
+  // Only the questions the visit is asked (CLINIC-021): answers left on an un-ticked
+  // problem's questions never reach the summary.
+  const qa = questionFlow.visibleQuestions(template?.questions || [], visit.sections)
     .sort((a, b) => a.order_index - b.order_index)
     .map((q) => ({ question: q.text, answer: byQuestion.get(q.id)?.transcript || '' }));
   return qa;

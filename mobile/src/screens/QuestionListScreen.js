@@ -21,6 +21,7 @@ import { ProgressBar } from '../components/ProgressBar';
 import { IntakeQuestionRow } from '../components/IntakeQuestionRow';
 import { SendToDoctorButton } from '../components/SendToDoctorButton';
 import { ReportsSection } from '../components/ReportsSection';
+import { answerTypeOf, isKnownAnswerType } from '../utils/answerTypes';
 
 const NAVY = '#1a3050';
 // Report photos can only be added/removed until the visit is submitted (CLINIC-011).
@@ -36,6 +37,23 @@ export default function QuestionListScreen() {
   // Once sent to the doctor (summarised / tests_requested / done) the intake is read-only:
   // the server refuses changes (409 ANSWERS_LOCKED).
   const locked = !EDITABLE_STATUSES.includes(visit?.status);
+
+  // Opens the screen for the question's answer type (CLINIC-021): tap options for 'choice'
+  // (with its saved choices), else record / type.
+  function openAnswer(item, index) {
+    const common = { visitId, questionId: item.id, questionText: item.text, index: index + 1, total };
+    if (answerTypeOf(item) === 'choice') {
+      navigation.navigate('Choice', {
+        ...common,
+        options: item.options,
+        multi: item.multi,
+        choices: item.value?.choices,
+        details: item.value?.details,
+      });
+    } else {
+      navigation.navigate('Recording', { ...common, typedText: item.typedText });
+    }
+  }
 
   if (loading) {
     return (
@@ -85,19 +103,7 @@ export default function QuestionListScreen() {
             index={index + 1}
             item={item}
             locked={locked}
-            onRecord={
-              locked
-                ? undefined
-                : () =>
-                    navigation.navigate('Recording', {
-                      visitId,
-                      questionId: item.id,
-                      questionText: item.text,
-                      typedText: item.typedText,
-                      index: index + 1,
-                      total,
-                    })
-            }
+            onRecord={locked || !isKnownAnswerType(item) ? undefined : () => openAnswer(item, index)}
           />
         )}
         style={styles.flex}

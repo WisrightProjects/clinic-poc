@@ -50,6 +50,9 @@ export function useQuestionList(visitId) {
         transcript: answer?.transcript ?? null,
         // A typed answer has no recording; its text pre-fills the box when retaken.
         typedText: answer && !answer.audio_path ? answer.transcript : null,
+        // A structured answer (CLINIC-021), e.g. { choices, details }: pre-fills the
+        // choice screen when it is reopened.
+        value: answer?.value ?? null,
       };
     });
 

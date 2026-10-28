@@ -11,6 +11,7 @@ import HomeScreen from '../screens/HomeScreen';
 import NewPatientScreen from '../screens/NewPatientScreen';
 import QuestionListScreen from '../screens/QuestionListScreen';
 import RecordingScreen from '../screens/RecordingScreen';
+import ChoiceAnswerScreen from '../screens/ChoiceAnswerScreen';
 import ReviewSubmitScreen from '../screens/ReviewSubmitScreen';
 import SentScreen from '../screens/SentScreen';
 import BackInQueueScreen from '../screens/BackInQueueScreen';
@@ -70,6 +71,13 @@ export function AppNavigator() {
         name="Recording"
         component={RecordingScreen}
         options={{ title: 'Record Answer' }}
+      />
+
+      {/* CLINIC-021 — tap answer (e.g. the patient's problems in Q1) */}
+      <Stack.Screen
+        name="Choice"
+        component={ChoiceAnswerScreen}
+        options={{ title: 'Choose Answer' }}
       />
 
       {/* CLINIC-005 — attender review & submit */}

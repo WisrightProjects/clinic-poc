@@ -1,12 +1,8 @@
 const db = require('../config/db');
-const { withTransaction } = require('./transaction');
+const { withTransaction, lockVisit } = require('./transaction');
 
-// Locks the visit row for the rest of the transaction and returns its status. createIfUnedited
-// and updateEdit both take it first, so a remade summary and a doctor's edit can't interleave.
-async function lockVisit(client, visitId) {
-  const { rows: [visit] } = await client.query('SELECT status FROM visits WHERE id = $1 FOR UPDATE', [visitId]);
-  return visit?.status;
-}
+// createIfUnedited and updateEdit both take the visit lock (lockVisit) first, so a remade
+// summary and a doctor's edit can't interleave.
 
 // summary_text is always the AI original. display_text (a generated column,
 // migration 008) is what to show: the doctor's edit when there is one, else the AI's.
@@ -16,8 +12,8 @@ async function lockVisit(client, visitId) {
 // visitRepository's queue preview).
 const LATEST_FIRST = 's.created_at DESC, s.id DESC';
 
-async function create(visitId, summaryText, generatedBy) {
-  const { rows } = await db.query(
+async function create(visitId, summaryText, generatedBy, client = db) {
+  const { rows } = await client.query(
     `INSERT INTO summaries (visit_id, summary_text, generated_by)
      VALUES ($1, $2, $3) RETURNING *, NULL::text AS edited_by_name`,
     [visitId, summaryText, generatedBy]

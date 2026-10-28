@@ -1,5 +1,5 @@
 const db = require('../config/db');
-const { withTransaction } = require('./transaction');
+const { withTransaction, lockVisit } = require('./transaction');
 
 // file_path stays internal (the API serves files by report id), so it isn't returned.
 const COLUMNS = 'r.id, r.visit_id, r.mime_type, r.size_bytes, r.uploaded_by, r.created_at';
@@ -18,8 +18,7 @@ async function createMany(visitId, userId, files, check) {
     return `($1, $${n - 2}, $${n - 1}, $${n}, $2)`;
   });
   return withTransaction(async client => {
-    const { rows: [visit] } = await client.query('SELECT status FROM visits WHERE id = $1 FOR UPDATE', [visitId]);
-    check(visit?.status, await countByVisitId(visitId, client));
+    check(await lockVisit(client, visitId), await countByVisitId(visitId, client));
     const { rows } = await client.query(
       `INSERT INTO visit_reports AS r (visit_id, file_path, mime_type, size_bytes, uploaded_by)
        VALUES ${values.join(', ')} RETURNING ${COLUMNS}`,

@@ -65,4 +65,4 @@
 - The migration's re-run guard is "new Q1 text present"; `_migrations` already stops a second run, so only a manual re-run after a Settings edit of Q1 would swap again.
 - If the client changes the wording again, make the swap a reusable step (SQL function or `clinic-admin.mjs` option) instead of a third hand-written migration.
 - Edits made in Settings to the CLINIC-019 lists are not carried over (the client's final wording replaces them); the old lists stay in the database as inactive.
-- CLINIC-016's reserved migration moves from 011 to 012.
+- CLINIC-016's reserved migration moves from 011 to 012 (and to 014 in CLINIC-021).

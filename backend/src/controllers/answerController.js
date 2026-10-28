@@ -8,11 +8,18 @@ const { sendStoredFile } = require('../utils/sendStoredFile');
 // never both and never neither (CLINIC-009). multer parses the multipart body in both
 // cases, so the mobile client keeps one upload path. The check lives here because it
 // depends on req.file; it runs before any DB work.
+// A structured answer (CLINIC-021) — e.g. "choices" (a JSON list of option values) and
+// optional "text" details for a 'choice' question — is checked by its type in answerService.
 async function create(req, res) {
   const { questionId } = req.body;
   if (!questionId) throw new AppError('BAD_REQUEST', 'questionId is required', 400);
-  const text = validateAnswer({ hasAudio: Boolean(req.file), text: req.body.text });
   const { clinicId } = req.user;
+  if (req.body.choices !== undefined) {
+    if (req.file) throw new AppError('BAD_REQUEST', 'Send either choices or a recording, not both', 400);
+    const answer = await answerService.recordTypedAnswer(clinicId, req.params.id, questionId, req.body);
+    return res.status(201).json(answer);
+  }
+  const text = validateAnswer({ hasAudio: Boolean(req.file), text: req.body.text });
   const answer = text
     ? await answerService.recordTextAnswer(clinicId, req.params.id, questionId, text)
     : await answerService.recordAnswer(clinicId, req.params.id, questionId, req.file);
