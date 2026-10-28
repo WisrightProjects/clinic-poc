@@ -71,8 +71,9 @@ async function copyTemplates(client, clinicId) {
       [src.department_id, src.name, clinicId]
     );
     await client.query(
-      `INSERT INTO questions (template_id, order_index, text)
-       SELECT $1, order_index, text FROM questions WHERE template_id = $2`,
+      // With the answer types, options and sections (CLINIC-021), so a branching list copies whole.
+      `INSERT INTO questions (template_id, order_index, text, answer_type, options, multi, section)
+       SELECT $1, order_index, text, answer_type, options, multi, section FROM questions WHERE template_id = $2`,
       [rows[0].id, src.id]
     );
   }

@@ -17,4 +17,11 @@ async function withTransaction(fn) {
   }
 }
 
-module.exports = { withTransaction };
+// Locks a visit's row for the rest of the transaction and returns its status, so writes that
+// depend on the visit (summary rows, report uploads, choice answers) can't interleave.
+async function lockVisit(client, visitId) {
+  const { rows: [visit] } = await client.query('SELECT status FROM visits WHERE id = $1 FOR UPDATE', [visitId]);
+  return visit?.status;
+}
+
+module.exports = { withTransaction, lockVisit };

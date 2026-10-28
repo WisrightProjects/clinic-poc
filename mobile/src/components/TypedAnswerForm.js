@@ -11,41 +11,27 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
 } from 'react-native';
 // Same bottom-inset handling as the recorder, so Save isn't hidden behind the nav bar.
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
 import { saveTextAnswer } from '../api/answerApi';
 import { QuestionCard } from './QuestionCard';
-import { errorMessage } from '../utils/apiError';
+import { SaveAnswerButton } from './SaveAnswerButton';
+import { useSaveAnswer } from '../hooks/useSaveAnswer';
+import { MAX_ANSWER_TEXT } from '../utils/answerTypes';
 
 const NAVY = '#1a3050';
-const TEAL = '#0a8f8f';
-const MAX_TEXT = 2000; // matches the backend (MAX_ANSWER_TEXT_LENGTH); the server's 422 is the real guard
 
 export function TypedAnswerForm({ visitId, questionId, questionText, initialText, index, total, onCancel }) {
-  const navigation = useNavigation();
   const [text, setText] = useState(initialText ?? '');
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState(null);
+  const { saving, error, save } = useSaveAnswer();
 
   const canSave = text.trim().length > 0 && !saving;
-
-  async function onSave() {
-    setSaving(true);
-    setError(null);
-    try {
-      await saveTextAnswer(visitId, questionId, text.trim());
-      navigation.goBack(); // list reloads on focus → shows the typed answer + Done
-    } catch (err) {
-      setError(errorMessage(err, 'Could not save the answer. Please retry.'));
-      setSaving(false);
-    }
-  }
+  // The list reloads on focus → shows the typed answer + Done.
+  const onSave = () => save(() => saveTextAnswer(visitId, questionId, text.trim()));
 
   return (
     <SafeAreaView style={styles.flex} edges={['bottom']}>
@@ -60,25 +46,18 @@ export function TypedAnswerForm({ visitId, questionId, questionText, initialText
             placeholder="Type the patient's answer"
             placeholderTextColor="#9aa7b8"
             multiline
-            maxLength={MAX_TEXT}
+            maxLength={MAX_ANSWER_TEXT}
             textAlignVertical="top"
             editable={!saving}
             autoFocus
           />
           <Text style={styles.counter}>
-            {text.length} / {MAX_TEXT}
+            {text.length} / {MAX_ANSWER_TEXT}
           </Text>
           {error ? <Text style={styles.error}>{error}</Text> : null}
         </View>
         <View style={styles.footer}>
-          <TouchableOpacity
-            style={[styles.saveBtn, !canSave && styles.saveBtnDisabled]}
-            onPress={onSave}
-            disabled={!canSave}
-            activeOpacity={0.85}
-          >
-            {saving ? <ActivityIndicator color="#ffffff" /> : <Text style={styles.saveBtnText}>Save Answer</Text>}
-          </TouchableOpacity>
+          <SaveAnswerButton onPress={onSave} disabled={!canSave} saving={saving} />
           <TouchableOpacity style={styles.switchBtn} onPress={onCancel} disabled={saving}>
             <Text style={styles.switchBtnText}>Record instead</Text>
           </TouchableOpacity>
@@ -104,16 +83,6 @@ const styles = StyleSheet.create({
   counter: { fontSize: 12, color: '#6b7c93', textAlign: 'right', marginTop: 6 },
   error: { fontSize: 15, color: '#c0392b', textAlign: 'center', marginTop: 8 },
   footer: { padding: 20 },
-  saveBtn: {
-    backgroundColor: TEAL,
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 54,
-  },
-  saveBtnDisabled: { opacity: 0.5 },
-  saveBtnText: { color: '#ffffff', fontSize: 17, fontWeight: '700' },
   // >=44dp tap target, muted text-link like the recorder's secondary actions.
   switchBtn: { paddingVertical: 12, paddingHorizontal: 24, minHeight: 44, alignItems: 'center', justifyContent: 'center', marginTop: 4 },
   switchBtnText: { color: '#6b7c93', fontSize: 14, fontWeight: '600' },

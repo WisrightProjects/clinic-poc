@@ -7,12 +7,12 @@
  * Strategy: The logic lives inside useQuestionList.js as plain JS expressions.
  * We extract the exact same derivation as a standalone pure function so we can
  * test it without a React runtime, without a running app, and without mocking
- * navigation or Axios.  The function mirrors lines 43–60 of useQuestionList.js
+ * navigation or Axios.  The function mirrors lines 38–63 of useQuestionList.js
  * exactly — any change there should be reflected here.
  */
 
 // ---------------------------------------------------------------------------
-// Pure derivation function — mirrors useQuestionList.js lines 43–60 verbatim
+// Pure derivation function — mirrors useQuestionList.js lines 38–63 (progress math)
 // ---------------------------------------------------------------------------
 
 /**
@@ -224,6 +224,21 @@ describe('AC4: SendToDoctorButton disabled — enabled only when all questions a
 // ---------------------------------------------------------------------------
 // AC12: Progress derived from answers array, NOT from visit.status
 // ---------------------------------------------------------------------------
+
+describe('CLINIC-021: answers to hidden section questions do not count', () => {
+  test('the server sends only visible questions; an answer left on a hidden one is ignored', () => {
+    // Q1-Q3 visible; question 9 was a Fever question, answered, then Fever was un-ticked.
+    const data = {
+      visit: { id: 7, status: 'answering' },
+      template: { questions: [1, 2, 3].map((i) => makeQuestion(i, i)) },
+      answers: [1, 2, 9].map(makeAnswer),
+    };
+    const { allAnswered, answeredCount, total } = deriveQuestionListViewModel(data);
+    expect(total).toBe(3);
+    expect(answeredCount).toBe(2);
+    expect(allAnswered).toBe(false);
+  });
+});
 
 describe('AC12: progress gate uses answers array, not visit.status', () => {
   test('allAnswered=true even when visit.status is still "answering" (status lag)', () => {

@@ -6,9 +6,14 @@ const sttService = require('./sttService');
 const visitService = require('./visitService');
 const statusEngine = require('./statusEngine');
 const { AppError } = require('../utils/errors');
+const questionFlow = require('../utils/questionFlow');
+const answerTypes = require('../utils/answerTypes');
+const visitRepository = require('../repositories/visitRepository');
 
-// The visit must be in the caller's clinic (else 404) and the question in its template
-// (else 400), and the visit not yet submitted (else 409). A rejected upload's file is deleted by the errorHandler.
+// The visit must be in the caller's clinic (else 404), the question one it is asked — in its
+// template and, for a section question (CLINIC-021), in a section the visit has (else 400) —
+// and the visit not yet submitted (else 409; checked again under the lock when saving).
+// A rejected upload's file is deleted by the errorHandler.
 async function loadTarget(clinicId, visitId, questionId) {
   const visit = await visitService.findVisit(clinicId, visitId);
   // Once sent to the doctor the answers must match the AI summary they were written from,
@@ -17,24 +22,32 @@ async function loadTarget(clinicId, visitId, questionId) {
     throw new AppError('ANSWERS_LOCKED', 'Answers cannot be changed after the visit is sent to the doctor', 409);
   }
   const template = await templateRepository.findForVisit(visit);
-  if (!template || !template.questions.some(q => q.id === Number(questionId))) {
+  const question = template?.questions.find(q => q.id === Number(questionId));
+  if (!question || !questionFlow.isVisible(question, visit.sections)) {
     throw new AppError('BAD_REQUEST', 'questionId is not a question for this visit', 400);
   }
-  return { visit, template };
+  return { visit, template, question };
+}
+
+// A recording or typed text, for a 'voice' question. Any other answer type (CLINIC-021) is
+// answered in its own way: an older app that records or types it is told to update.
+async function loadVoiceOrTextTarget(clinicId, visitId, questionId) {
+  const target = await loadTarget(clinicId, visitId, questionId);
+  if (answerTypes.typeOf(target.question) !== answerTypes.VOICE) {
+    throw new AppError('BAD_REQUEST', answerTypes.UPDATE_APP_MESSAGE, 400);
+  }
+  return target;
 }
 
 async function recordAnswer(clinicId, visitId, questionId, file) {
-  const { visit, template } = await loadTarget(clinicId, visitId, questionId);
+  const { visit, template } = await loadVoiceOrTextTarget(clinicId, visitId, questionId);
   const audioPath = path.relative(config.audioDir, file.path);
-  const answer = await answerRepository.upsert(visit.id, questionId, {
-    audioPath,
-    transcript: null,
-    status: 'pending',
-  });
+  // Stored and the visit moved on in one locked transaction (visitService.saveAnswer) — fast
+  // DB-only ops that don't depend on the transcript (progress comes from answer rows).
+  const answer = await visitService.saveAnswer(visit.id, template, client =>
+    answerRepository.upsert(visit.id, questionId, { audioPath, transcript: null, status: 'pending' }, client)
+  );
   file.stored = true; // the answer row now references it: errorHandler must not delete it
-  // Advance the visit lifecycle now — these are fast DB-only ops that don't depend
-  // on the transcript (progress is derived from answer rows, not transcript text).
-  await visitService.maybeAdvance(visit, template);
   startTranscription(answer.id, audioPath, file.path);
   return answer; // transcript_status 'pending'
 }
@@ -43,14 +56,26 @@ async function recordAnswer(clinicId, visitId, questionId, file) {
 // and no transcription started. It advances the visit exactly as a recorded answer does,
 // and a retake replaces the previous answer whichever method it used.
 async function recordTextAnswer(clinicId, visitId, questionId, text) {
-  const { visit, template } = await loadTarget(clinicId, visitId, questionId);
-  const answer = await answerRepository.upsert(visit.id, questionId, {
-    audioPath: null,
-    transcript: text,
-    status: 'done',
+  const { visit, template } = await loadVoiceOrTextTarget(clinicId, visitId, questionId);
+  return visitService.saveAnswer(visit.id, template, client =>
+    answerRepository.upsert(visit.id, questionId, { audioPath: null, transcript: text, status: 'done' }, client)
+  );
+}
+
+// A structured answer (CLINIC-021), e.g. the options tapped for a 'choice' question. Stored
+// as answers.value plus a readable transcript ("Diabetes, Fever — details") so the doctor
+// web and the AI summary need no change. In the same locked transaction the visit's sections
+// are recomputed from its answers — they may show or hide section questions — and the
+// status is worked out again (visitService.saveAnswer).
+async function recordTypedAnswer(clinicId, visitId, questionId, body) {
+  const { visit, template, question } = await loadTarget(clinicId, visitId, questionId);
+  const { value, transcript } = answerTypes.validateTypedAnswer(question, body);
+  return visitService.saveAnswer(visit.id, template, async client => {
+    const saved = await answerRepository.upsert(visit.id, question.id, { audioPath: null, transcript, status: 'done', value }, client);
+    const answers = await answerRepository.findByVisitId(visit.id, client);
+    await visitRepository.setSections(visit.id, questionFlow.sectionsFor(template.questions, answers), client);
+    return saved;
   });
-  await visitService.maybeAdvance(visit, template);
-  return answer;
 }
 
 // Fire-and-forget background transcription, so the upload responds immediately (holding
@@ -83,4 +108,4 @@ async function getAudioPath(clinicId, answerId) {
   return answer.audio_path;
 }
 
-module.exports = { recordAnswer, recordTextAnswer, getAudioPath };
+module.exports = { recordAnswer, recordTextAnswer, recordTypedAnswer, getAudioPath };

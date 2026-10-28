@@ -3,6 +3,7 @@ const { withTransaction } = require('./transaction');
 const testRequests = require('./testRequestRepository');
 const { LATEST_FIRST } = require('./summaryRepository');
 const { ACTIVE_TEMPLATE_ID } = require('./templateRepository');
+const { VISIBLE_QUESTION_SQL } = require('../utils/questionFlow');
 const { CLINIC_TIME_ZONE } = require('../utils/queueDate');
 
 // Every read is scoped to the caller's clinic (CLINIC-008): another clinic's visit
@@ -12,17 +13,27 @@ async function findById(clinicId, id) {
   return rows[0] || null;
 }
 
+// The visit row, locked for the rest of the caller's transaction (CLINIC-021: answers and
+// Send change the status one at a time). Callers have already checked the clinic.
+async function findForUpdate(id, client) {
+  const { rows } = await client.query('SELECT * FROM visits WHERE id = $1 FOR UPDATE', [id]);
+  return rows[0];
+}
+
 // Each queue row carries intake progress so the client can show "answered/total"
 // without a per-visit fetch:
-//   answered_count  = recorded answer rows for the visit (matches maybeAdvance)
-//   total_questions = questions in the visit's template (CLINIC-020: the list it was registered
-//                     on; older rows without one use the clinic's active template for the
-//                     department), 0 if none.
+//   answered_count  = answers to questions the visit is asked (matches maybeAdvance)
+//   total_questions = questions the visit is asked: in its template (CLINIC-020: the list it was
+//                     registered on; older rows without one use the clinic's active template for
+//                     the department) and, for a section question, in a section the visit has
+//                     (CLINIC-021, same rule as utils/questionFlow), 0 if none.
 // Counts are cast ::int so pg returns numbers, not bigint strings.
 const PROGRESS_COLUMNS = `
-  (SELECT COUNT(*)::int FROM answers a WHERE a.visit_id = v.id) AS answered_count,
+  (SELECT COUNT(*)::int FROM answers a JOIN questions q ON q.id = a.question_id
+     WHERE a.visit_id = v.id AND ${VISIBLE_QUESTION_SQL}) AS answered_count,
   (SELECT COUNT(*)::int FROM questions q
      WHERE q.template_id = COALESCE(v.template_id, (${ACTIVE_TEMPLATE_ID('v.clinic_id', 'v.department_id')}))
+       AND ${VISIBLE_QUESTION_SQL}
   ) AS total_questions`;
 
 // A short excerpt of the visit's summary (the doctor's edit when there is one,
@@ -63,8 +74,8 @@ async function list(clinicId, { date, statuses }) {
   return rows;
 }
 
-async function updateStatus(id, status) {
-  const { rows } = await db.query(
+async function updateStatus(id, status, client = db) {
+  const { rows } = await client.query(
     `UPDATE visits SET status = $1, updated_at = now() WHERE id = $2 RETURNING *`,
     [status, id]
   );
@@ -124,4 +135,9 @@ async function requeue(client, clinicId, visitId) {
   return rows[0] || null;
 }
 
-module.exports = { createWithToken, withTokenLock, requeue, findById, list, updateStatus };
+// The sections chosen for the visit (CLINIC-021), recomputed by answerService in its transaction.
+async function setSections(id, sections, client = db) {
+  await client.query('UPDATE visits SET sections = $1, updated_at = now() WHERE id = $2', [sections, id]);
+}
+
+module.exports = { createWithToken, withTokenLock, requeue, findById, findForUpdate, list, updateStatus, setSections };

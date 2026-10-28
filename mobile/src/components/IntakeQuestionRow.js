@@ -5,11 +5,13 @@
 
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { answerTypeOf, isKnownAnswerType } from '../utils/answerTypes';
 
 const NAVY = '#1a3050';
 const TEAL = '#0a8f8f';
 
 export function IntakeQuestionRow({ index, item, onRecord, locked = false }) {
+  const isChoice = answerTypeOf(item) === 'choice';
   const preview =
     item.answered && item.transcript
       ? item.transcript.length > 60
@@ -37,13 +39,17 @@ export function IntakeQuestionRow({ index, item, onRecord, locked = false }) {
       {/* Record (pending) / Retake (answered). Both open the recording screen;
           the backend replaces the existing answer on re-upload (CLINIC-004 AC9),
           so Retake makes "Edit Answers" actually editable. */}
-      {locked ? null : item.answered ? (
+      {/* A 'choice' question (CLINIC-021) says Choose / Change instead; an answer type this
+          app version doesn't know asks for an update. */}
+      {locked ? null : !isKnownAnswerType(item) ? (
+        <Text style={styles.updateText}>Update the app</Text>
+      ) : item.answered ? (
         <TouchableOpacity style={styles.retakeBtn} onPress={onRecord} activeOpacity={0.75}>
-          <Text style={styles.retakeBtnText}>Retake</Text>
+          <Text style={styles.retakeBtnText}>{isChoice ? 'Change' : 'Retake'}</Text>
         </TouchableOpacity>
       ) : (
         <TouchableOpacity style={styles.recordBtn} onPress={onRecord} activeOpacity={0.75}>
-          <Text style={styles.recordBtnText}>Record</Text>
+          <Text style={styles.recordBtnText}>{isChoice ? 'Choose' : 'Record'}</Text>
         </TouchableOpacity>
       )}
     </View>
@@ -91,4 +97,5 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
   },
   retakeBtnText: { color: TEAL, fontSize: 13, fontWeight: '600' },
+  updateText: { color: '#c0392b', fontSize: 12, fontWeight: '600', maxWidth: 80, textAlign: 'right' },
 });

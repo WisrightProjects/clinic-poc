@@ -105,3 +105,15 @@ export function uploadAnswer(visitId, questionId, fileUri) {
 export function saveTextAnswer(visitId, questionId, text) {
   return postAnswer(visitId, questionId, (form) => form.append('text', text));
 }
+
+/**
+ * Save a choice answer (CLINIC-021): the chosen option values as a JSON "choices" field, plus
+ * optional details text, on the same endpoint. The server checks them against the question's
+ * options and shows / hides the section questions they choose. Safe to retry.
+ */
+export function saveChoiceAnswer(visitId, questionId, choices, details) {
+  return postAnswer(visitId, questionId, (form) => {
+    form.append('choices', JSON.stringify(choices));
+    if (details) form.append('text', details);
+  });
+}

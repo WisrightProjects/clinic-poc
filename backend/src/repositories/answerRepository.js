@@ -1,20 +1,23 @@
 const db = require('../config/db');
 
-// One answer per (visit, question). A retake — by either method — fully replaces the old
-// answer (CLINIC-009 AC3): audio_path AND transcript are both overwritten.
+// One answer per (visit, question). A retake — by any method — fully replaces the old
+// answer (CLINIC-009 AC3): audio_path, transcript and value are all overwritten.
 //   recorded: { audioPath, transcript: null, status: 'pending' }  (transcribed in the background)
 //   typed:    { audioPath: null, transcript: text, status: 'done' }
-async function upsert(visitId, questionId, { audioPath, transcript, status }) {
-  const { rows } = await db.query(
-    `INSERT INTO answers (visit_id, question_id, audio_path, transcript, transcript_status)
-     VALUES ($1, $2, $3, $4, $5)
+//   choice:   { audioPath: null, transcript: labels, status: 'done', value: { choices, details } } (CLINIC-021)
+// `client` lets a caller run it inside its transaction.
+async function upsert(visitId, questionId, { audioPath, transcript, status, value = null }, client = db) {
+  const { rows } = await client.query(
+    `INSERT INTO answers (visit_id, question_id, audio_path, transcript, transcript_status, value)
+     VALUES ($1, $2, $3, $4, $5, $6)
      ON CONFLICT (visit_id, question_id) DO UPDATE
        SET audio_path = EXCLUDED.audio_path,
            transcript = EXCLUDED.transcript,
            transcript_status = EXCLUDED.transcript_status,
+           value = EXCLUDED.value,
            created_at = now()
      RETURNING *`,
-    [visitId, questionId, audioPath, transcript, status]
+    [visitId, questionId, audioPath, transcript, status, value === null ? null : JSON.stringify(value)]
   );
   return rows[0];
 }
@@ -41,20 +44,12 @@ async function findByIdForClinic(clinicId, id) {
   return rows[0] || null;
 }
 
-async function findByVisitId(visitId) {
-  const { rows } = await db.query(
+async function findByVisitId(visitId, client = db) {
+  const { rows } = await client.query(
     'SELECT * FROM answers WHERE visit_id = $1 ORDER BY question_id',
     [visitId]
   );
   return rows;
 }
 
-async function countByVisitId(visitId) {
-  const { rows } = await db.query(
-    'SELECT COUNT(*) AS count FROM answers WHERE visit_id = $1',
-    [visitId]
-  );
-  return parseInt(rows[0].count, 10);
-}
-
-module.exports = { upsert, setTranscript, findByIdForClinic, findByVisitId, countByVisitId };
+module.exports = { upsert, setTranscript, findByIdForClinic, findByVisitId };

@@ -2,10 +2,11 @@ const { AppError } = require('../utils/errors');
 
 // summarised -> tests_requested: the doctor sends a waiting patient for tests (CLINIC-014).
 // tests_requested -> summarised: the attender puts the returned patient back in the queue.
+// answered -> answering: a newly ticked problem adds questions to answer (CLINIC-021).
 const TRANSITIONS = {
   waiting:         ['answering'],
   answering:       ['answered'],
-  answered:        ['summarised'],
+  answered:        ['summarised', 'answering'],
   summarised:      ['done', 'tests_requested'],
   tests_requested: ['summarised'],
   done:            [],
