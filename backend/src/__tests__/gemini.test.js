@@ -4,7 +4,7 @@
 
 jest.mock('../config', () => ({ sttProvider: 'gemini', summaryProvider: 'gemini', summaryLanguage: 'English' }));
 jest.mock('../repositories/answerRepository', () => ({ findByVisitId: jest.fn() }));
-jest.mock('../repositories/templateRepository', () => ({ findActiveForVisit: jest.fn() }));
+jest.mock('../repositories/templateRepository', () => ({ findForVisit: jest.fn() }));
 jest.mock('../repositories/reportRepository', () => ({ findFilesByVisitId: jest.fn(async () => []) }));
 jest.mock('../utils/stt/geminiClient', () => ({ transcribe: jest.fn() }));
 jest.mock('../utils/summary/geminiClient', () => ({ summarise: jest.fn() }));
@@ -100,7 +100,7 @@ describe('provider switches', () => {
   });
 
   test('SUMMARY_PROVIDER=gemini summarises the ordered Q&A and is stored as generated_by gemini', async () => {
-    templateRepository.findActiveForVisit.mockResolvedValue({ questions: [
+    templateRepository.findForVisit.mockResolvedValue({ questions: [
       { id: 2, text: 'Any known allergies?', order_index: 2 },
       { id: 1, text: 'Main complaint today?', order_index: 1 },
     ] });
@@ -117,7 +117,7 @@ describe('provider switches', () => {
   });
 
   test('an empty Gemini reply is stored as the marked fallback, not a blank summary', async () => {
-    templateRepository.findActiveForVisit.mockResolvedValue({ questions: [] });
+    templateRepository.findForVisit.mockResolvedValue({ questions: [] });
     answerRepository.findByVisitId.mockResolvedValue([]);
     summaryGemini.summarise.mockResolvedValue('');
     consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
@@ -125,7 +125,7 @@ describe('provider switches', () => {
   });
 
   test('the fallback never reads like clinical findings (no canned fever text for a real patient)', async () => {
-    templateRepository.findActiveForVisit.mockResolvedValue({ questions: [] });
+    templateRepository.findForVisit.mockResolvedValue({ questions: [] });
     answerRepository.findByVisitId.mockResolvedValue([]);
     summaryGemini.summarise.mockRejectedValue(new Error('Gemini summary error: reply stopped early (SAFETY)'));
     consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
@@ -135,7 +135,7 @@ describe('provider switches', () => {
   });
 
   test('a Gemini failure never breaks submit: the marked fallback is stored', async () => {
-    templateRepository.findActiveForVisit.mockResolvedValue({ questions: [] });
+    templateRepository.findForVisit.mockResolvedValue({ questions: [] });
     answerRepository.findByVisitId.mockResolvedValue([]);
     summaryGemini.summarise.mockRejectedValue(new Error('Gemini error: quota'));
     consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});

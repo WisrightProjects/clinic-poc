@@ -2,6 +2,7 @@ const db = require('../config/db');
 const { withTransaction } = require('./transaction');
 const testRequests = require('./testRequestRepository');
 const { LATEST_FIRST } = require('./summaryRepository');
+const { ACTIVE_TEMPLATE_ID } = require('./templateRepository');
 const { CLINIC_TIME_ZONE } = require('../utils/queueDate');
 
 // Every read is scoped to the caller's clinic (CLINIC-008): another clinic's visit
@@ -14,17 +15,15 @@ async function findById(clinicId, id) {
 // Each queue row carries intake progress so the client can show "answered/total"
 // without a per-visit fetch:
 //   answered_count  = recorded answer rows for the visit (matches maybeAdvance)
-//   total_questions = questions in the clinic's active template for the department
-//                     (0 if none). A department is expected to have exactly one active template;
-//                     if more than one is ever active, the lowest id wins.
+//   total_questions = questions in the visit's template (CLINIC-020: the list it was registered
+//                     on; older rows without one use the clinic's active template for the
+//                     department), 0 if none.
 // Counts are cast ::int so pg returns numbers, not bigint strings.
 const PROGRESS_COLUMNS = `
   (SELECT COUNT(*)::int FROM answers a WHERE a.visit_id = v.id) AS answered_count,
   (SELECT COUNT(*)::int FROM questions q
-     WHERE q.template_id = (
-       SELECT t.id FROM question_templates t
-        WHERE t.department_id = v.department_id AND t.clinic_id = v.clinic_id AND t.is_active
-        ORDER BY t.id LIMIT 1)) AS total_questions`;
+     WHERE q.template_id = COALESCE(v.template_id, (${ACTIVE_TEMPLATE_ID('v.clinic_id', 'v.department_id')}))
+  ) AS total_questions`;
 
 // A short excerpt of the visit's summary (the doctor's edit when there is one,
 // CLINIC-012), so the queue row can show a two-line preview without a per-visit
@@ -100,8 +99,9 @@ function createWithToken(clinicId, { patientName, age, sex, departmentId }) {
   return withTokenLock(clinicId, async client => {
     const { rows } = await client.query(
       `INSERT INTO visits (clinic_id, token_number, queue_token, queue_date, patient_name, age, sex,
-                           department_id, visit_date)
-       SELECT $1, n, n, ${TODAY}, $2, $3, $4, $5, ${TODAY} FROM ${nextQueueToken('$1')} AS t(n)
+                           department_id, visit_date, template_id)
+       SELECT $1, n, n, ${TODAY}, $2, $3, $4, $5, ${TODAY}, (${ACTIVE_TEMPLATE_ID('$1', '$5')})
+         FROM ${nextQueueToken('$1')} AS t(n)
        RETURNING *`,
       [clinicId, patientName, age, sex, departmentId]
     );

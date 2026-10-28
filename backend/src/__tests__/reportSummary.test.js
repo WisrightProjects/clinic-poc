@@ -10,7 +10,7 @@ const path = require('path');
 const mockReportsDir = fs.mkdtempSync(path.join(os.tmpdir(), 'clinic-018-'));
 jest.mock('../config', () => ({ summaryProvider: 'gemini', summaryLanguage: 'English', reportsDir: mockReportsDir }));
 jest.mock('../repositories/answerRepository', () => ({ findByVisitId: jest.fn(async () => []) }));
-jest.mock('../repositories/templateRepository', () => ({ findActiveForVisit: jest.fn(async () => ({ questions: [] })) }));
+jest.mock('../repositories/templateRepository', () => ({ findForVisit: jest.fn(async () => ({ questions: [] })) }));
 jest.mock('../repositories/reportRepository', () => ({ findFilesByVisitId: jest.fn() }));
 jest.mock('../repositories/summaryRepository', () => ({ findByVisitId: jest.fn(), createIfUnedited: jest.fn() }));
 jest.mock('../repositories/visitRepository', () => ({}));

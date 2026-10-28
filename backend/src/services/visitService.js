@@ -34,7 +34,7 @@ async function list(clinicId, statusQuery, dateQuery) {
 async function getById(clinicId, id) {
   const visit = await findVisit(clinicId, id);
   const [template, answers, summary, reports, testRequests] = await Promise.all([
-    templateRepository.findActiveForVisit(visit),
+    templateRepository.findForVisit(visit),
     answerRepository.findByVisitId(visit.id),
     summaryRepository.findByVisitId(visit.id),
     reportRepository.findByVisitId(visit.id),

@@ -16,7 +16,7 @@ const FALLBACK_SUMMARY = "AI summary not available for this patient. Please read
 
 // The visit's ordered question/transcript pairs for the LLM.
 async function buildQA(visit) {
-  const template = await templateRepository.findActiveForVisit(visit);
+  const template = await templateRepository.findForVisit(visit);
   const answers = await answerRepository.findByVisitId(visit.id);
   const byQuestion = new Map(answers.map((a) => [a.question_id, a]));
   const qa = [...(template?.questions || [])]
