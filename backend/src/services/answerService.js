@@ -16,7 +16,7 @@ async function loadTarget(clinicId, visitId, questionId) {
   if (statusEngine.isSubmitted(visit.status)) {
     throw new AppError('ANSWERS_LOCKED', 'Answers cannot be changed after the visit is sent to the doctor', 409);
   }
-  const template = await templateRepository.findActiveForVisit(visit);
+  const template = await templateRepository.findForVisit(visit);
   if (!template || !template.questions.some(q => q.id === Number(questionId))) {
     throw new AppError('BAD_REQUEST', 'questionId is not a question for this visit', 400);
   }

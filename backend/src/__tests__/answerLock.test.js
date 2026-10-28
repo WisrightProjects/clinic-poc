@@ -4,7 +4,7 @@
 
 jest.mock('../config', () => ({ audioDir: 'audio' })); // the real one needs DATABASE_URL / JWT_SECRET
 jest.mock('../services/visitService', () => ({ findVisit: jest.fn(), maybeAdvance: jest.fn() }));
-jest.mock('../repositories/templateRepository', () => ({ findActiveForVisit: jest.fn() }));
+jest.mock('../repositories/templateRepository', () => ({ findForVisit: jest.fn() }));
 jest.mock('../repositories/answerRepository', () => ({ upsert: jest.fn(), setTranscript: jest.fn() }));
 jest.mock('../services/sttService', () => ({ transcribe: jest.fn() }));
 
@@ -17,7 +17,7 @@ const template = { questions: [{ id: 5 }] };
 
 beforeEach(() => {
   jest.clearAllMocks();
-  templateRepository.findActiveForVisit.mockResolvedValue(template);
+  templateRepository.findForVisit.mockResolvedValue(template);
   answerRepository.upsert.mockResolvedValue({ id: 1 });
 });
 

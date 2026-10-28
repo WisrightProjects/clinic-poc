@@ -34,6 +34,7 @@
  * @property {number} age
  * @property {string} sex
  * @property {number} department_id
+ * @property {number|null} template_id  the list it was registered on (CLINIC-020)
  * @property {VisitStatus} status
  * @property {string} created_at
  * @property {string} updated_at

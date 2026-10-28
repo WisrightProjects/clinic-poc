@@ -4,7 +4,9 @@
 // Response shape for getVisitDetail:
 //   { visit, template, answers, summary }
 //   Questions are at data.template.questions — NOT data.questions.
-//   When no active template exists, template is null and questions will be [].
+//   template is the visit's own list (CLINIC-020: the one it was registered on, even if it was
+//   replaced since) — never load questions for a visit from GET /templates (the active list).
+//   When there is no list, template is null and questions will be [].
 
 import { apiClient } from './client';
 
@@ -18,7 +20,7 @@ export function createVisit(body) {
 }
 
 /**
- * Fetch visit detail — visit row, active template (with questions), answers, summary.
+ * Fetch visit detail — visit row, the visit's own template (with questions), answers, summary.
  * @param {string|number} id  Visit id
  * @returns {Promise<{ visit: Object, template: Object|null, answers: Array, summary: Object|null }>}
  */
