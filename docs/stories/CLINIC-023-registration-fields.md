@@ -37,7 +37,7 @@ Existing fields (name, age, sex, department) are unchanged.
 
 ## What to do
 
-1. **Migration** (next free number in `db/migrations/`; CLINIC-016 reserves 014, CLINIC-022 takes the next): add to `visits`
+1. **Migration** (next free number in `db/migrations/` when built — 015 if CLINIC-022 (014) is merged): add to `visits`
    `patient_mobile TEXT CHECK (patient_mobile ~ '^[6-9][0-9]{9}$')`, `weight_kg NUMERIC(5,1)`, `height_cm NUMERIC(5,1)`, `patient_type TEXT NOT NULL DEFAULT 'new' CHECK (patient_type IN ('new','follow_up'))`. Use `ADD COLUMN IF NOT EXISTS`.
 2. **Validation** — `backend/src/utils/visitValidation.js` `validateNewVisit`: accept and check the 4 new fields (mobile normalised with `utils/mobile.js`); add unit tests in `backend/src/__tests__/visitValidation.test.js` for each rule (good and bad values, blanks allowed).
 3. **Save** — `visitService.create` → `visitRepository.createWithToken`: store the new columns (parameters `$6…`, never string-pasted).

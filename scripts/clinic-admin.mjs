@@ -55,12 +55,15 @@ async function withTransaction(pool, fn) {
   }
 }
 
-// Copy every active template (and its questions) from the Default Clinic.
+// Copy every active template (and its questions) from the Default Clinic — only for departments
+// still in use (CLINIC-022: retired lists are not copied).
 async function copyTemplates(client, clinicId) {
   const { rows: sources } = await client.query(
     `SELECT t.id, t.department_id, t.name
-       FROM question_templates t JOIN clinics c ON c.id = t.clinic_id
-      WHERE c.name = $1 AND t.is_active
+       FROM question_templates t
+       JOIN clinics c ON c.id = t.clinic_id
+       JOIN departments d ON d.id = t.department_id
+      WHERE c.name = $1 AND t.is_active AND d.is_active
       ORDER BY t.id`,
     [TEMPLATE_SOURCE_CLINIC]
   );
