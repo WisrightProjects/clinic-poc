@@ -5,6 +5,7 @@ const summaryRepository = require('../repositories/summaryRepository');
 const templateRepository = require('../repositories/templateRepository');
 const reportRepository = require('../repositories/reportRepository');
 const testRequestRepository = require('../repositories/testRequestRepository');
+const vitalsRepository = require('../repositories/vitalsRepository');
 const statusEngine = require('./statusEngine');
 const summaryService = require('./summaryService');
 const { AppError } = require('../utils/errors');
@@ -12,6 +13,7 @@ const { validateNewVisit } = require('../utils/visitValidation');
 const { validateSummaryEdit } = require('../utils/summaryValidation');
 const { parseQueueDate } = require('../utils/queueDate');
 const questionFlow = require('../utils/questionFlow');
+const { validateVitals, vitalsDisplay, vitalsText, withVitalsLine } = require('../utils/vitals');
 const { withTransaction } = require('../repositories/transaction');
 
 // The questions this visit is asked (CLINIC-021): its template with the questions of sections
@@ -50,14 +52,19 @@ async function list(clinicId, statusQuery, dateQuery) {
 
 async function getById(clinicId, id) {
   const visit = await findVisit(clinicId, id);
-  const [template, answers, summary, reports, testRequests] = await Promise.all([
+  const [template, answers, summary, reports, testRequests, vitals] = await Promise.all([
     templateRepository.findForVisit(visit),
     answerRepository.findByVisitId(visit.id),
     summaryRepository.findByVisitId(visit.id),
     reportRepository.findByVisitId(visit.id),
     testRequestRepository.findByVisitId(visit.id),
+    vitalsRepository.findByVisitId(visit.id),
   ]);
-  return { visit, template: askedTemplate(visit, template), answers, summary, reports, test_requests: testRequests };
+  // CLINIC-024: the vitals row (or null) and its display, built once here for both apps.
+  return {
+    visit, template: askedTemplate(visit, template), answers, summary, reports, test_requests: testRequests,
+    vitals, vitals_display: vitalsDisplay(vitals), vitals_text: vitalsText(vitals),
+  };
 }
 
 // The doctor's "mark done" action. Other statuses are set by the intake flow itself
@@ -115,7 +122,10 @@ async function submit(clinicId, visitId) {
   // again under the visit lock (answers take the same lock, saveAnswer), so an answer that
   // changed the questions meanwhile — e.g. a newly ticked problem — is never sent unanswered.
   const existing = await summaryRepository.findByVisitId(visitId);
-  const generated = existing ? null : await summaryService.generate(visit);
+  // The AI sees today's vitals as context (CLINIC-024); the exact "Vitals:" line is added
+  // below by the code, from the vitals read under the lock.
+  const promptVitals = existing ? null : await vitalsRepository.findByVisitId(visitId);
+  const generated = existing ? null : await summaryService.generate({ ...visit, vitals: promptVitals });
   return withTransaction(async client => {
     const current = await visitRepository.findForUpdate(visitId, client);
     // A second Send finished first: return its summary (AC5).
@@ -123,7 +133,16 @@ async function submit(clinicId, visitId) {
     if (current.status !== 'answered') {
       throw new AppError('ANSWERS_CHANGED', 'The answers changed while sending — please check them and send again', 409);
     }
-    const summary = existing || await summaryRepository.create(visitId, generated.summaryText, generated.generatedBy, client);
+    let summary = existing;
+    if (!summary) {
+      // Vitals saved during the AI call would leave the AI's text (and any Vitals line it wrote
+      // from a spoken answer) out of step with the line added here: send again, like answers.
+      const vitals = await vitalsRepository.findByVisitId(visitId, client);
+      if (vitalsText(vitals) !== vitalsText(promptVitals)) {
+        throw new AppError('ANSWERS_CHANGED', 'The vitals changed while sending — please send again', 409);
+      }
+      summary = await summaryRepository.create(visitId, withVitalsLine(generated.summaryText, vitals), generated.generatedBy, client);
+    }
     await visitRepository.updateStatus(visitId, 'summarised', client);
     return summary; // return the summary row so the client can render it without a reload
   });
@@ -139,10 +158,12 @@ async function refreshSummary(visit) {
   if (!summaryService.readsReports()) return null;
   const current = await summaryRepository.findByVisitId(visit.id);
   if (!current || current.edited_text) return null;
-  const remade = await summaryService.regenerate(visit);
+  // Vitals can't change after submit (saveVitals refuses), so reading them here is safe.
+  const vitals = await vitalsRepository.findByVisitId(visit.id);
+  const remade = await summaryService.regenerate({ ...visit, vitals });
   if (!remade) return null;
-  return summaryRepository.createIfUnedited(visit.id, current.id, remade.summaryText, remade.generatedBy,
-    status => status === 'summarised');
+  return summaryRepository.createIfUnedited(visit.id, current.id, withVitalsLine(remade.summaryText, vitals),
+    remade.generatedBy, status => status === 'summarised');
 }
 
 // CLINIC-012: the doctor saves an edited summary. The AI's original (summary_text) is
@@ -163,14 +184,21 @@ async function editSummary(clinicId, visitId, text, userId) {
 // questions). `write(client)` stores the answer (and anything that goes with it). Refuses a
 // visit already sent to the doctor (409), re-checked under the lock. Returns write's result.
 async function saveAnswer(visitId, template, write) {
+  return whileNotSent(visitId, 'ANSWERS_LOCKED', 'Answers cannot be changed after the visit is sent to the doctor',
+    async client => {
+      const result = await write(client);
+      await advance(await visitRepository.findForUpdate(visitId, client), template, client);
+      return result;
+    });
+}
+
+// Runs fn(client) in a transaction with the visit row locked, refusing (409 code) a visit
+// already sent to the doctor — the one "sent means locked" check for answers and vitals.
+function whileNotSent(visitId, code, message, fn) {
   return withTransaction(async client => {
     const locked = await visitRepository.findForUpdate(visitId, client);
-    if (statusEngine.isSubmitted(locked.status)) {
-      throw new AppError('ANSWERS_LOCKED', 'Answers cannot be changed after the visit is sent to the doctor', 409);
-    }
-    const result = await write(client);
-    await advance(await visitRepository.findForUpdate(visitId, client), template, client);
-    return result;
+    if (statusEngine.isSubmitted(locked.status)) throw new AppError(code, message, 409);
+    return fn(client);
   });
 }
 
@@ -195,4 +223,14 @@ async function advance(visit, template, client) {
   if (status !== visit.status) await visitRepository.updateStatus(visit.id, status, client);
 }
 
-module.exports = { findVisit, create, list, getById, updateStatus, submit, refreshSummary, editSummary, saveAnswer };
+// CLINIC-024: the attender saves today's vitals (all optional). Clinic-scoped like every
+// visit route; refused (409) once the visit is sent to the doctor — re-checked under the
+// visit lock, so a Send can't slip between. The status doesn't change.
+async function saveVitals(clinicId, visitId, body, userId) {
+  const visit = await findVisit(clinicId, visitId);
+  const vitals = validateVitals(body);
+  return whileNotSent(visit.id, 'VITALS_LOCKED', 'Vitals cannot be changed after the visit is sent to the doctor',
+    client => vitalsRepository.upsert(visit.id, vitals, userId, client));
+}
+
+module.exports = { findVisit, create, list, getById, updateStatus, submit, refreshSummary, editSummary, saveAnswer, saveVitals };

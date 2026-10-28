@@ -21,6 +21,7 @@ import StatsStrip from '../components/StatsStrip'
 import AiSummaryCard from '../components/AiSummaryCard'
 import QaList from '../components/QaList'
 import ReportsList from '../components/ReportsList'
+import VitalsStrip from '../components/VitalsStrip'
 import TestRequestPanel from '../components/TestRequestPanel'
 import { isInQueueOn, todayKey } from '../utils/queue'
 
@@ -206,6 +207,7 @@ export default function DoctorDashboardPage() {
             <Fragment key={selectedId}>
               {/* The queue row has no mobile (CLINIC-023): it comes from the detail. */}
               <PatientHeader visit={selected ?? detail.visit} mobile={detail.visit?.patient_mobile} />
+              <VitalsStrip display={detail.vitalsDisplay} />
               <StatsStrip
                 seenToday={seenToday}
                 remaining={remaining}

@@ -34,7 +34,9 @@ function errorHandler(err, req, res, _next) {
   const status = err.httpStatus || 500;
   const code = err.code || 'INTERNAL_ERROR';
   const message = err.message || 'An unexpected error occurred';
-  res.status(status).json({ error: { code, message } });
+  // Per-field messages from a validator (err.fields), so a form can show each under its
+  // field (CLINIC-024). Additive: older apps keep reading message.
+  res.status(status).json({ error: { code, message, ...(err.fields ? { fields: err.fields } : {}) } });
 }
 
 module.exports = { AppError, errorHandler };

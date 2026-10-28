@@ -21,6 +21,9 @@ import { useNavigation } from '@react-navigation/native';
 import { createVisit } from '../api/visitApi';
 import { apiClient } from '../api/client';
 import { withSingleFlight } from '../utils/retry';
+import { fieldErrorsOf, CHECK_FIELDS_MESSAGE } from '../utils/apiError';
+import { NumberField } from '../components/NumberField';
+import { ChoiceButtons } from '../components/ChoiceButtons';
 
 const NAVY = '#1a3050';
 const TEAL = '#0a8f8f';
@@ -119,6 +122,13 @@ export default function NewPatientScreen() {
       navigation.navigate('QuestionList', { visitId: visit.id });
     } catch (err) {
       // AC10: show retry banner; field values remain in state
+      // A field the server refused (CLINIC-024) is shown under that field.
+      const fields = fieldErrorsOf(err);
+      if (Object.keys(fields).length) {
+        setFieldErrors(fields);
+        setSubmitError(CHECK_FIELDS_MESSAGE);
+        return;
+      }
       const msg =
         err?.response?.data?.error?.message ??
         err?.message ??
@@ -191,28 +201,14 @@ export default function NewPatientScreen() {
 
         {/* CLINIC-023 — Weight / Height */}
         <View style={styles.row}>
-          <MeasurementField label="Weight (kg)" value={weightKg} onChangeText={setWeightKg} placeholder="e.g. 72" error={fieldErrors.weightKg} />
-          <MeasurementField label="Height (cm)" value={heightCm} onChangeText={setHeightCm} placeholder="e.g. 165" error={fieldErrors.heightCm} />
+          <NumberField label="Weight (kg)" value={weightKg} onChangeText={setWeightKg} placeholder="e.g. 72" error={fieldErrors.weightKg} decimal style={styles.half} />
+          <NumberField label="Height (cm)" value={heightCm} onChangeText={setHeightCm} placeholder="e.g. 165" error={fieldErrors.heightCm} decimal style={styles.half} />
         </View>
 
         {/* CLINIC-023 — New / Follow-up */}
         <Text style={styles.label}>Patient type</Text>
         <View style={styles.row}>
-          {PATIENT_TYPES.map((t) => {
-            const on = patientType === t.value;
-            return (
-              <TouchableOpacity
-                key={t.value}
-                style={[styles.typeBtn, on && styles.typeBtnOn]}
-                onPress={() => setPatientType(t.value)}
-                activeOpacity={0.8}
-                accessibilityRole="radio"
-                accessibilityState={{ checked: on }}
-              >
-                <Text style={[styles.typeText, on && styles.typeTextOn]}>{t.label}</Text>
-              </TouchableOpacity>
-            );
-          })}
+          <ChoiceButtons options={PATIENT_TYPES} value={patientType} onChange={setPatientType} />
         </View>
 
         {/* Department */}
@@ -250,25 +246,6 @@ export default function NewPatientScreen() {
   );
 }
 
-// Half-width number box with its label and error (weight, height).
-function MeasurementField({ label, value, onChangeText, placeholder, error }) {
-  return (
-    <View style={styles.half}>
-      <Text style={styles.label}>{label}</Text>
-      <TextInput
-        style={[styles.input, error && styles.inputError]}
-        value={value}
-        // Some phones' number pad types a decimal comma: "72,5" means 72.5.
-        onChangeText={(t) => onChangeText(t.replace(',', '.'))}
-        placeholder={placeholder}
-        keyboardType="decimal-pad"
-        maxLength={5}
-      />
-      {error && <Text style={styles.fieldError}>{error}</Text>}
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: '#f5f8fa' },
   form: { padding: 20 },
@@ -296,19 +273,6 @@ const styles = StyleSheet.create({
   fieldError: { fontSize: 12, color: '#c0392b', marginTop: 3 },
   row: { flexDirection: 'row', gap: 12 },
   half: { flex: 1 },
-  typeBtn: {
-    flex: 1,
-    minHeight: 48,
-    borderWidth: 1,
-    borderColor: '#c9d6df',
-    borderRadius: 8,
-    backgroundColor: '#ffffff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  typeBtnOn: { borderColor: TEAL, backgroundColor: '#e8f6f6' },
-  typeText: { fontSize: 15, color: NAVY, fontWeight: '500' },
-  typeTextOn: { color: TEAL, fontWeight: '700' },
   errorBanner: {
     backgroundColor: '#fdecea',
     borderRadius: 8,

@@ -29,6 +29,15 @@ export function getVisitDetail(id) {
 }
 
 /**
+ * Save today's vitals (CLINIC-024): every field optional; numbers as typed.
+ * @param {{ bpSystolic?, bpDiastolic?, pulse?, temperature?, temperatureUnit?, spo2?, sugar?, sugarType? }} vitals
+ * @returns {Promise<Object>} the stored vitals row
+ */
+export function saveVitals(visitId, vitals) {
+  return apiClient.put(`/visits/${visitId}/vitals`, vitals).then((r) => r.data);
+}
+
+/**
  * Fetch one day's patient queue (CLINIC-015), ordered by queue place, plus everyone
  * waiting for tests whatever their day.
  * @param {{ date?: string, status?: string }} [filters]  date = YYYY-MM-DD (today when

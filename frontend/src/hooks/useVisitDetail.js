@@ -79,6 +79,7 @@ export function useVisitDetail(visitId) {
     summary: current?.summary ?? null,
     reports: current?.reports ?? [],
     testRequests: current?.test_requests ?? [], // CLINIC-014 history, newest first
+    vitalsDisplay: current?.vitals_display ?? [], // CLINIC-024 today's vitals [{ label, value }]
     isLoading: loading,
     error,
     refetch: load,

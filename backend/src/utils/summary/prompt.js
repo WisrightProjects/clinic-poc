@@ -3,6 +3,7 @@
 
 // What the summary says for an answer that can't be understood, so the doctor asks the patient.
 const UNCLEAR_NOTE = 'answer unclear — please check with the patient';
+const { vitalsText } = require('../vitals');
 
 // CLINIC-018: rules for the report photos sent after this prompt (Gemini only).
 // Which photos get in is decided by the strict per-photo check in geminiClient; these rules
@@ -37,6 +38,7 @@ const NOT_LISTED_NOTE = 'From reports: no results listed — please check the ph
 const notReadNote = count => `${count} report photo(s) could not be read — please check the original.`;
 
 function buildSummaryPrompt(visit, qa, language = 'English', images) {
+  const todaysVitals = vitalsText(visit?.vitals); // CLINIC-024, null when none recorded
   // CLINIC-023: weight, height and a follow-up visit are part of who the patient is. The
   // mobile number never goes to the AI. (pg returns NUMERIC columns as strings.)
   const who = [
@@ -63,7 +65,13 @@ function buildSummaryPrompt(visit, qa, language = 'English', images) {
     `Include important negatives the patient reported (for example no allergies, no smoking).`,
     // CLINIC-019: the physician lists ask for doses, sugar/BP readings with dates and today's
     // vitals — the point of the pilot, so they must survive a short summary unchanged.
-    `Copy every number the answers give (medicine doses, sugar, HbA1c, BP and temperature readings, with their dates) exactly as given; never round or drop them. Only if one of the questions asks for today's vitals: add one line "Vitals: ..." with the values as answered, or "Vitals: not recorded" if the answer says so; never invent a value.`,
+    `Copy every number the answers give (medicine doses, sugar, HbA1c, BP and temperature readings, with their dates) exactly as given; never round or drop them.`,
+    // CLINIC-024: vitals entered as fields are added under the summary by the code, exactly as
+    // entered — the AI must not write a second Vitals line (e.g. from a spoken vitals answer).
+    // The values are given as context, so the summary can relate them to the history.
+    todaysVitals
+      ? `Today's vitals, measured by the attender: ${todaysVitals}. Use them only as context: do not write a "Vitals:" line — the system adds it under your summary.`
+      : `Only if one of the questions asks for today's vitals: add one line "Vitals: ..." with the values as answered, or "Vitals: not recorded" if the answer says so; never invent a value.`,
     `If a question lists several symptoms and the answer only says yes or some without naming them, write that the patient said yes but which ones is not clear — do not list them all as present.`,
     // A misheard recording can come through as garbled text; guessing from it produced a
     // made-up diagnosis ("bipolar nerve issues") in testing (CLINIC-013).

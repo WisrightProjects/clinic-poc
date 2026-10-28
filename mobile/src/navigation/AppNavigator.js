@@ -12,6 +12,7 @@ import NewPatientScreen from '../screens/NewPatientScreen';
 import QuestionListScreen from '../screens/QuestionListScreen';
 import RecordingScreen from '../screens/RecordingScreen';
 import ChoiceAnswerScreen from '../screens/ChoiceAnswerScreen';
+import VitalsScreen from '../screens/VitalsScreen';
 import ReviewSubmitScreen from '../screens/ReviewSubmitScreen';
 import SentScreen from '../screens/SentScreen';
 import BackInQueueScreen from '../screens/BackInQueueScreen';
@@ -78,6 +79,13 @@ export function AppNavigator() {
         name="Choice"
         component={ChoiceAnswerScreen}
         options={{ title: 'Choose Answer' }}
+      />
+
+      {/* CLINIC-024 — today's vitals as fields */}
+      <Stack.Screen
+        name="Vitals"
+        component={VitalsScreen}
+        options={{ title: "Today's Vitals" }}
       />
 
       {/* CLINIC-005 — attender review & submit */}
