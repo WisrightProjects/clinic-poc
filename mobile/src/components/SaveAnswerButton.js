@@ -1,13 +1,13 @@
 // Purpose: the "Save Answer" footer button shared by the answer screens (typed text, tap
 // choices): teal, full width, spinner while saving, faded when it can't be pressed.
-// Props: { onPress, disabled, saving }
+// Props: { onPress, disabled, saving, label? }
 
 import React from 'react';
 import { TouchableOpacity, Text, ActivityIndicator, StyleSheet } from 'react-native';
 
 const TEAL = '#0a8f8f';
 
-export function SaveAnswerButton({ onPress, disabled, saving }) {
+export function SaveAnswerButton({ onPress, disabled, saving, label = 'Save Answer' }) {
   return (
     <TouchableOpacity
       style={[styles.saveBtn, disabled && styles.saveBtnDisabled]}
@@ -15,7 +15,7 @@ export function SaveAnswerButton({ onPress, disabled, saving }) {
       disabled={disabled}
       activeOpacity={0.85}
     >
-      {saving ? <ActivityIndicator color="#ffffff" /> : <Text style={styles.saveBtnText}>Save Answer</Text>}
+      {saving ? <ActivityIndicator color="#ffffff" /> : <Text style={styles.saveBtnText}>{label}</Text>}
     </TouchableOpacity>
   );
 }

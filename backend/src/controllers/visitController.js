@@ -31,4 +31,9 @@ async function editSummary(req, res) {
   res.json(summary);
 }
 
-module.exports = { create, list, getById, updateStatus, submit, editSummary };
+// CLINIC-024: PUT /visits/:id/vitals — the attender's vitals form.
+async function saveVitals(req, res) {
+  res.json(await visitService.saveVitals(req.user.clinicId, req.params.id, req.body ?? {}, req.user.id));
+}
+
+module.exports = { create, list, getById, updateStatus, submit, editSummary, saveVitals };

@@ -21,6 +21,7 @@ import { ProgressBar } from '../components/ProgressBar';
 import { IntakeQuestionRow } from '../components/IntakeQuestionRow';
 import { SendToDoctorButton } from '../components/SendToDoctorButton';
 import { ReportsSection } from '../components/ReportsSection';
+import { VitalsCard } from '../components/VitalsCard';
 import { answerTypeOf, isKnownAnswerType } from '../utils/answerTypes';
 
 const NAVY = '#1a3050';
@@ -32,7 +33,7 @@ export default function QuestionListScreen() {
   const route = useRoute();
   const { visitId } = route.params;
 
-  const { items, answeredCount, total, percent, allAnswered, loading, error, reload, visit } =
+  const { items, answeredCount, total, percent, allAnswered, loading, error, reload, visit, vitalsText } =
     useQuestionList(visitId);
   // Once sent to the doctor (summarised / tests_requested / done) the intake is read-only:
   // the server refuses changes (409 ANSWERS_LOCKED).
@@ -108,6 +109,8 @@ export default function QuestionListScreen() {
         )}
         style={styles.flex}
       />
+      {/* CLINIC-024 — today's vitals (optional, never blocks Send) */}
+      <VitalsCard text={vitalsText} locked={locked} onEdit={() => navigation.navigate('Vitals', { visitId })} />
       <ReportsSection visitId={visitId} editable={!locked} />
       <SendToDoctorButton
         sent={locked}

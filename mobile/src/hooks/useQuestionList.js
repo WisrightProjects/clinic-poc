@@ -72,5 +72,6 @@ export function useQuestionList(visitId) {
     error,
     reload: load,
     visit: data?.visit,
+    vitalsText: data?.vitals_text ?? null, // CLINIC-024: today's vitals, null when none recorded
   };
 }

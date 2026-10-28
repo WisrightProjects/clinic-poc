@@ -34,6 +34,7 @@ router.post('/visits/:id/answers', upload.single('audio'), wrap(answerController
 // Doctor marks a visit done (the only status this route sets; see visitService).
 router.patch('/visits/:id/status', requireRole('doctor'), wrap(visitController.updateStatus));
 router.post('/visits/:id/submit', wrap(visitController.submit));
+router.put('/visits/:id/vitals', requireRole('attender'), wrap(visitController.saveVitals));
 router.put('/visits/:id/summary', requireRole('doctor'), wrap(visitController.editSummary));
 router.get('/answers/:id/audio', wrap(answerController.audio));
 // Previous-report photos (CLINIC-011), multipart field "report" (one or more images).

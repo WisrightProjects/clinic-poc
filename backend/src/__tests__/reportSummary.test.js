@@ -13,6 +13,7 @@ jest.mock('../repositories/answerRepository', () => ({ findByVisitId: jest.fn(as
 jest.mock('../repositories/templateRepository', () => ({ findForVisit: jest.fn(async () => ({ questions: [] })) }));
 jest.mock('../repositories/reportRepository', () => ({ findFilesByVisitId: jest.fn() }));
 jest.mock('../repositories/summaryRepository', () => ({ findByVisitId: jest.fn(), createIfUnedited: jest.fn() }));
+jest.mock('../repositories/vitalsRepository', () => ({ findByVisitId: jest.fn(async () => null) })); // CLINIC-024: no vitals
 jest.mock('../repositories/visitRepository', () => ({}));
 jest.mock('../repositories/testRequestRepository', () => ({}));
 jest.mock('../utils/gemini', () => ({ ...jest.requireActual('../utils/gemini'), generate: jest.fn() }));

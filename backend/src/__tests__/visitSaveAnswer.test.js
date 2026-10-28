@@ -8,6 +8,7 @@ jest.mock('../services/summaryService', () => ({ generate: jest.fn(), readsRepor
 jest.mock('../repositories/transaction', () => ({ withTransaction: fn => fn('client'), lockVisit: jest.fn() }));
 jest.mock('../repositories/visitRepository', () => ({ findForUpdate: jest.fn(), updateStatus: jest.fn(), findById: jest.fn(), createWithToken: jest.fn() }));
 jest.mock('../repositories/departmentRepository', () => ({ findById: jest.fn() }));
+jest.mock('../repositories/vitalsRepository', () => ({ upsert: jest.fn(), findByVisitId: jest.fn() }));
 jest.mock('../repositories/answerRepository', () => ({ findByVisitId: jest.fn() }));
 jest.mock('../repositories/templateRepository', () => ({ findForVisit: jest.fn() }));
 jest.mock('../repositories/summaryRepository', () => ({ findByVisitId: jest.fn(), create: jest.fn() }));
@@ -17,6 +18,7 @@ jest.mock('../repositories/testRequestRepository', () => ({}));
 const visitRepository = require('../repositories/visitRepository');
 const answerRepository = require('../repositories/answerRepository');
 const departmentRepository = require('../repositories/departmentRepository');
+const vitalsRepository = require('../repositories/vitalsRepository');
 const visitService = require('../services/visitService');
 
 const template = { questions: [{ id: 1 }, { id: 2 }, { id: 3, section: 'diabetes' }] };
@@ -80,5 +82,34 @@ describe('CLINIC-022: a retired (hidden) department takes no new patients', () =
     departmentRepository.findById.mockResolvedValue({ id: 7, name: 'Physician', is_active: true });
     visitRepository.createWithToken.mockResolvedValue({ id: 50 });
     expect(await visitService.create(1, body)).toEqual({ id: 50 });
+  });
+});
+
+describe('CLINIC-024: saveVitals — clinic-scoped, locked once sent', () => {
+  beforeEach(() => visitRepository.findById.mockResolvedValue({ id: 9, clinic_id: 1, status: 'answering' }));
+
+  test('saves under the visit lock and does not change the status', async () => {
+    visitRepository.findForUpdate.mockResolvedValue({ id: 9, status: 'answering' });
+    vitalsRepository.upsert.mockResolvedValue({ visit_id: 9, pulse: 80 });
+    expect(await visitService.saveVitals(1, 9, { pulse: '80' }, 5)).toEqual({ visit_id: 9, pulse: 80 });
+    expect(vitalsRepository.upsert).toHaveBeenCalledWith(9, expect.objectContaining({ pulse: 80 }), 5, 'client');
+    expect(visitRepository.updateStatus).not.toHaveBeenCalled();
+  });
+
+  test('refused (409) when the locked row shows the visit was sent meanwhile', async () => {
+    visitRepository.findForUpdate.mockResolvedValue({ id: 9, status: 'summarised' });
+    await expect(visitService.saveVitals(1, 9, { pulse: '80' }, 5)).rejects.toMatchObject({ code: 'VITALS_LOCKED', httpStatus: 409 });
+    expect(vitalsRepository.upsert).not.toHaveBeenCalled();
+  });
+
+  test("another clinic's visit is 404, nothing saved", async () => {
+    visitRepository.findById.mockResolvedValue(null);
+    await expect(visitService.saveVitals(2, 9, { pulse: '80' }, 5)).rejects.toMatchObject({ httpStatus: 404 });
+    expect(vitalsRepository.upsert).not.toHaveBeenCalled();
+  });
+
+  test('bad values are refused (400) before any lock', async () => {
+    await expect(visitService.saveVitals(1, 9, { pulse: '500' }, 5)).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
+    expect(visitRepository.findForUpdate).not.toHaveBeenCalled();
   });
 });
