@@ -7,8 +7,8 @@
 **Effort:** ~56–70 h (Phase 1: tap answer for Q1 + branching)
 **Who:** 👨‍💻 **Senior**
 **Sprint:** Physician pilot — Phase 1
-**Status:** In Development (`feature/clinic-021-physician-branching`)
-**Depends On:** CLINIC-020 (`visits.template_id`, the final question wording), CLINIC-009 (typed answers). **Migrations:** `012_question_choices.sql` (PR A), `013_physician_branching_list.sql` (PR B). **New APK needed.**
+**Status:** PR A merged (#43). PR B in development (`feature/clinic-021b-physician-list`). PR C = CLINIC-022.
+**Depends On:** CLINIC-020 (`visits.template_id`, the final question wording), CLINIC-009 (typed answers). **Migrations:** `012_question_choices.sql` (PR A), `013_physician_branching_list.sql` (PR B), hiding the four lists (PR C, next free number). **New APK needed.**
 
 > **Open (does not block):** should "Diabetes" etc. in Q4 (existing illness) also add that section? Built for Q1 only; sections are attached to the options in the data, so Q4 can be switched on later with a data change, no new app.
 
@@ -26,14 +26,15 @@
 
 ---
 
-## Release in two steps
+## Release in three steps
 
 Migrations run on boot, and attender phones keep the old APK until they update. So:
 
 | Step | PR | Contents | Safe with the old APK? |
 |---|---|---|---|
 | A | Capability | Columns for options / sections / choices, choice-answer API, visibility rule, new APK with the tap screen. **No list changes.** | ✅ yes — nothing uses choices yet |
-| B | Switch | The new Physician list (Q1 tap + 23 questions) and hiding the four separate lists from the picker | Merge only after **every phone has the new APK** |
+| B | New list | The new Physician list (Q1 tap + 23 questions). The four separate lists **stay visible**, so the pilot keeps running while phones are updated | Old app shows "please update the app" on Physician Q1 — attenders keep using the four lists until updated |
+| C | Hide | Hide the four separate lists (`departments.is_active = false`) | Only after **every phone has the new APK** |
 
 ---
 
@@ -73,7 +74,7 @@ Q1 = Diabetes + Fever → 6 + 4 + 4 + 1 = 15 questions. Q1 = Headache only → 7
 - [ ] New transition **answered → answering**: ticking a new problem after all questions were answered makes the visit `answering` again. Submit re-checks on the server and refuses (409) while a visible question is unanswered.
 - [ ] Answers and Send change the status one at a time: every answer is saved, and the status worked out, in one transaction with the visit row locked (refused if the visit was sent meanwhile); Send runs the AI first, then re-checks the status under the lock and refuses (409 `ANSWERS_CHANGED`) if an answer changed the questions during the AI call.
 
-### AC4: The switch (PR B)
+### AC4: The switch (PR B, hiding in PR C)
 - [ ] Each clinic's "Physician" list is replaced by the list above (old list kept inactive; old visits keep their questions via `visits.template_id`).
 - [ ] "Physician – Diabetes / Fever / BP / Follow-up" are hidden from `GET /departments` (`departments.is_active = false`) — the New Patient picker and the Settings list picker, as they are retired. Visits already on them still open, answer and submit.
 - [ ] New clinics made with `scripts/clinic-admin.mjs` copy options and sections.
@@ -86,4 +87,7 @@ Q1 = Diabetes + Fever → 6 + 4 + 4 + 1 = 15 questions. Q1 = Headache only → 7
 - The visibility rule lives once in JS (`utils/questionFlow.js`, pure, tested) and once as a shared SQL fragment for the queue. How each answer type is checked and turned into a transcript lives in `utils/answerTypes.js` (one entry per type); the app's list of types it knows is `mobile/src/utils/answerTypes.js`.
 - `visits.sections` is recomputed when a choice answer is saved. If Q4 (or another question) is later given section-linked options, the migration doing it must also recompute `sections` for visits still waiting / answering / answered.
 - Settings (CLINIC-002) edits keep options and sections (it updates text and order only); a question added in Settings is a normal voice/typed question with no section.
+- PR B: merge it **after the new APK is on every attender phone** — on the old APK a "Physician" visit can't answer Q1 and can't be sent (it would have to be registered again). The four separate lists stay visible until CLINIC-022.
+- Settings (CLINIC-002) shows the branching list as plain questions: it doesn't show sections, a question added there has no section (asked of everyone), and deleting Q1 removes the branching. Fix later (show the section; warn on Q1).
+- Questions 2–23 use the CLINIC-020 wording, not each clinic's Settings edits to the four separate lists.
 - Only Q1 is a tap question in this story; tap answers for the other questions are the next Phase 1 package.
