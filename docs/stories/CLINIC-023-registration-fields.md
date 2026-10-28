@@ -6,11 +6,12 @@
 **Priority:** P1 — client document "Final Physician OPD Questionnaire", Section 1 (Patient Registration)
 **Effort:** ~16 h
 **Who:** 🧑‍💻 **Junior** (senior reviews the PR; ask before changing anything outside the files listed)
-**Status:** To Do
+**Status:** In Development (`feature/clinic-023-registration-fields`), migration `015_registration_fields.sql`
 **Depends On:** CLINIC-003 (New Patient), CLINIC-008 (clinics). **New APK needed.**
 
 > Out of scope: finding a follow-up patient's history by mobile number — that is Phase 2 (patient record). This story only **stores** the fields.
 > Privacy: the mobile number is patient data. Never log it, never put it in a URL.
+> Phase 2 finds a patient's earlier visits by `(clinic_id, patient_mobile)` (indexed here); it should then check — or replace — the attender's New / Follow-up choice with that history, so the two can't disagree. Weight and height belong to the visit (they change between visits) and are owned here: CLINIC-024's vitals show them, they don't store a second weight.
 
 ---
 
@@ -52,9 +53,9 @@ Existing fields (name, age, sex, department) are unchanged.
 ## Acceptance Criteria
 
 - [ ] AC1: New Patient has mobile, weight, height and New / Follow-up; leaving mobile/weight/height blank still registers the patient.
-- [ ] AC2: Wrong values are refused with a clear message on the field (app) and 422 `VALIDATION_ERROR` (server): mobile not 10 digits or not starting 6–9, weight/height out of range.
+- [ ] AC2: Wrong values are refused with a clear message on the field (app) and 400 `VALIDATION_ERROR` (server, same as the other New Patient fields): mobile not 10 digits or not starting 6–9, weight 1–300 kg / height 30–250 cm (one decimal at most), type not new / follow_up.
 - [ ] AC3: The doctor web shows weight, height and patient type on the patient header; the mobile shows on the detail header only.
-- [ ] AC4: The AI summary's patient line includes weight/height and follow-up; the mobile number is never sent to the AI.
+- [ ] AC4: The AI summary starts with age, sex, weight/height and "follow-up visit" when given (a prompt rule — tested: Gemini mentions all of them); the mobile number is never sent to the AI.
 - [ ] AC5: Patients registered before this change still open (new fields empty, type "new").
 
 ## How to test

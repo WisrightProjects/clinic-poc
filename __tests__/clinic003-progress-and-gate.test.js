@@ -315,9 +315,17 @@ describe('AC12: progress gate uses answers array, not visit.status', () => {
 
 describe('AC9: client-side validation in NewPatientScreen — validate()', () => {
   /**
-   * Mirror of NewPatientScreen validate() closure — lines 49–58
+   * Mirror of NewPatientScreen validate() closure — lines 77–93 (and badMeasurement above it)
    */
-  function validate(patientName, age, sex, departmentId) {
+  // Mirrors NewPatientScreen.js validate() and badMeasurement (CLINIC-023 adds mobile,
+  // weight and height; they are optional, so the old 4-argument calls stay valid).
+  const badMeasurement = (text, min, max) => {
+    if (text.trim() === '') return false;
+    const n = Number(text);
+    return !Number.isFinite(n) || n < min || n > max || Math.round(n * 10) !== n * 10;
+  };
+
+  function validate(patientName, age, sex, departmentId, { patientMobile = '', weightKg = '', heightCm = '' } = {}) {
     const errs = {};
     if (!patientName.trim()) errs.patientName = 'Patient name is required';
     if (!departmentId) errs.departmentId = 'Department is required';
@@ -326,8 +334,30 @@ describe('AC9: client-side validation in NewPatientScreen — validate()', () =>
       errs.age = 'Age must be between 0 and 120';
     }
     if (sex && !['M', 'F', 'O'].includes(sex)) errs.sex = 'Select a valid option';
+    if (patientMobile !== '' && !/^[6-9]\d{9}$/.test(patientMobile)) {
+      errs.patientMobile = 'Enter a 10-digit mobile number starting 6–9';
+    }
+    if (badMeasurement(weightKg, 1, 300)) errs.weightKg = 'Weight must be 1–300 kg';
+    if (badMeasurement(heightCm, 30, 250)) errs.heightCm = 'Height must be 30–250 cm';
     return errs;
   }
+
+  test('CLINIC-023: mobile, weight and height are optional; good values pass', () => {
+    expect(validate('Ravi', '30', 'M', 1, { patientMobile: '', weightKg: '', heightCm: '' })).toEqual({});
+    expect(validate('Ravi', '30', 'M', 1, { patientMobile: '9876543210', weightKg: '72.5', heightCm: '170' })).toEqual({});
+  });
+
+  test.each([
+    ['mobile 9 digits', { patientMobile: '987654321' }, 'patientMobile'],
+    ['mobile starts 5', { patientMobile: '5876543210' }, 'patientMobile'],
+    ['weight 0', { weightKg: '0' }, 'weightKg'],
+    ['weight 301', { weightKg: '301' }, 'weightKg'],
+    ['weight two decimals', { weightKg: '72.55' }, 'weightKg'],
+    ['height 29', { heightCm: '29' }, 'heightCm'],
+    ['height 251', { heightCm: '251' }, 'heightCm'],
+  ])('CLINIC-023: refuses %s', (_n, extra, field) => {
+    expect(validate('Ravi', '30', 'M', 1, extra)).toHaveProperty(field);
+  });
 
   test('valid inputs produce empty errors object (no block)', () => {
     const errs = validate('Lakshmi K.', '35', 'F', 1);

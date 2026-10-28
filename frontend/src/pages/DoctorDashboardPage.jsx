@@ -204,7 +204,8 @@ export default function DoctorDashboardPage() {
             // left the previous patient's panels on screen (CR-003). useVisitDetail only
             // returns data for the selected visit, so nothing stale renders under it.
             <Fragment key={selectedId}>
-              <PatientHeader visit={selected ?? detail.visit} />
+              {/* The queue row has no mobile (CLINIC-023): it comes from the detail. */}
+              <PatientHeader visit={selected ?? detail.visit} mobile={detail.visit?.patient_mobile} />
               <StatsStrip
                 seenToday={seenToday}
                 remaining={remaining}

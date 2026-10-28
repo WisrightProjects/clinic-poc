@@ -71,7 +71,9 @@ async function list(clinicId, { date, statuses }) {
       ORDER BY v.queue_date DESC, v.queue_token`,
     [clinicId, statuses, date]
   );
-  return rows;
+  // The patient's mobile (CLINIC-023) is returned by the visit detail only, not with every
+  // queue row the apps poll all day.
+  return rows.map(({ patient_mobile, ...row }) => row); // eslint-disable-line no-unused-vars
 }
 
 async function updateStatus(id, status, client = db) {
@@ -106,15 +108,19 @@ function withTokenLock(clinicId, fn) {
 }
 
 // Tokens restart at 1 per clinic per day. A new visit's queue place is its token.
-function createWithToken(clinicId, { patientName, age, sex, departmentId }) {
+// The registration fields of CLINIC-023 (mobile, weight, height, new / follow-up) are stored
+// as given; visitValidation has checked and normalised them.
+function createWithToken(clinicId, { patientName, age, sex, departmentId, patientMobile, weightKg, heightCm, patientType }) {
   return withTokenLock(clinicId, async client => {
     const { rows } = await client.query(
       `INSERT INTO visits (clinic_id, token_number, queue_token, queue_date, patient_name, age, sex,
-                           department_id, visit_date, template_id)
-       SELECT $1, n, n, ${TODAY}, $2, $3, $4, $5, ${TODAY}, (${ACTIVE_TEMPLATE_ID('$1', '$5')})
+                           department_id, visit_date, template_id,
+                           patient_mobile, weight_kg, height_cm, patient_type)
+       SELECT $1, n, n, ${TODAY}, $2, $3, $4, $5, ${TODAY}, (${ACTIVE_TEMPLATE_ID('$1', '$5')}),
+              $6, $7, $8, $9
          FROM ${nextQueueToken('$1')} AS t(n)
        RETURNING *`,
-      [clinicId, patientName, age, sex, departmentId]
+      [clinicId, patientName, age, sex, departmentId, patientMobile, weightKg, heightCm, patientType]
     );
     return rows[0];
   });

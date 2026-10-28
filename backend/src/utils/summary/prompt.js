@@ -37,7 +37,15 @@ const NOT_LISTED_NOTE = 'From reports: no results listed — please check the ph
 const notReadNote = count => `${count} report photo(s) could not be read — please check the original.`;
 
 function buildSummaryPrompt(visit, qa, language = 'English', images) {
-  const who = [visit?.sex, visit?.age != null ? `${visit.age} yrs` : null]
+  // CLINIC-023: weight, height and a follow-up visit are part of who the patient is. The
+  // mobile number never goes to the AI. (pg returns NUMERIC columns as strings.)
+  const who = [
+    visit?.sex,
+    visit?.age != null ? `${visit.age} yrs` : null,
+    visit?.weight_kg != null ? `${Number(visit.weight_kg)} kg` : null,
+    visit?.height_cm != null ? `${Number(visit.height_cm)} cm` : null,
+    visit?.patient_type === 'follow_up' ? 'follow-up visit' : null,
+  ]
     .filter(Boolean)
     .join(', ');
   const lines = (qa || [])
@@ -47,6 +55,9 @@ function buildSummaryPrompt(visit, qa, language = 'English', images) {
   return [
     `You are a clinical scribe. Summarise the patient intake below into 2-4 concise sentences in ${language} for a doctor.`,
     `Use ONLY the information given; do not invent findings. If an answer is empty, ignore it.`,
+    // CLINIC-023: the registration details on the Patient line (weight, height, follow-up) —
+    // only when there are some (an "unknown" line would only add filler).
+    ...(who ? [`Start with every detail on the Patient line, and say it is a follow-up visit when the Patient line says so.`] : []),
     `Keep the patient's uncertainty: if they say "I think", "not sure" or "I don't know", write it as possible or unknown, never as a confirmed fact.`,
     `Do not add diagnoses, types or medical terms the patient did not state (for example write "thyroid problem on tablets", not "hypothyroidism").`,
     `Include important negatives the patient reported (for example no allergies, no smoking).`,

@@ -14,6 +14,19 @@ describe('buildSummaryPrompt', () => {
     expect(buildSummaryPrompt(visit, qa)).toContain('F, 50 yrs');
   });
 
+  test('CLINIC-023: weight, height and follow-up go on the patient line; the mobile never does', () => {
+    const p = buildSummaryPrompt(
+      { sex: 'M', age: 58, weight_kg: '72.0', height_cm: '170.5', patient_type: 'follow_up', patient_mobile: '9876543210' },
+      qa
+    );
+    expect(p).toContain('Patient: M, 58 yrs, 72 kg, 170.5 cm, follow-up visit');
+    expect(p).not.toContain('9876543210');
+    expect(p).toContain('Start with every detail on the Patient line, and say it is a follow-up visit');
+    expect(buildSummaryPrompt({ sex: 'F', age: 30, patient_type: 'new' }, qa)).toContain('Patient: F, 30 yrs\n');
+    // No details: no "start with the Patient line" rule (it would add filler to "unknown").
+    expect(buildSummaryPrompt({}, qa)).not.toContain('Start with every detail on the Patient line');
+  });
+
   test('AC1: includes the real questions and answers', () => {
     const p = buildSummaryPrompt(visit, qa);
     expect(p).toContain('Main complaint today?');
