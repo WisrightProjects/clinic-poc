@@ -2,6 +2,8 @@
 // navigates to QuestionListScreen. Uses single-flight guard to prevent duplicate creates.
 // AC9: client-side validation before calling API.
 // AC10: offline / 5xx shows retry banner; field values preserved.
+// CLINIC-023: also mobile, weight, height and New / Follow-up (client Section 1), all optional
+// except the type (default New). The server checks them again (utils/visitValidation.js).
 
 import React, { useState, useEffect, useCallback } from 'react';
 import {
@@ -26,12 +28,37 @@ const TEAL = '#0a8f8f';
 // Single-flight wrapper — prevents duplicate visit creates on double-tap / retry race
 const createVisitOnce = withSingleFlight(createVisit);
 
+const PATIENT_TYPES = [
+  { value: 'new', label: 'New' },
+  { value: 'follow_up', label: 'Follow-up' },
+];
+
+// The digits of a mobile number as typed or pasted: "+91 98765 43210" and "09876543210"
+// keep their 10 digits (same rule as the server's normalizeMobile).
+const mobileDigits = (text) => {
+  let d = text.replace(/\D/g, '');
+  if (d.length === 12 && d.startsWith('91')) d = d.slice(2);
+  else if (d.length === 11 && d.startsWith('0')) d = d.slice(1);
+  return d.slice(0, 10);
+};
+
+// A blank, or a number in [min, max] with at most one decimal (weight / height).
+const badMeasurement = (text, min, max) => {
+  if (text.trim() === '') return false;
+  const n = Number(text);
+  return !Number.isFinite(n) || n < min || n > max || Math.round(n * 10) !== n * 10;
+};
+
 export default function NewPatientScreen() {
   const navigation = useNavigation();
 
   const [patientName, setPatientName] = useState('');
   const [age, setAge] = useState('');
   const [sex, setSex] = useState('');
+  const [patientMobile, setPatientMobile] = useState('');
+  const [weightKg, setWeightKg] = useState('');
+  const [heightCm, setHeightCm] = useState('');
+  const [patientType, setPatientType] = useState('new');
   const [departmentId, setDepartmentId] = useState(null);
   const [departments, setDepartments] = useState([]);
   const [deptError, setDeptError] = useState(null);
@@ -56,8 +83,13 @@ export default function NewPatientScreen() {
       errs.age = 'Age must be between 0 and 120';
     }
     if (sex && !['M', 'F', 'O'].includes(sex)) errs.sex = 'Select a valid option';
+    if (patientMobile !== '' && !/^[6-9]\d{9}$/.test(patientMobile)) {
+      errs.patientMobile = 'Enter a 10-digit mobile number starting 6–9';
+    }
+    if (badMeasurement(weightKg, 1, 300)) errs.weightKg = 'Weight must be 1–300 kg';
+    if (badMeasurement(heightCm, 30, 250)) errs.heightCm = 'Height must be 30–250 cm';
     return errs;
-  }, [patientName, age, sex, departmentId]);
+  }, [patientName, age, sex, departmentId, patientMobile, weightKg, heightCm]);
 
   const handleSubmit = useCallback(async () => {
     const errs = validate();
@@ -74,6 +106,11 @@ export default function NewPatientScreen() {
       age: age !== '' ? Number(age) : undefined,
       sex: sex || undefined,
       departmentId,
+      // Sent as typed: the server treats blanks as empty and converts the numbers.
+      patientMobile,
+      weightKg,
+      heightCm,
+      patientType,
     };
 
     try {
@@ -90,7 +127,7 @@ export default function NewPatientScreen() {
     } finally {
       setSubmitting(false);
     }
-  }, [validate, patientName, age, sex, departmentId, navigation]);
+  }, [validate, patientName, age, sex, departmentId, patientMobile, weightKg, heightCm, patientType, navigation]);
 
   return (
     <SafeAreaView style={styles.flex} edges={['bottom']}>
@@ -141,6 +178,43 @@ export default function NewPatientScreen() {
         </View>
         {fieldErrors.sex && <Text style={styles.fieldError}>{fieldErrors.sex}</Text>}
 
+        {/* CLINIC-023 — Mobile (digits only; never shown in the queue) */}
+        <Text style={styles.label}>Mobile</Text>
+        <TextInput
+          style={[styles.input, fieldErrors.patientMobile && styles.inputError]}
+          value={patientMobile}
+          onChangeText={(t) => setPatientMobile(mobileDigits(t))}
+          placeholder="10 digits"
+          keyboardType="number-pad"
+        />
+        {fieldErrors.patientMobile && <Text style={styles.fieldError}>{fieldErrors.patientMobile}</Text>}
+
+        {/* CLINIC-023 — Weight / Height */}
+        <View style={styles.row}>
+          <MeasurementField label="Weight (kg)" value={weightKg} onChangeText={setWeightKg} placeholder="e.g. 72" error={fieldErrors.weightKg} />
+          <MeasurementField label="Height (cm)" value={heightCm} onChangeText={setHeightCm} placeholder="e.g. 165" error={fieldErrors.heightCm} />
+        </View>
+
+        {/* CLINIC-023 — New / Follow-up */}
+        <Text style={styles.label}>Patient type</Text>
+        <View style={styles.row}>
+          {PATIENT_TYPES.map((t) => {
+            const on = patientType === t.value;
+            return (
+              <TouchableOpacity
+                key={t.value}
+                style={[styles.typeBtn, on && styles.typeBtnOn]}
+                onPress={() => setPatientType(t.value)}
+                activeOpacity={0.8}
+                accessibilityRole="radio"
+                accessibilityState={{ checked: on }}
+              >
+                <Text style={[styles.typeText, on && styles.typeTextOn]}>{t.label}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
         {/* Department */}
         <Text style={styles.label}>Department *</Text>
         {deptError && <Text style={styles.fieldError}>{deptError}</Text>}
@@ -176,6 +250,25 @@ export default function NewPatientScreen() {
   );
 }
 
+// Half-width number box with its label and error (weight, height).
+function MeasurementField({ label, value, onChangeText, placeholder, error }) {
+  return (
+    <View style={styles.half}>
+      <Text style={styles.label}>{label}</Text>
+      <TextInput
+        style={[styles.input, error && styles.inputError]}
+        value={value}
+        // Some phones' number pad types a decimal comma: "72,5" means 72.5.
+        onChangeText={(t) => onChangeText(t.replace(',', '.'))}
+        placeholder={placeholder}
+        keyboardType="decimal-pad"
+        maxLength={5}
+      />
+      {error && <Text style={styles.fieldError}>{error}</Text>}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: '#f5f8fa' },
   form: { padding: 20 },
@@ -201,6 +294,21 @@ const styles = StyleSheet.create({
   },
   picker: { height: 50, color: NAVY },
   fieldError: { fontSize: 12, color: '#c0392b', marginTop: 3 },
+  row: { flexDirection: 'row', gap: 12 },
+  half: { flex: 1 },
+  typeBtn: {
+    flex: 1,
+    minHeight: 48,
+    borderWidth: 1,
+    borderColor: '#c9d6df',
+    borderRadius: 8,
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  typeBtnOn: { borderColor: TEAL, backgroundColor: '#e8f6f6' },
+  typeText: { fontSize: 15, color: NAVY, fontWeight: '500' },
+  typeTextOn: { color: TEAL, fontWeight: '700' },
   errorBanner: {
     backgroundColor: '#fdecea',
     borderRadius: 8,

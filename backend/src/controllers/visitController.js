@@ -1,8 +1,8 @@
 const visitService = require('../services/visitService');
 
 async function create(req, res) {
-  const { patientName, age, sex, departmentId } = req.body;
-  const visit = await visitService.create(req.user.clinicId, { patientName, age, sex, departmentId });
+  // validateNewVisit (in the service) keeps only the fields it knows.
+  const visit = await visitService.create(req.user.clinicId, req.body ?? {});
   res.status(201).json(visit);
 }
 

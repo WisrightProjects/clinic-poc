@@ -1,4 +1,4 @@
-# User Story: Vitals as fields — BP, pulse, temperature, SpO₂, weight, sugar
+# User Story: Vitals as fields — BP, pulse, temperature, SpO₂, sugar
 
 **Story ID:** CLINIC-024
 **Epic:** Patient Intake
@@ -7,7 +7,7 @@
 **Effort:** ~16 h
 **Who:** 🧑‍💻 **Junior** (senior reviews the PR)
 **Status:** To Do
-**Depends On:** CLINIC-021 (the Physician list). **New APK needed.** Weight/height are entered at registration (CLINIC-023), not here.
+**Depends On:** CLINIC-021 (the Physician list), CLINIC-023. **New APK needed.** Weight and height are entered at registration (CLINIC-023, `visits.weight_kg / height_cm`): the vitals row on the doctor web shows them from there — **do not add a second weight column**.
 
 ---
 
@@ -39,6 +39,7 @@ Every field is optional. A field left empty shows **"Not recorded"**. The time r
 
 ## What to do
 
+0. **First (small, helps every form):** let `errorHandler` (`backend/src/utils/errors.js`) send the per-field messages a validator already builds (`err.fields`) as `{ error: { code, message, fields } }`, and have the app show them under the right field (NewPatientScreen first). Then the app only needs "required / format" checks and the number ranges live on the server.
 1. **Migration** (next free number): table `visit_vitals (visit_id INT PRIMARY KEY REFERENCES visits(id) ON DELETE CASCADE, bp_systolic INT, bp_diastolic INT, pulse INT, temperature NUMERIC(4,1), temperature_unit TEXT CHECK (temperature_unit IN ('C','F')), spo2 INT, sugar INT, sugar_type TEXT CHECK (sugar_type IN ('fasting','post_meal','random')), recorded_by INT REFERENCES users(id), recorded_at TIMESTAMPTZ NOT NULL DEFAULT now())`.
 2. **Backend** (follow the 4 layers in CLAUDE.md):
    - `utils/vitalsValidation.js` — pure checks for the table above (and "BP needs both numbers", "temperature needs a unit", "sugar needs a type"); unit tests for each rule.

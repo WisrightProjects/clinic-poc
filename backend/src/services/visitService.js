@@ -31,8 +31,8 @@ async function findVisit(clinicId, id) {
 
 // A hidden (retired) department takes no new patients (CLINIC-022): an app with an old
 // department list, or a screen opened before the change, gets a clear message instead.
-async function create(clinicId, { patientName, age, sex, departmentId }) {
-  const clean = validateNewVisit({ patientName, age, sex, departmentId });
+async function create(clinicId, fields) {
+  const clean = validateNewVisit(fields);
   const department = await departmentRepository.findById(clean.departmentId);
   if (!department) throw new AppError('VALIDATION_ERROR', 'Choose a department', 422);
   if (!department.is_active) {

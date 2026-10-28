@@ -18,6 +18,11 @@ describe('AC9: validateNewVisit — server-side field validation', () => {
       age: 35,
       sex: 'F',
       departmentId: 1,
+      // CLINIC-023 registration fields, not sent: empty, a new patient
+      patientMobile: null,
+      weightKg: null,
+      heightCm: null,
+      patientType: 'new',
     });
   });
 
@@ -204,4 +209,51 @@ describe('AC9: validateNewVisit — server-side field validation', () => {
   // ---- POST /api/visits is NOT called on invalid input (enforced by service layer) ----
   // The fact that validateNewVisit throws before any DB call happens is the unit-testable
   // proxy for "POST /api/visits is not called until fields are valid" (AC9).
+});
+
+describe('CLINIC-023: registration fields (mobile, weight, height, New / Follow-up)', () => {
+  const base = { patientName: 'Ravi', departmentId: 1 };
+  const fieldError = input => {
+    try { validateNewVisit({ ...base, ...input }); } catch (e) { return e.fields; }
+    return null;
+  };
+
+  test('all four given: normalised and returned', () => {
+    expect(validateNewVisit({ ...base, patientMobile: '+91 98765-43210', weightKg: '72.5', heightCm: 170, patientType: 'follow_up' }))
+      .toMatchObject({ patientMobile: '9876543210', weightKg: 72.5, heightCm: 170, patientType: 'follow_up' });
+  });
+
+  test('blank values are allowed and stored as empty; type defaults to new', () => {
+    expect(validateNewVisit({ ...base, patientMobile: '', weightKg: ' ', heightCm: null, patientType: '' }))
+      .toMatchObject({ patientMobile: null, weightKg: null, heightCm: null, patientType: 'new' });
+  });
+
+  test.each([
+    ['9 digits', '987654321'],
+    ['starts with 5', '5876543210'],
+    ['letters', '98765abcde'],
+  ])('mobile refused: %s', (_n, patientMobile) => {
+    expect(fieldError({ patientMobile })).toHaveProperty('patientMobile');
+  });
+
+  test.each([
+    ['weight 0', { weightKg: 0 }, 'weightKg'],
+    ['weight 301', { weightKg: 301 }, 'weightKg'],
+    ['weight two decimals', { weightKg: 72.55 }, 'weightKg'],
+    ['weight text', { weightKg: 'heavy' }, 'weightKg'],
+    ['height 29', { heightCm: 29 }, 'heightCm'],
+    ['height 251', { heightCm: 251 }, 'heightCm'],
+    ['unknown type', { patientType: 'old' }, 'patientType'],
+    ['weight in hex', { weightKg: '0x48' }, 'weightKg'],
+    ['weight with exponent', { weightKg: '1e2' }, 'weightKg'],
+    ['weight true', { weightKg: true }, 'weightKg'],
+    ['weight in a list', { weightKg: [72] }, 'weightKg'],
+  ])('refused: %s', (_n, input, field) => {
+    expect(fieldError(input)).toHaveProperty(field);
+  });
+
+  test('range edges are allowed', () => {
+    expect(validateNewVisit({ ...base, weightKg: 1, heightCm: 250 })).toMatchObject({ weightKg: 1, heightCm: 250 });
+    expect(validateNewVisit({ ...base, weightKg: 300, heightCm: 30 })).toMatchObject({ weightKg: 300, heightCm: 30 });
+  });
 });
