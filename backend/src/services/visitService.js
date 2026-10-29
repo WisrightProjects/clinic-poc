@@ -14,7 +14,9 @@ const { validateSummaryEdit } = require('../utils/summaryValidation');
 const { parseQueueDate } = require('../utils/queueDate');
 const questionFlow = require('../utils/questionFlow');
 const { validateVitals, vitalsRow, vitalsText, withVitalsLine } = require('../utils/vitals');
+const { buildTrends, trendSource } = require('../utils/trends');
 const { parseSummaryCard, mainProblem } = require('../utils/doctorCard');
+const { isRealSummary } = require('../utils/summaryText');
 const { withTransaction } = require('../repositories/transaction');
 
 // The questions this visit is asked (CLINIC-021): its template with the questions of sections
@@ -55,9 +57,7 @@ async function list(clinicId, statusQuery, dateQuery) {
 // patient still away for tests is the current problem, not history), at most this many.
 const PREVIOUS_VISIT_STATUSES = ['summarised', 'done'];
 const PREVIOUS_VISITS_SHOWN = 5;
-
-// Summaries written by no AI: the demo text and the "AI summary not available" note.
-const NOT_AI_SUMMARIES = ['mock', 'mock-fallback'];
+const TREND_VISITS = 4; // CLINIC-030: earlier visits in the trends block, besides today
 
 // CLINIC-027: a follow-up's last finished visit, for the AI to say what changed: its day and
 // summary (the doctor's edit when there is one), or null — also when that summary is the demo
@@ -66,7 +66,7 @@ async function lastVisitForPrompt(visit) {
   if (visit.patient_type !== 'follow_up') return null;
   const [last] = await visitRepository.findPrevious(visit, PREVIOUS_VISIT_STATUSES, 1);
   const summary = last && await summaryRepository.findByVisitId(last.id);
-  if (!summary || (!summary.edited_text && NOT_AI_SUMMARIES.includes(summary.generated_by))) return null;
+  if (!isRealSummary(summary)) return null;
   return { date: last.visit_date, text: summary.display_text };
 }
 
@@ -74,7 +74,7 @@ async function lastVisitForPrompt(visit) {
 // doctor card (the attender app's many intake reads skip them).
 async function getById(clinicId, id, { forDoctor = false } = {}) {
   const visit = await findVisit(clinicId, id);
-  const [template, answers, summary, reports, testRequests, vitals, previousVisits] = await Promise.all([
+  const [template, answers, summary, reports, testRequests, vitals, previousVisits, trendHistory] = await Promise.all([
     templateRepository.findForVisit(visit),
     answerRepository.findByVisitId(visit.id),
     summaryRepository.findByVisitId(visit.id),
@@ -82,6 +82,7 @@ async function getById(clinicId, id, { forDoctor = false } = {}) {
     testRequestRepository.findByVisitId(visit.id),
     vitalsRepository.findByVisitId(visit.id),
     forDoctor ? visitRepository.findPrevious(visit, PREVIOUS_VISIT_STATUSES, PREVIOUS_VISITS_SHOWN) : [],
+    forDoctor ? visitRepository.findTrendHistory(visit, PREVIOUS_VISIT_STATUSES, TREND_VISITS) : [],
   ]);
   // CLINIC-024: the vitals row (or null) and its display, built once here for both apps.
   return {
@@ -92,6 +93,8 @@ async function getById(clinicId, id, { forDoctor = false } = {}) {
     // paragraph, e.g. a visit from before the card) and the main problem tapped in Q1.
     summary_card: forDoctor ? parseSummaryCard(summary?.display_text) : null,
     main_problem: forDoctor ? mainProblem(askedTemplate(visit, template)?.questions, answers) : null,
+    // CLINIC-030: the same measurements across this and earlier visits (null: nothing to compare).
+    trends: forDoctor ? buildTrends(trendSource(visit, vitals, summary), trendHistory.map((r) => trendSource(r, r, r))) : null,
   };
 }
 

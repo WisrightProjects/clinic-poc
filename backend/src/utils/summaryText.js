@@ -12,4 +12,11 @@ const SINCE_LAST_VISIT = /^\W*since last visit/i;
 // the doctor to check (CLINIC-029).
 const CARD_HEADINGS = { today: "Today's status", history: 'Relevant history', review: 'Doctor to review' };
 
-module.exports = { FROM_REPORTS, SINCE_LAST_VISIT, CARD_HEADINGS };
+// A summary row with real content: the doctor edited it, or the AI wrote it — not the demo
+// text ('mock') or the "AI summary not available" note ('mock-fallback'). `summary`: a
+// summaries row (generated_by, edited_text).
+const NOT_AI_SUMMARIES = ['mock', 'mock-fallback'];
+const isRealSummary = (summary) => Boolean(summary)
+  && (Boolean(summary.edited_text) || !NOT_AI_SUMMARIES.includes(summary.generated_by));
+
+module.exports = { FROM_REPORTS, SINCE_LAST_VISIT, CARD_HEADINGS, isRealSummary };

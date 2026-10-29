@@ -30,6 +30,15 @@ function item(line) {
   return at > 0 ? { label: text.slice(0, at).trim(), value: text.slice(at + 1).trim() } : { label: '', value: text };
 }
 
+// The "From reports:" paragraph (CLINIC-018) and the code's notes under it, word for word, one
+// entry per line without the heading — of a card or a paragraph summary; [] when there is none.
+// `at`: where the paragraph starts, when the caller has already found it.
+function reportLines(text, at = text ? text.search(FROM_REPORTS) : -1) {
+  if (at < 0) return [];
+  return text.slice(at).split('\n').map(clean).filter(Boolean)
+    .map((l, i) => (i === 0 ? l.replace(/^\W*from reports\s*:?\s*/i, '') : l)).filter(Boolean);
+}
+
 // The card's AI blocks from a summary's text, or null when it has none of the headings (a
 // visit from before CLINIC-028, the demo or "not available" text, or a doctor's edit without
 // them) — the doctor web then shows the paragraph as before. Nothing the AI wrote is dropped:
@@ -81,11 +90,7 @@ function parseSummaryCard(text) {
   if (!section) return null; // no heading at all
   // "Doctor to review: - None" — nothing to check (CLINIC-029; the prompt asks for English "None").
   if (card.review?.length === 1 && /^none\.?$/i.test(card.review[0])) card.review = [];
-  // "From reports:" (CLINIC-018) and the code's notes under it, word for word.
-  if (at >= 0) {
-    card.reports = text.slice(at).split('\n').map(clean).filter(Boolean)
-      .map((l, i) => (i === 0 ? l.replace(/^\W*from reports\s*:?\s*/i, '') : l)).filter(Boolean);
-  }
+  card.reports = reportLines(text, at);
   return card;
 }
 
@@ -102,4 +107,4 @@ function mainProblem(questions, answers) {
   return { choices: value.choices.map(labelOf), details: value.details || null };
 }
 
-module.exports = { parseSummaryCard, mainProblem };
+module.exports = { parseSummaryCard, reportLines, mainProblem };
