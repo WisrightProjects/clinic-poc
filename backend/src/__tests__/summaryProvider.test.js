@@ -49,7 +49,8 @@ describe('buildSummaryPrompt', () => {
   });
 
   test('CLINIC-019: keeps readings and doses exactly, vitals only when asked, never invented', () => {
-    const p = buildSummaryPrompt(visit, qa);
+    // A list before CLINIC-024 PR B, with the spoken vitals question.
+    const p = buildSummaryPrompt(visit, [...qa, { question: "Today's vitals (attender)", answer: 'BP 130/80' }]);
     expect(p).toContain('exactly as given; never round or drop them');
     expect(p).toContain('Only if one of the questions asks for today\'s vitals');
     expect(p).toContain('"Vitals: not recorded"');

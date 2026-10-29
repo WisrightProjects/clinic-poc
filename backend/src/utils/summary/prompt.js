@@ -3,7 +3,7 @@
 
 // What the summary says for an answer that can't be understood, so the doctor asks the patient.
 const UNCLEAR_NOTE = 'answer unclear — please check with the patient';
-const { vitalsText } = require('../vitals');
+const { vitalsText, codeShowsVitals } = require('../vitals');
 
 // CLINIC-018: rules for the report photos sent after this prompt (Gemini only).
 // Which photos get in is decided by the strict per-photo check in geminiClient; these rules
@@ -39,6 +39,8 @@ const notReadNote = count => `${count} report photo(s) could not be read — ple
 
 function buildSummaryPrompt(visit, qa, language = 'English', images) {
   const todaysVitals = vitalsText(visit?.vitals); // CLINIC-024, null when none recorded
+  // The code adds the Vitals line (or "not recorded") unless the list has the spoken question.
+  const codeVitals = codeShowsVitals(visit?.vitals, (qa || []).map((p) => ({ text: p.question })));
   // CLINIC-023: weight, height and a follow-up visit are part of who the patient is. The
   // mobile number never goes to the AI. (pg returns NUMERIC columns as strings.)
   const who = [
@@ -71,6 +73,8 @@ function buildSummaryPrompt(visit, qa, language = 'English', images) {
     // The values are given as context, so the summary can relate them to the history.
     todaysVitals
       ? `Today's vitals, measured by the attender: ${todaysVitals}. Use them only as context: do not write a "Vitals:" line — the system adds it under your summary.`
+      : codeVitals
+      ? `Today's vitals were not entered: do not write a "Vitals:" line — the system adds it under your summary.`
       : `Only if one of the questions asks for today's vitals: add one line "Vitals: ..." with the values as answered, or "Vitals: not recorded" if the answer says so; never invent a value.`,
     `If a question lists several symptoms and the answer only says yes or some without naming them, write that the patient said yes but which ones is not clear — do not list them all as present.`,
     // A misheard recording can come through as garbled text; guessing from it produced a

@@ -13,7 +13,7 @@ const { validateNewVisit } = require('../utils/visitValidation');
 const { validateSummaryEdit } = require('../utils/summaryValidation');
 const { parseQueueDate } = require('../utils/queueDate');
 const questionFlow = require('../utils/questionFlow');
-const { validateVitals, vitalsDisplay, vitalsText, withVitalsLine } = require('../utils/vitals');
+const { validateVitals, vitalsRow, vitalsText, withVitalsLine } = require('../utils/vitals');
 const { withTransaction } = require('../repositories/transaction');
 
 // The questions this visit is asked (CLINIC-021): its template with the questions of sections
@@ -63,7 +63,7 @@ async function getById(clinicId, id) {
   // CLINIC-024: the vitals row (or null) and its display, built once here for both apps.
   return {
     visit, template: askedTemplate(visit, template), answers, summary, reports, test_requests: testRequests,
-    vitals, vitals_display: vitalsDisplay(vitals), vitals_text: vitalsText(vitals),
+    vitals, vitals_display: vitalsRow(vitals, template?.questions), vitals_text: vitalsText(vitals),
   };
 }
 
@@ -99,7 +99,8 @@ async function submit(clinicId, visitId) {
 
   // Only the questions the visit is asked count (CLINIC-021): an answer left on an
   // un-ticked problem's question neither blocks nor completes the visit.
-  const asked = askedTemplate(visit, await templateRepository.findForVisit(visit));
+  const template = await templateRepository.findForVisit(visit);
+  const asked = askedTemplate(visit, template);
   const askedIds = new Set((asked?.questions || []).map(q => q.id));
   const answers = (await answerRepository.findByVisitId(visitId)).filter(a => askedIds.has(a.question_id));
 
@@ -141,7 +142,8 @@ async function submit(clinicId, visitId) {
       if (vitalsText(vitals) !== vitalsText(promptVitals)) {
         throw new AppError('ANSWERS_CHANGED', 'The vitals changed while sending — please send again', 409);
       }
-      summary = await summaryRepository.create(visitId, withVitalsLine(generated.summaryText, vitals), generated.generatedBy, client);
+      summary = await summaryRepository.create(visitId, withVitalsLine(generated.summaryText, vitals, template.questions),
+        generated.generatedBy, client);
     }
     await visitRepository.updateStatus(visitId, 'summarised', client);
     return summary; // return the summary row so the client can render it without a reload
@@ -159,10 +161,11 @@ async function refreshSummary(visit) {
   const current = await summaryRepository.findByVisitId(visit.id);
   if (!current || current.edited_text) return null;
   // Vitals can't change after submit (saveVitals refuses), so reading them here is safe.
-  const vitals = await vitalsRepository.findByVisitId(visit.id);
+  const [vitals, template] = await Promise.all([
+    vitalsRepository.findByVisitId(visit.id), templateRepository.findForVisit(visit)]);
   const remade = await summaryService.regenerate({ ...visit, vitals });
   if (!remade) return null;
-  return summaryRepository.createIfUnedited(visit.id, current.id, withVitalsLine(remade.summaryText, vitals),
+  return summaryRepository.createIfUnedited(visit.id, current.id, withVitalsLine(remade.summaryText, vitals, template?.questions),
     remade.generatedBy, status => status === 'summarised');
 }
 

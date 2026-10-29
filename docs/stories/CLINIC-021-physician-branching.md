@@ -33,7 +33,7 @@ Migrations run on boot, and attender phones keep the old APK until they update. 
 | Step | PR | Contents | Safe with the old APK? |
 |---|---|---|---|
 | A | Capability | Columns for options / sections / choices, choice-answer API, visibility rule, new APK with the tap screen. **No list changes.** | ✅ yes — nothing uses choices yet |
-| B | New list | The new Physician list (Q1 tap + 23 questions). The four separate lists **stay visible**, so the pilot keeps running while phones are updated | Old app shows "please update the app" on Physician Q1 — attenders keep using the four lists until updated |
+| B | New list | The new Physician list (Q1 tap + 23 questions; 22 since CLINIC-024 PR B). The four separate lists **stay visible**, so the pilot keeps running while phones are updated | Old app shows "please update the app" on Physician Q1 — attenders keep using the four lists until updated |
 | C | Hide | Hide the four separate lists (`departments.is_active = false`) | Only after **every phone has the new APK** |
 
 ---
@@ -48,9 +48,9 @@ Migrations run on boot, and attender phones keep the old APK until they update. 
 | 11–14 | F1–F4 | Q1 has **Fever** |
 | 15–18 | H1–H4 | Q1 has **High BP** |
 | 19–22 | FU1–FU4 | Q1 has **Follow-up visit** |
-| 23 | Today's vitals (attender) | always |
+| 23 | Today's vitals (attender) — **removed by CLINIC-024 PR B (017)**: vitals are entered as fields | always (lists before 017 only) |
 
-Q1 = Diabetes + Fever → 6 + 4 + 4 + 1 = 15 questions. Q1 = Headache only → 7.
+Q1 = Diabetes + Fever → 6 + 4 + 4 + 1 = 15 questions. Q1 = Headache only → 7. **Since 017 (no spoken vitals question): 14 and 6** — counts 6 / 10 / 14 / 18.
 
 ---
 
