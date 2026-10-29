@@ -34,4 +34,4 @@ function assertTransition(from, to) {
   }
 }
 
-module.exports = { TRANSITIONS, assertTransition, isSubmitted, canEditReports };
+module.exports = { TRANSITIONS, SUBMITTED, assertTransition, isSubmitted, canEditReports };

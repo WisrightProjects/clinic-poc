@@ -28,3 +28,27 @@ test('AC3: a visit without a mobile has no history (no query)', async () => {
   expect(await visitRepository.findPrevious({ ...visit, patient_mobile: null }, STATUSES, 5)).toEqual([]);
   expect(db.query).not.toHaveBeenCalled();
 });
+
+describe('PR B: patients on a mobile (lookup)', () => {
+  const patientService = require('../services/patientService');
+
+  test('AC4: one row per patient name on that number in this clinic, last seen first', async () => {
+    db.query.mockResolvedValueOnce({ rows: [{ name: 'Ravi Kumar', visit_count: 2 }] });
+    expect(await patientService.lookup(2, { mobile: '+91 98765 43210' }))
+      .toEqual({ patients: [{ name: 'Ravi Kumar', visit_count: 2 }] });
+    const [sql, params] = db.query.mock.calls[0];
+    // Normalised mobile, visits sent to the doctor only, at most 10.
+    expect(params).toEqual([2, '9876543210', ['summarised', 'tests_requested', 'done'], 10]);
+    expect(sql).toMatch(/WHERE clinic_id = \$1 AND patient_mobile = \$2 AND status = ANY\(\$3::visit_status\[\]\)/);
+    expect(sql).toMatch(/age \+ EXTRACT\(YEAR FROM age\(CURRENT_DATE, visit_date\)\)::int AS age/);
+    expect(sql).toMatch(/DISTINCT ON \(lower\(regexp_replace\(btrim\(patient_name\)/);
+    expect(sql).toMatch(/ORDER BY last_visit_date DESC, id DESC\s+LIMIT \$4/);
+  });
+
+  test.each([[undefined], ['12345'], ['5876543210'], [{ x: 1 }]])('a bad mobile (%p) is 400 under the field', async (mobile) => {
+    await expect(patientService.lookup(2, { mobile })).rejects.toMatchObject({
+      code: 'VALIDATION_ERROR', httpStatus: 400, fields: { mobile: expect.any(String) },
+    });
+    expect(db.query).not.toHaveBeenCalled();
+  });
+});

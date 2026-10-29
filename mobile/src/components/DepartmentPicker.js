@@ -42,7 +42,7 @@ const styles = StyleSheet.create({
     borderBottomColor: '#e0eaf0',
   },
   picker: {
-    height: 50,
+    minHeight: 50, // a minimum: a fixed height cut the text off with a large phone font
     color: '#1a3050',
   },
 });

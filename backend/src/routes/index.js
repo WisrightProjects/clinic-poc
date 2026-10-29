@@ -12,6 +12,7 @@ const visitController = require('../controllers/visitController');
 const answerController = require('../controllers/answerController');
 const reportController = require('../controllers/reportController');
 const testRequestController = require('../controllers/testRequestController');
+const patientController = require('../controllers/patientController');
 
 const wrap = fn => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
@@ -47,5 +48,7 @@ router.delete('/reports/:id', requireRole('attender'), wrap(reportController.rem
 router.post('/visits/:id/test-request', requireRole('doctor'), wrap(testRequestController.create));
 router.post('/test-requests/:id/acknowledge', requireRole('attender'), wrap(testRequestController.acknowledge));
 router.post('/visits/:id/requeue', requireRole('attender'), wrap(testRequestController.requeue));
+// A returning patient on New Patient (CLINIC-027); the mobile is in the body, never the URL.
+router.post('/patients/lookup', requireRole('attender'), wrap(patientController.lookup));
 
 module.exports = router;
