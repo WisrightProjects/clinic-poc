@@ -6,7 +6,7 @@
 **Priority:** P1 — client document Section 7 (Vital Signs): "Enter available measurements only… If not measured, display Not recorded."
 **Effort:** ~16 h
 **Who:** 🧑‍💻 **Junior** (senior reviews the PR)
-**Status:** PR A in development (`feature/clinic-024-vitals-fields`, migration `016_visit_vitals.sql`). PR B (remove the spoken vitals question) after the PR A APK is on the test phones.
+**Status:** PR A done (PR #47, migration `016_visit_vitals.sql`, APK v3 tested in production). PR B in development (`feature/clinic-024b-remove-spoken-vitals`, migration `017_remove_spoken_vitals_question.sql`, no new APK).
 **Depends On:** CLINIC-021 (the Physician list), CLINIC-023. **New APK needed.** Weight and height are entered at registration (CLINIC-023, `visits.weight_kg / height_cm`): the vitals row on the doctor web shows them from there — **do not add a second weight column**.
 
 ---
@@ -54,6 +54,7 @@ Every field is optional. A field left empty shows **"Not recorded"**. The time r
 > **Implemented:** the "Vitals:" line is added by the code (`utils/vitals.js`), not the AI — after the AI text, before "From reports:"; added at Send under the visit lock (so an edit during the AI call is included) and on the Back-in-queue remake. When a visit has vitals fields the prompt tells the AI not to write its own Vitals line (so a spoken vitals answer can't give a second one). Vitals saving re-checks "sent" under the visit lock (409 `VITALS_LOCKED`) and never changes the status.
 
 6. **(PR B) Remove the spoken vitals question** — a migration that deletes the "Today's vitals (attender)…" question from the **active** Physician list (only where no answer uses it; the Settings code shows how: `templateRepository.updateQuestions`). Ask the senior to review this step.
+   > **Implemented (017):** the question already has answers (`ON DELETE RESTRICT`), so it is not deleted: as in 013, each active Physician list that has it is made inactive and a copy without it (same Q1 choices and sections) becomes active. Old and waiting visits keep their list (`visits.template_id`). Physician counts become 6 / 10 / 14 / 18. Fails loudly if no Physician list has the question.
 
 **Do not:** change the CLINIC-021 branching, the status engine, or old visits' answers.
 

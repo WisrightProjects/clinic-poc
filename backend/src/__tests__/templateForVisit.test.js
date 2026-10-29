@@ -40,3 +40,13 @@ test('a visit with no list available stores nothing', async () => {
   expect(await templateRepository.findForVisit({ id: 9, clinic_id: 1, department_id: 4, template_id: null })).toBeNull();
   expect(db.query).toHaveBeenCalledTimes(1);
 });
+
+test('CLINIC-024: Settings can\'t save into a list that was replaced (inactive)', async () => {
+  const templateService = require('../services/templateService');
+  db.query
+    .mockResolvedValueOnce({ rows: [oldList] })
+    .mockResolvedValueOnce({ rows: questions(oldList.id) });
+  await expect(templateService.update(1, oldList.id, [{ id: 1000, text: 'Q1 edited' }]))
+    .rejects.toMatchObject({ code: 'TEMPLATE_REPLACED', httpStatus: 409 });
+  expect(db.query).toHaveBeenCalledTimes(2); // only the reads, no update
+});

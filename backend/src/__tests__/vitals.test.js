@@ -1,7 +1,9 @@
 // CLINIC-024: vitals as fields — the form checks, the display both apps show, and the
 // "Vitals:" line the code adds to the summary. Pure logic only.
 
-const { validateVitals, vitalsDisplay, vitalsText, withVitalsLine } = require('../utils/vitals');
+const { validateVitals, vitalsDisplay, vitalsText, vitalsRow, withVitalsLine, asksSpokenVitals } = require('../utils/vitals');
+
+const SPOKEN_LIST = [{ text: 'Since when?' }, { text: "Today's vitals (attender): BP (mmHg), pulse" }];
 const { buildSummaryPrompt } = require('../utils/summary/prompt');
 
 const fieldsOf = body => {
@@ -92,9 +94,27 @@ describe('AC3/AC4: display and the summary line, added by code', () => {
       .toBe(['Fever.', 'Vitals: Pulse 90/min.', '', heading, 'CRP 40 (High)'].join(NL));
   });
 
-  test('no reports: added at the end; no vitals: text unchanged', () => {
+  test('no reports: added at the end; no vitals on a list with the spoken question: text unchanged', () => {
     expect(withVitalsLine('Headache.\n', { spo2: 97 })).toBe('Headache.\nVitals: SpO2 97%.');
-    expect(withVitalsLine('Headache.', null)).toBe('Headache.');
+    expect(withVitalsLine('Headache.', null, SPOKEN_LIST)).toBe('Headache.');
+  });
+
+  test('PR B: nothing recorded on a list without the spoken question says so', () => {
+    expect(withVitalsLine('Headache.', null, [{ text: 'Since when?' }])).toBe(['Headache.', 'Vitals: not recorded.'].join('\n'));
+    expect(withVitalsLine('Headache.', { pulse: 70 }, SPOKEN_LIST)).toBe(['Headache.', 'Vitals: Pulse 70/min.'].join('\n'));
+  });
+
+  test('PR B: doctor-web row: five "Not recorded" on a new list, none on an old list with nothing entered', () => {
+    expect(vitalsRow(null, [{ text: 'Since when?' }])).toHaveLength(5);
+    expect(vitalsRow(null, SPOKEN_LIST)).toEqual([]);
+    expect(vitalsRow({ pulse: 70 }, SPOKEN_LIST)).toHaveLength(5);
+  });
+
+  test('PR B: a list asks spoken vitals only while it has the old question', () => {
+    expect(asksSpokenVitals(SPOKEN_LIST)).toBe(true);
+    expect(asksSpokenVitals([{ text: 'today’s VITALS (attender) — BP' }])).toBe(true); // reworded
+    expect(asksSpokenVitals([{ text: 'Since when?' }])).toBe(false);
+    expect(asksSpokenVitals(undefined)).toBe(false);
   });
 
   test('the prompt gives the vitals as context and tells the AI not to write its own Vitals line', () => {
@@ -104,5 +124,9 @@ describe('AC3/AC4: display and the summary line, added by code', () => {
     expect(p).toContain('do not write a "Vitals:" line');
     expect(p).not.toContain('Only if one of the questions asks for today');
     expect(buildSummaryPrompt({ sex: 'M', age: 50 }, qa)).toContain('Only if one of the questions asks for today');
+    // PR B: no spoken question and nothing entered: the code writes "not recorded", the AI writes none.
+    const noSpoken = buildSummaryPrompt({ sex: 'M', age: 50 }, [{ question: 'Recent BP readings?', answer: '150/90 at home' }]);
+    expect(noSpoken).toContain('do not write a "Vitals:" line');
+    expect(noSpoken).not.toContain('Only if one of the questions asks for today');
   });
 });

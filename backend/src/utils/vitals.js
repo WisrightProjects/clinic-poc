@@ -75,16 +75,32 @@ function vitalsText(v) {
   return parts.length ? parts.join(', ') : null;
 }
 
-// The summary with "Vitals: …." added by code: after the AI's own text, before the "From
-// reports" paragraph (CLINIC-018) if any — found the way geminiClient finds it (any case,
-// even with markdown such as "**From Reports:**").
-function withVitalsLine(summaryText, vitals) {
-  const text = vitalsText(vitals);
-  if (!text) return summaryText;
-  const line = `Vitals: ${text}.`;
+// The spoken "Today's vitals (attender)…" question of the lists before migration 017, found
+// by its wording as 017 does — any case, even reworded around "vitals (attender)" (safe: a
+// replaced list can't be edited in Settings any more — templateService). `questions`: the
+// visit's whole list ({ text }).
+const SPOKEN_VITALS = /vitals \(attender\)/i;
+const asksSpokenVitals = questions => (questions || []).some(q => SPOKEN_VITALS.test(q.text));
+
+// The one rule for the doctor-web row, the summary line and the prompt: the code shows the
+// vitals (or "not recorded") — except for a visit with nothing entered whose list has the
+// spoken vitals question: its vitals are in that answer.
+const codeShowsVitals = (vitals, questions) => Boolean(vitalsText(vitals)) || !asksSpokenVitals(questions);
+
+// The doctor web's vitals row: every vital, "Not recorded" for missing ones — or none.
+function vitalsRow(vitals, questions) {
+  return codeShowsVitals(vitals, questions) ? vitalsDisplay(vitals) : [];
+}
+
+// The summary with "Vitals: …." (or "Vitals: not recorded.") added by code: after the AI's
+// own text, before the "From reports" paragraph (CLINIC-018) if any — found the way
+// geminiClient finds it (any case, even with markdown such as "**From Reports:**").
+function withVitalsLine(summaryText, vitals, questions) {
+  if (!codeShowsVitals(vitals, questions)) return summaryText;
+  const line = `Vitals: ${vitalsText(vitals) || 'not recorded'}.`;
   const at = summaryText.search(/\n+\W*from reports/i);
   if (at < 0) return `${summaryText.trimEnd()}\n${line}`;
   return `${summaryText.slice(0, at).trimEnd()}\n${line}${summaryText.slice(at)}`;
 }
 
-module.exports = { validateVitals, vitalsDisplay, vitalsText, withVitalsLine };
+module.exports = { validateVitals, vitalsDisplay, vitalsText, vitalsRow, withVitalsLine, asksSpokenVitals, codeShowsVitals };
