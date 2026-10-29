@@ -19,6 +19,16 @@ describe('hba1cOf', () => {
     ['HbA1c (ref < 5.7 %) 8.2 % (High)', 8.2],
     ['HbA1c 8.2 % (High; ref 4.00-5.70 %)', 8.2],
     ['HbA1c 6.5-10.0 8.1 %', 8.1],
+    ['- HbA1c: 7.6 H %, 29 Oct 2026 (High)', 7.6],
+    ['HbA1c 7.6 (H) %', 7.6],
+    ['HbA1c 5.2 L %', 5.2],
+    ['HbA1c 7.6 High %', 7.6],
+    ['HbA1c 7.6 (Low) %', 7.6],
+    ['HbA1c 7.6H%', 7.6],
+    ['HbA1c 7.6 HH %', 7.6],
+    ['HbA1c 7.6 H* %', 7.6],
+    ['HbA1c 7.6 [H] %', 7.6],
+    ['HbA1c 7.6 ↑ %', 7.6],
   ])('reads "%s"', (line, value) => {
     expect(hba1cOf(s(card(line))).value).toBe(value);
   });
@@ -43,7 +53,7 @@ describe('hba1cOf', () => {
   });
 
   it("never takes another test's % on the same line", () => {
-    expect(hba1cOf(s(card('HbA1c not done; Neutrophils 78 % (High)')))).toEqual({ notListed: true });
+    expect(hba1cOf(s(card('HbA1c not done; Neutrophils 78 % (High)')))).toEqual({ unread: true });
   });
 
   it('says "unread" when photos or values were not read', () => {
@@ -51,8 +61,10 @@ describe('hba1cOf', () => {
     expect(hba1cOf(s(card('From reports: no results listed — please check the photos.')))).toEqual({ unread: true });
   });
 
-  it('leaves out a value not in %', () => {
-    expect(hba1cOf(s(card('HbA1c 66 mmol/mol (High)')))).toEqual({ notListed: true });
+  it('says "check photos" for an HbA1c line it cannot read — never "not listed"', () => {
+    for (const line of ['HbA1c 66 mmol/mol (High)', 'HbA1c 66 H mmol/mol', 'HbA1c >14 % (High)', 'HbA1c 7.6 (H %', 'HbA1c 64 mmol/mol (8.0 %) (High)']) {
+      expect(hba1cOf(s(card(line)))).toEqual({ unread: true });
+    }
   });
 
   it('is null without report lines (no report that visit)', () => {
