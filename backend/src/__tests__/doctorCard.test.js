@@ -31,6 +31,7 @@ describe('parseSummaryCard', () => {
         { label: 'Medicines', value: 'Dolo 650 once daily' },
       ],
       history: [{ label: 'Allergy', value: 'No known medicine allergy' }],
+      review: null, // no "Doctor to review" block in this summary
       vitals: 'Vitals: Pulse 88/min.',
       other: [],
       reports: [
@@ -153,4 +154,64 @@ describe('parseSummaryCard: the edges found in review', () => {
 test('mainProblem skips a tap question the visit is not asked (caller passes the asked list)', () => {
   const asked = [{ id: 2, order_index: 2, answer_type: 'voice' }];
   expect(mainProblem(asked, [{ question_id: 1, value: { choices: ['fever'] } }])).toBeNull();
+});
+
+describe('CLINIC-029: AI suggestions (Doctor to review)', () => {
+  test('numbered or bulleted points become the review block', () => {
+    const card = parseSummaryCard(lines("Today's status:", '- Complaint: Fever', 'Relevant history:', '- Allergy: None',
+      'Doctor to review:', '1. Clarify dizziness.', '2) Review fasting sugar 160 against last visit', '', 'From reports:', 'HbA1c 8.2 % (High)'));
+    expect(card.review).toEqual(['Clarify dizziness.', 'Review fasting sugar 160 against last visit']);
+    expect(card.reports).toEqual(['HbA1c 8.2 % (High)']);
+  });
+
+  test('"- None" means nothing flagged', () => {
+    expect(parseSummaryCard(lines("Today's status:", '- Complaint: Fever', 'Doctor to review:', '- None')).review).toEqual([]);
+  });
+
+  test('the prompt asks for at most 3 points and forbids diagnosis, treatment and tests to order', () => {
+    const p = buildSummaryPrompt({ sex: 'M', age: 45 }, [{ question: 'Since when?', answer: '2 days' }]);
+    expect(p).toContain('Doctor to review:');
+    expect(p).toContain('at most 3 short points');
+    expect(p).toContain('Never suggest a diagnosis, a cause, a treatment, a medicine, a dose or a test to order');
+  });
+
+  test("a previous visit's points are not given to the next comparison (questions, not facts)", () => {
+    const previous = { date: '2026-10-29', text: lines("Today's status:", '- Complaint: Fever 3 days', 'Doctor to review:', '- Clarify night sweats') };
+    const p = buildSummaryPrompt({ sex: 'M', age: 45, previous }, [{ question: 'Since when?', answer: '5 days' }]);
+    expect(p).toContain('Fever 3 days');
+    expect(p).not.toContain('Clarify night sweats');
+  });
+});
+
+describe('CLINIC-029: review edges found in code review', () => {
+  test('"Doctor to review: None" on one line: nothing flagged (strings, never objects)', () => {
+    expect(parseSummaryCard(lines("Today's status:", '- Complaint: Fever', 'Doctor to review: None')).review).toEqual([]);
+    expect(parseSummaryCard(lines("Today's status:", '- Complaint: Fever', 'Doctor to review: Clarify dizziness')).review)
+      .toEqual(['Clarify dizziness']);
+  });
+
+  test('points without bullets stay in the review block (not "other")', () => {
+    const card = parseSummaryCard(lines("Today's status:", '- Complaint: Fever', 'Doctor to review:', 'Clarify dizziness', 'Confirm medicine names'));
+    expect(card.review).toEqual(['Clarify dizziness', 'Confirm medicine names']);
+    expect(card.other).toEqual([]);
+  });
+
+  test('a bulleted point that wraps onto the next line is one point', () => {
+    const card = parseSummaryCard(lines("Today's status:", '- Complaint: Fever', 'Doctor to review:', '- Clarify whether the patient takes', 'metformin daily'));
+    expect(card.review).toEqual(['Clarify whether the patient takes metformin daily']);
+  });
+
+  test('no review block at all: null (the card hides it), not "nothing flagged"', () => {
+    expect(parseSummaryCard(lines("Today's status:", '- Complaint: Fever')).review).toBeNull();
+  });
+
+  test('a decimal at the start of a wrapped line is not a numbered bullet', () => {
+    const card = parseSummaryCard(lines("Today's status:", '- Medicines: Metformin', '1.5 mg glimepiride at night'));
+    expect(card.today).toEqual([{ label: 'Medicines', value: 'Metformin 1.5 mg glimepiride at night' }]);
+  });
+
+  test('unbulleted previous points never reach the next comparison', () => {
+    const previous = { date: '2026-10-29', text: lines("Today's status:", '- Complaint: Fever', 'Doctor to review:', 'Clarify night sweats') };
+    expect(buildSummaryPrompt({ sex: 'M', previous }, [{ question: 'Since when?', answer: '5 days' }])).not.toContain('Clarify night sweats');
+  });
 });

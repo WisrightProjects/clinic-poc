@@ -110,6 +110,19 @@ export default function DoctorCard({
           </div>
         </Block>
 
+        {/* CLINIC-029: points for the doctor to check — never a diagnosis or treatment. Hidden
+            for a summary without the block (made before it, or edited out): "Nothing flagged"
+            would claim a check that was never made. */}
+        {card.review ? (
+          <Block title="AI suggestions — for doctor to confirm" source="ai" wide>
+            {card.review.length ? (
+              <ol className="dc-list">
+                {card.review.map((l, i) => <li key={i}>{l}</li>)}
+              </ol>
+            ) : <p className="dc-empty">Nothing flagged.</p>}
+          </Block>
+        ) : null}
+
         {card.reports.length ? (
           <Block title="From reports" source="ai" wide>
             <ul className="dc-list">{card.reports.map((l, i) => <li key={i}>{l}</li>)}</ul>

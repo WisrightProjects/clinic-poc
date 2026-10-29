@@ -5,6 +5,7 @@
 const UNCLEAR_NOTE = 'answer unclear — please check with the patient';
 const { vitalsText, codeShowsVitals, VITALS_LINE } = require('../vitals');
 const { FROM_REPORTS, SINCE_LAST_VISIT, CARD_HEADINGS } = require('../summaryText');
+const { parseSummaryCard } = require('../doctorCard');
 
 // CLINIC-018: rules for the report photos sent after this prompt (Gemini only).
 // Which photos get in is decided by the strict per-photo check in geminiClient; these rules
@@ -38,12 +39,22 @@ const NOT_LISTED_NOTE = 'From reports: no results listed — please check the ph
 // When some report photos were not read: too large in total, missing on disk, or failed the check.
 const notReadNote = count => `${count} report photo(s) could not be read — please check the original.`;
 
-// CLINIC-027: the previous visit's summary as given to the AI — only its own clinical text: cut
-// at its "From reports" paragraph (that visit's lab results and the code's notes after them —
-// not today's, must not be copied as today's) and without its "Vitals:" and "Since last visit"
-// lines (the code's line and the last comparison).
-const previousText = (text) => text.split(FROM_REPORTS)[0].split('\n')
-  .filter((l) => !VITALS_LINE.test(l) && !SINCE_LAST_VISIT.test(l)).join('\n').trim();
+// CLINIC-027: the previous visit's summary as given to the AI — only its clinical facts. A card
+// summary (CLINIC-028) keeps just its known sections (today's status, history, other lines):
+// never its report results, Vitals line, last comparison or "Doctor to review" points (that
+// visit's questions, not facts — CLINIC-029). A paragraph summary: the text before "From
+// reports", without its Vitals and Since-last-visit lines.
+function previousText(text) {
+  const card = parseSummaryCard(text);
+  if (!card) {
+    return text.split(FROM_REPORTS)[0].split('\n')
+      .filter((l) => !VITALS_LINE.test(l) && !SINCE_LAST_VISIT.test(l)).join('\n').trim();
+  }
+  const block = (heading, items) => (items.length
+    ? [`${heading}:`, ...items.map((it) => `- ${it.label ? `${it.label}: ` : ''}${it.value}`)] : []);
+  return [...block(CARD_HEADINGS.today, card.today), ...block(CARD_HEADINGS.history, card.history), ...card.other]
+    .join('\n').trim();
+}
 // "2026-10-22" as "22 Oct" (a clinic day, read as UTC so it never shifts).
 const shortDay = (day) => new Date(`${day}T00:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
 
@@ -83,9 +94,12 @@ function buildSummaryPrompt(visit, qa, language = 'English', images) {
     // CLINIC-028: the doctor card (client Section 10) — short labelled lines under two fixed
     // headings, read back by utils/doctorCard.js. The headings stay English for the parser.
     `You are a clinical scribe. Summarise the patient intake below in ${language} for a doctor as short labelled lines, in this plain-text format (no markdown); any other line or paragraph asked for below keeps its own place:`,
-    `${CARD_HEADINGS.today}:\n- <label>: <value>\n${CARD_HEADINGS.history}:\n- <label>: <value>`,
+    `${CARD_HEADINGS.today}:\n- <label>: <value>\n${CARD_HEADINGS.history}:\n- <label>: <value>\n${CARD_HEADINGS.review}:\n- <point>`,
     `Under "${CARD_HEADINGS.today}": one line each for the main complaint with how long, other symptoms, medicines being taken now, and tests already done, plus a line for any other important finding in today's answers. Under "${CARD_HEADINGS.history}": existing illnesses (with how long), medicine allergy, and any other past history the answers give. Leave out a line the answers do not cover.`,
-    `Keep each value short (a few words, not full sentences). Write the headings "${CARD_HEADINGS.today}:" and "${CARD_HEADINGS.history}:" in English exactly as shown; write the labels and values in ${language}.`,
+    // CLINIC-029: AI suggestions for the doctor to confirm (client Section 10) — things to check,
+    // never the doctor's decisions.
+    `Under "${CARD_HEADINGS.review}": at most 3 short points for the doctor to check before the consultation — an answer that is unclear or contradicts another, a reading, report value or change since the last visit worth reviewing, or a missing detail worth asking about. Each point must come from the information given. Never suggest a diagnosis, a cause, a treatment, a medicine, a dose or a test to order. If nothing needs checking, write "- None" (in English).`,
+    `Keep each value short (a few words, not full sentences). Write the headings ${Object.values(CARD_HEADINGS).map((h) => `"${h}:"`).join(', ')} in English exactly as shown; write the labels and values in ${language}.`,
     `Use ONLY the information given; do not invent findings. If an answer is empty, ignore it.`,
     // CLINIC-023: the Patient line (sex, age, weight, height, follow-up) is shown to the doctor
     // from the data — it is context here, not something to repeat.
