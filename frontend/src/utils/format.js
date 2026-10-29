@@ -5,3 +5,10 @@ export function formatDateTime(iso) {
   if (Number.isNaN(d.getTime())) return ''
   return d.toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 }
+
+// A clinic day ("2026-10-22", as the API sends it) in en-GB with `options`. Built from its
+// parts, in local time, so the day never shifts with the time zone.
+export function formatDay(key, options) {
+  const [y, m, d] = key.split('-').map(Number)
+  return new Date(y, m - 1, d).toLocaleDateString('en-GB', options)
+}

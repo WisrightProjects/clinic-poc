@@ -23,6 +23,7 @@ import QaList from '../components/QaList'
 import ReportsList from '../components/ReportsList'
 import VitalsStrip from '../components/VitalsStrip'
 import TestRequestPanel from '../components/TestRequestPanel'
+import PreviousVisits from '../components/PreviousVisits'
 import { isInQueueOn, todayKey } from '../utils/queue'
 
 export default function DoctorDashboardPage() {
@@ -94,7 +95,10 @@ export default function DoctorDashboardPage() {
   const remaining = dayVisits.filter((v) => isActionable(v.status)).length
   const answeredCount = detail.qa.filter((q) => q.transcript && q.transcript.trim()).length
 
-  const canMarkDone = selected && selected.status === 'summarised'
+  // The open visit: from the queue, or from the detail for one not in the shown day's queue
+  // (e.g. opened from Previous visits, CLINIC-027).
+  const current = selected ?? detail.visit
+  const canMarkDone = current?.status === 'summarised'
 
   // After "Send for tests" the visit's status moved: reload its detail (quietly, so the
   // whole pane doesn't flash back to "Loading patient…") and the queue.
@@ -109,10 +113,11 @@ export default function DoctorDashboardPage() {
     refetch()
   }
 
-  // A Done error belongs to the patient it happened on.
-  function selectPatient(id) {
+  // A Done error belongs to the patient it happened on. `replace`: opening a previous visit
+  // (CLINIC-027) takes the open patient's place, so Back to queue still goes to the queue.
+  function selectPatient(id, { replace = false } = {}) {
     setDoneError(null)
-    navigate(`/doctor/${id}`)
+    navigate(`/doctor/${id}`, { replace })
   }
 
   // Changing the day closes the open patient (back to /doctor): they belong to the day that
@@ -131,14 +136,14 @@ export default function DoctorDashboardPage() {
   }, [selectedId])
 
   async function handleDone() {
-    if (!selected || markingId) return
-    const id = selected.id
+    if (!canMarkDone || markingId) return
+    const id = current.id
     setMarkingId(id)
     setDoneError(null)
     setOverrides((p) => ({ ...p, [id]: 'done' })) // optimistic
     try {
       await setVisitDone(id)
-      await refetch()
+      await Promise.all([refetch(), selected ? null : detail.refetch({ silent: true })])
       // Advance to the next actionable patient in token order (on a phone, back to the queue)
       // — only if the doctor is still on this patient (never override a selection made
       // while Done was saving).
@@ -206,7 +211,7 @@ export default function DoctorDashboardPage() {
             // returns data for the selected visit, so nothing stale renders under it.
             <Fragment key={selectedId}>
               {/* The queue row has no mobile (CLINIC-023): it comes from the detail. */}
-              <PatientHeader visit={selected ?? detail.visit} mobile={detail.visit?.patient_mobile} />
+              <PatientHeader visit={current} mobile={detail.visit?.patient_mobile} />
               <VitalsStrip display={detail.vitalsDisplay} />
               <StatsStrip
                 seenToday={seenToday}
@@ -219,11 +224,12 @@ export default function DoctorDashboardPage() {
                   that follow from it. */}
               <AiSummaryCard
                 summary={detail.summary}
-                status={(selected ?? detail.visit).status}
+                status={current.status}
                 onSave={handleSummarySave}
               />
+              <PreviousVisits visits={detail.previousVisits} onOpen={(id) => selectPatient(id, { replace: true })} />
               <TestRequestPanel
-                visit={selected ?? detail.visit}
+                visit={current}
                 requests={detail.testRequests}
                 onChanged={handleTestsChanged}
               />
@@ -238,7 +244,7 @@ export default function DoctorDashboardPage() {
                   disabled={!canMarkDone || markingId !== null}
                   title={canMarkDone ? '' : 'Only a summarised patient can be marked done'}
                 >
-                  {markingId === selectedId ? 'Marking…' : (selected ?? detail.visit).status === 'done' ? 'Done ✓' : 'Mark Done'}
+                  {markingId === selectedId ? 'Marking…' : current.status === 'done' ? 'Done ✓' : 'Mark Done'}
                 </button>
               </div>
             </Fragment>

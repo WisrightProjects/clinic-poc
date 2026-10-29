@@ -9,6 +9,7 @@
 import { useState } from 'react'
 import StatusChip from './StatusChip'
 import { TESTS_GROUP, dayKey, todayKey, groupKey, isInQueueOn, oldTokenDay } from '../utils/queue'
+import { formatDay } from '../utils/format'
 
 function yesterdayKey() {
   const d = new Date()
@@ -38,21 +39,13 @@ function groupByDate(visits) {
 
 function formatDate(key) {
   if (key === 'unknown') return 'No date'
-  const [y, m, d] = key.split('-').map(Number)
-  const dt = new Date(y, m - 1, d) // local construction — no tz shift
-  return dt.toLocaleDateString('en-GB', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  })
+  return formatDay(key, { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' })
 }
 
 // Compact "25 Aug" — appended to Today/Yesterday so the actual calendar date is
 // still visible (otherwise the relative label hides which day it resolves to).
 function shortDate(key) {
-  const [y, m, d] = key.split('-').map(Number)
-  return new Date(y, m - 1, d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+  return formatDay(key, { day: 'numeric', month: 'short' })
 }
 
 // Intake progress for the answered/total badge. `idle` = nothing recorded,

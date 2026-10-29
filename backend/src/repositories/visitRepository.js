@@ -76,6 +76,28 @@ async function list(clinicId, { date, statuses }) {
   return rows.map(({ patient_mobile, ...row }) => row); // eslint-disable-line no-unused-vars
 }
 
+// CLINIC-027: a name as compared between visits — lower case, trimmed, spaces made one.
+const SAME_NAME = (sql) => `lower(regexp_replace(btrim(${sql}), '[[:space:]]+', ' ', 'g'))`;
+
+// A returning patient's earlier visits (CLINIC-027): same clinic, same mobile and same name —
+// one family often shares a phone — registered before this visit, only those in `statuses`,
+// newest visit day first (visit_date: the day they came, not a later queue return). Uses the
+// (clinic_id, patient_mobile) index.
+async function findPrevious(visit, statuses, limit) {
+  if (!visit.patient_mobile) return [];
+  const { rows } = await db.query(
+    `SELECT v.id, v.visit_date, v.status, d.name AS department_name, ${SUMMARY_COLUMN}
+       FROM visits v JOIN departments d ON d.id = v.department_id
+      WHERE v.clinic_id = $1 AND v.patient_mobile = $2 AND v.id < $3
+        AND ${SAME_NAME('v.patient_name')} = ${SAME_NAME('$4::text')}
+        AND v.status = ANY($5::visit_status[])
+      ORDER BY v.visit_date DESC, v.id DESC
+      LIMIT $6`,
+    [visit.clinic_id, visit.patient_mobile, visit.id, visit.patient_name, statuses, limit]
+  );
+  return rows;
+}
+
 async function updateStatus(id, status, client = db) {
   const { rows } = await client.query(
     `UPDATE visits SET status = $1, updated_at = now() WHERE id = $2 RETURNING *`,
@@ -146,4 +168,4 @@ async function setSections(id, sections, client = db) {
   await client.query('UPDATE visits SET sections = $1, updated_at = now() WHERE id = $2', [sections, id]);
 }
 
-module.exports = { createWithToken, withTokenLock, requeue, findById, findForUpdate, list, updateStatus, setSections };
+module.exports = { createWithToken, withTokenLock, requeue, findById, findForUpdate, findPrevious, list, updateStatus, setSections };

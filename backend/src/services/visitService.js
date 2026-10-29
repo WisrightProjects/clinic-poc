@@ -50,20 +50,29 @@ async function list(clinicId, statusQuery, dateQuery) {
   return visitRepository.list(clinicId, { date: parseQueueDate(dateQuery), statuses: statusFilter });
 }
 
-async function getById(clinicId, id) {
+// CLINIC-027: a returning patient's earlier visits in the detail — finished ones only (a
+// patient still away for tests is the current problem, not history), at most this many.
+const PREVIOUS_VISIT_STATUSES = ['summarised', 'done'];
+const PREVIOUS_VISITS_SHOWN = 5;
+
+// `withHistory`: also the patient's previous visits (the doctor web; the attender app doesn't
+// show them, so its many intake reads skip the query).
+async function getById(clinicId, id, { withHistory = false } = {}) {
   const visit = await findVisit(clinicId, id);
-  const [template, answers, summary, reports, testRequests, vitals] = await Promise.all([
+  const [template, answers, summary, reports, testRequests, vitals, previousVisits] = await Promise.all([
     templateRepository.findForVisit(visit),
     answerRepository.findByVisitId(visit.id),
     summaryRepository.findByVisitId(visit.id),
     reportRepository.findByVisitId(visit.id),
     testRequestRepository.findByVisitId(visit.id),
     vitalsRepository.findByVisitId(visit.id),
+    withHistory ? visitRepository.findPrevious(visit, PREVIOUS_VISIT_STATUSES, PREVIOUS_VISITS_SHOWN) : [],
   ]);
   // CLINIC-024: the vitals row (or null) and its display, built once here for both apps.
   return {
     visit, template: askedTemplate(visit, template), answers, summary, reports, test_requests: testRequests,
     vitals, vitals_display: vitalsRow(vitals, template?.questions), vitals_text: vitalsText(vitals),
+    previous_visits: previousVisits, // CLINIC-027: the same patient's earlier visits ([] for the attender)
   };
 }
 

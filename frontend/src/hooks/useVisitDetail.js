@@ -2,10 +2,11 @@
 // visitId changes — never on a queue poll — so the open panel is not reset or
 // re-fetched by background refreshes (AC3).
 //
-// The API returns { visit, template, answers, summary, reports, test_requests } where questions live in
-// template.questions and transcripts in answers. We merge them by question_id
-// and sort by order_index (same shape the mobile app derives). Output:
-// { visit, qa, summary, reports, testRequests, isLoading, error, refetch, saveSummary }.
+// The API returns { visit, template, answers, summary, reports, test_requests, vitals_display,
+// previous_visits, … } where questions live in template.questions and transcripts in answers. We
+// merge them by question_id and sort by order_index (same shape the mobile app derives). Output:
+// { visit, qa, summary, reports, testRequests, vitalsDisplay, previousVisits, isLoading, error,
+//   refetch, saveSummary }.
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { getVisit, saveSummary as putSummary } from '../utils/apiClient'
@@ -80,6 +81,7 @@ export function useVisitDetail(visitId) {
     reports: current?.reports ?? [],
     testRequests: current?.test_requests ?? [], // CLINIC-014 history, newest first
     vitalsDisplay: current?.vitals_display ?? [], // CLINIC-024 today's vitals [{ label, value }]
+    previousVisits: current?.previous_visits ?? [], // CLINIC-027 the patient's earlier visits
     isLoading: loading,
     error,
     refetch: load,
