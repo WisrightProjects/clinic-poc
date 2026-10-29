@@ -241,6 +241,7 @@ export default function DoctorDashboardPage() {
                     summary={detail.summary}
                     reports={detail.reports}
                     previousVisits={detail.previousVisits}
+                    trends={detail.trends}
                     onSummarySave={handleSummarySave}
                     onOpenVisit={openVisit}
                     actions={

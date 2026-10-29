@@ -107,4 +107,4 @@ function withVitalsLine(summaryText, vitals, questions) {
   return `${summaryText.slice(0, at).trimEnd()}\n${line}${summaryText.slice(at)}`;
 }
 
-module.exports = { validateVitals, vitalsDisplay, vitalsText, vitalsRow, withVitalsLine, asksSpokenVitals, codeShowsVitals, VITALS_LINE };
+module.exports = { SUGAR_TYPES, validateVitals, vitalsDisplay, vitalsText, vitalsRow, withVitalsLine, asksSpokenVitals, codeShowsVitals, VITALS_LINE };

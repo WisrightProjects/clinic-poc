@@ -92,17 +92,43 @@ const SAME_NAME = (sql) => `lower(regexp_replace(btrim(${sql}), '[[:space:]]+', 
 // one family often shares a phone — registered before this visit, only those in `statuses`,
 // newest visit day first (visit_date: the day they came, not a later queue return). Uses the
 // (clinic_id, patient_mobile) index.
+const EARLIER_SAME_PATIENT = `v.clinic_id = $1 AND v.patient_mobile = $2 AND v.id < $3
+        AND ${SAME_NAME('v.patient_name')} = ${SAME_NAME('$4::text')}
+        AND v.status = ANY($5::visit_status[])`;
+const earlierParams = (visit, statuses, limit) =>
+  [visit.clinic_id, visit.patient_mobile, visit.id, visit.patient_name, statuses, limit];
+
 async function findPrevious(visit, statuses, limit) {
   if (!visit.patient_mobile) return [];
   const { rows } = await db.query(
     `SELECT v.id, v.visit_date, v.status, d.name AS department_name, ${SUMMARY_COLUMN}
        FROM visits v JOIN departments d ON d.id = v.department_id
-      WHERE v.clinic_id = $1 AND v.patient_mobile = $2 AND v.id < $3
-        AND ${SAME_NAME('v.patient_name')} = ${SAME_NAME('$4::text')}
-        AND v.status = ANY($5::visit_status[])
+      WHERE ${EARLIER_SAME_PATIENT}
       ORDER BY v.visit_date DESC, v.id DESC
       LIMIT $6`,
-    [visit.clinic_id, visit.patient_mobile, visit.id, visit.patient_name, statuses, limit]
+    earlierParams(visit, statuses, limit)
+  );
+  return rows;
+}
+
+// CLINIC-030: the same earlier visits with what the trends block reads — the weight, the vitals
+// row (null columns when none) and the latest summary's text (the doctor's edit when there is
+// one), with what made it, so the demo / "not available" text can be skipped. Newest first.
+async function findTrendHistory(visit, statuses, limit) {
+  if (!visit.patient_mobile) return [];
+  const { rows } = await db.query(
+    `SELECT v.id, v.visit_date, v.weight_kg,
+            vv.bp_systolic, vv.bp_diastolic, vv.pulse, vv.temperature, vv.temperature_unit,
+            vv.spo2, vv.sugar, vv.sugar_type,
+            s.display_text, s.generated_by, s.edited_text
+       FROM visits v
+       LEFT JOIN visit_vitals vv ON vv.visit_id = v.id
+       LEFT JOIN LATERAL (SELECT s.display_text, s.generated_by, s.edited_text FROM summaries s
+                           WHERE s.visit_id = v.id ORDER BY ${LATEST_FIRST} LIMIT 1) s ON true
+      WHERE ${EARLIER_SAME_PATIENT}
+      ORDER BY v.visit_date DESC, v.id DESC
+      LIMIT $6`,
+    earlierParams(visit, statuses, limit)
   );
   return rows;
 }
@@ -198,4 +224,4 @@ async function setSections(id, sections, client = db) {
   await client.query('UPDATE visits SET sections = $1, updated_at = now() WHERE id = $2', [sections, id]);
 }
 
-module.exports = { createWithToken, withTokenLock, requeue, findById, findForUpdate, findPrevious, findPatientsByMobile, list, updateStatus, setSections };
+module.exports = { createWithToken, withTokenLock, requeue, findById, findForUpdate, findPrevious, findTrendHistory, findPatientsByMobile, list, updateStatus, setSections };

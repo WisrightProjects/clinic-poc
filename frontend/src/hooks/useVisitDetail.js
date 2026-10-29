@@ -86,6 +86,7 @@ export function useVisitDetail(visitId) {
     vitals: current?.vitals ?? null, // CLINIC-024 the vitals row (recorded_at for the card)
     summaryCard: current?.summary_card ?? null, // CLINIC-028 the card's AI blocks, or null = paragraph
     mainProblem: current?.main_problem ?? null, // CLINIC-028 the Q1 taps
+    trends: current?.trends ?? null, // CLINIC-030 the same measurements across visits, or null
     isLoading: loading,
     error,
     refetch: load,

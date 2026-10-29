@@ -450,6 +450,18 @@ html, body, #root {
 .dc-ok { color: #2f855a; } .dc-miss { color: var(--danger); } .dc-na { color: var(--muted); }
 .dc-list { margin: 0; padding-left: 18px; font-size: 14px; }
 .dc-list li { margin: 3px 0; }
+.dc-src--mix { background: #fff3d6; color: #8a5a00; }
+/* CLINIC-030: trends table */
+.trd-scroll { overflow-x: auto; }
+.trd-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.trd-table th, .trd-table td { padding: 7px 8px; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; }
+.trd-table th { color: var(--muted); font-size: 12px; font-weight: 600; }
+.trd-table .trd-today { background: #f2fbfb; font-weight: 700; }
+.trd-test { font-weight: 600; }
+.trd-test small { display: block; font-weight: 400; font-size: 11px; color: var(--muted); }
+.trd-date { display: block; font-size: 11px; font-weight: 400; color: var(--muted); }
+.trd-missing { color: #a9b6c5; font-size: 12px; }
+.trd-link { background: none; border: none; padding: 0; font: inherit; color: inherit; cursor: pointer; text-decoration: underline dotted #9fb0c4; text-underline-offset: 3px; }
 .dc-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
 .dc-tab { background: #fff; border: 1px solid var(--line); border-radius: 20px; padding: 7px 14px; font: inherit; font-size: 13px; font-weight: 600; color: var(--navy); cursor: pointer; }
 .dc-tab--on { background: var(--navy); color: #fff; border-color: var(--navy); }

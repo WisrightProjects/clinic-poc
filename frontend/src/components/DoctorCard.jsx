@@ -3,7 +3,7 @@
 // straight from the visit; AI blocks (today's status, relevant history, from reports) are the
 // summary text read back by the server (summary_card). Each block says which it is. Below,
 // tabs open the full answers (default), the summary text (with Edit), the report photos and
-// the previous visits. Mounted per patient (keyed by the page), so the tab starts on answers.
+// the previous visits. A returning patient also gets the trends table (CLINIC-030). Mounted per patient (keyed by the page), so the tab starts on answers.
 // All text is plain React text — never HTML.
 import { useState } from 'react'
 import PatientHeader from './PatientHeader'
@@ -12,16 +12,17 @@ import QaList from './QaList'
 import AiSummaryCard from './AiSummaryCard'
 import ReportsList from './ReportsList'
 import PreviousVisits from './PreviousVisits'
-import { formatDateTime, formatDay } from '../utils/format'
+import TrendsTable from './TrendsTable'
+import { formatDateTime, formatDay, SHORT_DAY } from '../utils/format'
 
-const SHORT_DAY = { day: 'numeric', month: 'short' }
+const SOURCE_LABEL = { ai: 'AI', data: 'DATA', mix: 'DATA + AI-READ' }
 
 function Block({ title, source, wide, children }) {
   return (
     <section className={`dc-block${source === 'ai' ? ' dc-block--ai' : ''}${wide ? ' dc-block--wide' : ''}`}>
       <div className="dc-head">
         <h3>{title}</h3>
-        <span className={`dc-src dc-src--${source}`}>{source === 'ai' ? 'AI' : 'DATA'}</span>
+        <span className={`dc-src dc-src--${source}`}>{SOURCE_LABEL[source]}</span>
       </div>
       {children}
     </section>
@@ -44,7 +45,7 @@ function Lines({ items, empty }) {
 }
 
 export default function DoctorCard({
-  visit, mobile, card, mainProblem, vitals, vitalsDisplay, qa, answered, summary, reports, previousVisits,
+  visit, mobile, card, mainProblem, vitals, vitalsDisplay, qa, answered, summary, reports, previousVisits, trends,
   onSummarySave, onOpenVisit, actions,
 }) {
   const [tab, setTab] = useState('answers')
@@ -109,6 +110,13 @@ export default function DoctorCard({
             <div>Reports <b className={reports.length ? 'dc-ok' : 'dc-na'}>{reports.length ? `Uploaded (${reports.length})` : 'None'}</b></div>
           </div>
         </Block>
+
+        {/* CLINIC-030: hidden for a new patient or when nothing was measured on 2 visits. */}
+        {trends ? (
+          <Block title={`Trends — last ${trends.visits.length} visits`} source={trends.rows.some((r) => r.source === 'reports') ? 'mix' : 'data'} wide>
+            <TrendsTable trends={trends} onOpenVisit={onOpenVisit} />
+          </Block>
+        ) : null}
 
         {/* CLINIC-029: points for the doctor to check — never a diagnosis or treatment. Hidden
             for a summary without the block (made before it, or edited out): "Nothing flagged"
