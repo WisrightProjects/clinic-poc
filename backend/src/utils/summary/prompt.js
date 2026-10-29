@@ -4,6 +4,7 @@
 // What the summary says for an answer that can't be understood, so the doctor asks the patient.
 const UNCLEAR_NOTE = 'answer unclear — please check with the patient';
 const { vitalsText, codeShowsVitals, VITALS_LINE } = require('../vitals');
+const { FROM_REPORTS, SINCE_LAST_VISIT, CARD_HEADINGS } = require('../summaryText');
 
 // CLINIC-018: rules for the report photos sent after this prompt (Gemini only).
 // Which photos get in is decided by the strict per-photo check in geminiClient; these rules
@@ -41,8 +42,7 @@ const notReadNote = count => `${count} report photo(s) could not be read — ple
 // at its "From reports" paragraph (that visit's lab results and the code's notes after them —
 // not today's, must not be copied as today's) and without its "Vitals:" and "Since last visit"
 // lines (the code's line and the last comparison).
-const SINCE_LAST_VISIT = /^\W*since last visit/i;
-const previousText = (text) => text.split(/\n+\W*from reports/i)[0].split('\n')
+const previousText = (text) => text.split(FROM_REPORTS)[0].split('\n')
   .filter((l) => !VITALS_LINE.test(l) && !SINCE_LAST_VISIT.test(l)).join('\n').trim();
 // "2026-10-22" as "22 Oct" (a clinic day, read as UTC so it never shifts).
 const shortDay = (day) => new Date(`${day}T00:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
@@ -54,7 +54,7 @@ function previousVisitRules(previous) {
   if (!text) return []; // nothing left to compare with
   const day = shortDay(previous.date);
   return [
-    `Begin with one line "Since last visit (${day}): ..." (before the Patient line details) naming only what changed between the previous visit and today's answers: new or gone symptoms, better or worse, medicine changes. If nothing changed, write "Since last visit (${day}): no change reported".`,
+    `Begin with one line "Since last visit (${day}): ..." (before "${CARD_HEADINGS.today}:") naming only what changed between the previous visit and today's answers: new or gone symptoms, better or worse, medicine changes. If nothing changed, write "Since last visit (${day}): no change reported".`,
     `After that line, describe only today's answers: never present a problem from the previous visit as today's, and never fill a gap in today's answers from it.`,
     `The previous visit's summary (${day}), for comparison only:\n"""\n${text}\n"""`,
   ];
@@ -80,11 +80,16 @@ function buildSummaryPrompt(visit, qa, language = 'English', images) {
     .join('\n');
 
   return [
-    `You are a clinical scribe. Summarise the patient intake below into 2-4 concise sentences in ${language} for a doctor.`,
+    // CLINIC-028: the doctor card (client Section 10) — short labelled lines under two fixed
+    // headings, read back by utils/doctorCard.js. The headings stay English for the parser.
+    `You are a clinical scribe. Summarise the patient intake below in ${language} for a doctor as short labelled lines, in this plain-text format (no markdown); any other line or paragraph asked for below keeps its own place:`,
+    `${CARD_HEADINGS.today}:\n- <label>: <value>\n${CARD_HEADINGS.history}:\n- <label>: <value>`,
+    `Under "${CARD_HEADINGS.today}": one line each for the main complaint with how long, other symptoms, medicines being taken now, and tests already done, plus a line for any other important finding in today's answers. Under "${CARD_HEADINGS.history}": existing illnesses (with how long), medicine allergy, and any other past history the answers give. Leave out a line the answers do not cover.`,
+    `Keep each value short (a few words, not full sentences). Write the headings "${CARD_HEADINGS.today}:" and "${CARD_HEADINGS.history}:" in English exactly as shown; write the labels and values in ${language}.`,
     `Use ONLY the information given; do not invent findings. If an answer is empty, ignore it.`,
-    // CLINIC-023: the registration details on the Patient line (weight, height, follow-up) —
-    // only when there are some (an "unknown" line would only add filler).
-    ...(who ? [`Start with every detail on the Patient line, and say it is a follow-up visit when the Patient line says so.`] : []),
+    // CLINIC-023: the Patient line (sex, age, weight, height, follow-up) is shown to the doctor
+    // from the data — it is context here, not something to repeat.
+    `The Patient line is shown to the doctor separately: do not repeat it.`,
     `Keep the patient's uncertainty: if they say "I think", "not sure" or "I don't know", write it as possible or unknown, never as a confirmed fact.`,
     `Do not add diagnoses, types or medical terms the patient did not state (for example write "thyroid problem on tablets", not "hypothyroidism").`,
     `Include important negatives the patient reported (for example no allergies, no smoking).`,

@@ -1,5 +1,6 @@
 const gemini = require('../gemini');
 const { buildSummaryPrompt, notReadNote, OTHER_RESULTS_LINE, NOT_LISTED_NOTE } = require('./prompt');
+const { FROM_REPORTS } = require('../summaryText');
 
 // AI summary with Gemini, from the visit's real Q&A (prompt.js). Same shape as kimiClient.
 // reports (CLINIC-018): { images: [{ mimeType, data (base64) }], notRead } — the visit's
@@ -46,7 +47,7 @@ async function summarise(visit, qa, language, reports = { images: [], notRead: 0
 // photos were sent, the doctor is told to check them instead.
 function withReportsNote(summary, photosSent) {
   if (!photosSent) return summary;
-  if (!/From reports/i.test(summary)) return `${summary}\n\n${NOT_LISTED_NOTE}`;
+  if (!FROM_REPORTS.test(summary)) return `${summary}\n\n${NOT_LISTED_NOTE}`;
   if (/none marked abnormal/i.test(summary)) return summary;
   return `${summary}\n${OTHER_RESULTS_LINE}`;
 }

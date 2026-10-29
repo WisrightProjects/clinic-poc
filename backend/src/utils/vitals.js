@@ -3,6 +3,7 @@
 // and used for the "Vitals:" line the code adds to the summary (never written by the AI, so the
 // numbers are exactly as entered). Pure — no DB / config.
 
+const { FROM_REPORTS } = require('./summaryText');
 const { optionalNumber, throwFieldErrors } = require('./fieldValidation');
 
 // Plausible ranges (also kept as DB checks in migration 016).
@@ -101,7 +102,7 @@ const VITALS_LINE = /^\W*vitals:/i;
 function withVitalsLine(summaryText, vitals, questions) {
   if (!codeShowsVitals(vitals, questions)) return summaryText;
   const line = `Vitals: ${vitalsText(vitals) || 'not recorded'}.`;
-  const at = summaryText.search(/\n+\W*from reports/i);
+  const at = summaryText.search(FROM_REPORTS);
   if (at < 0) return `${summaryText.trimEnd()}\n${line}`;
   return `${summaryText.slice(0, at).trimEnd()}\n${line}${summaryText.slice(at)}`;
 }

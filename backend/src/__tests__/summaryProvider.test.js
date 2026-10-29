@@ -21,10 +21,9 @@ describe('buildSummaryPrompt', () => {
     );
     expect(p).toContain('Patient: M, 58 yrs, 72 kg, 170.5 cm, follow-up visit');
     expect(p).not.toContain('9876543210');
-    expect(p).toContain('Start with every detail on the Patient line, and say it is a follow-up visit');
+    // CLINIC-028: the doctor card shows the Patient line from the data, so it is context only.
+    expect(p).toContain('The Patient line is shown to the doctor separately: do not repeat it.');
     expect(buildSummaryPrompt({ sex: 'F', age: 30, patient_type: 'new' }, qa)).toContain('Patient: F, 30 yrs\n');
-    // No details: no "start with the Patient line" rule (it would add filler to "unknown").
-    expect(buildSummaryPrompt({}, qa)).not.toContain('Start with every detail on the Patient line');
   });
 
   test('AC1: includes the real questions and answers', () => {
