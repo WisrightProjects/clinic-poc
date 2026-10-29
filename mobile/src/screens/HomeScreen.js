@@ -29,7 +29,9 @@ import { useNavigation } from '@react-navigation/native';
 import { useVisitQueue } from '../hooks/useVisitQueue';
 import { useSession, clearSession } from '../auth/authStore';
 import { TestRequestAlerts } from '../components/TestRequestAlerts';
-import { TESTS_GROUP, groupKey, isInQueueOn, oldTokenDay } from '../utils/queue';
+// shortDate: a compact "25 Aug", appended to Today/Yesterday so the actual calendar date is
+// still visible (the relative label hides which day it is, and Home has no date of its own).
+import { TESTS_GROUP, groupKey, isInQueueOn, oldTokenDay, shortDate } from '../utils/queue';
 import { errorMessage } from '../utils/apiError';
 
 const NAVY = '#1a3050';
@@ -73,14 +75,6 @@ function formatDate(key) {
     month: 'short',
     year: 'numeric',
   });
-}
-
-// Compact "25 Aug" — appended to Today/Yesterday so the actual calendar date is
-// still visible (otherwise the relative label hides which day it resolves to,
-// and the Home header shows no date of its own).
-function shortDate(key) {
-  const [y, m, d] = key.split('-').map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 }
 
 // Bucket visits by queue group (see utils/queue.js): "Waiting for tests" first, then each

@@ -76,3 +76,37 @@ describe('buildSummaryPrompt', () => {
     expect(p).toContain('Patient: unknown');
   });
 });
+
+describe('CLINIC-027: a follow-up compared with the previous visit', () => {
+  const { buildSummaryPrompt } = require('../utils/summary/prompt');
+  const qa = [{ question: 'Since when?', answer: '5 days' }];
+  const previous = {
+    date: '2026-10-29',
+    text: ['Since last visit (20 Oct): no change reported', 'Fever for 3 days.', 'Vitals: BP 140/90 mmHg.'].join('\n'),
+  };
+
+  test('AC5: starts with what changed, only today describes today, previous given for comparison', () => {
+    const p = buildSummaryPrompt({ sex: 'M', age: 45, previous }, qa);
+    expect(p).toContain('Begin with one line "Since last visit (29 Oct): ..."');
+    expect(p).toContain('never present a problem from the previous visit as today\'s');
+    expect(p).toContain('for comparison only');
+    expect(p).toContain('Fever for 3 days.');
+    // Its own Vitals and comparison lines are not given (not today's, not to copy).
+    expect(p).not.toContain('BP 140/90');
+    expect(p).not.toContain('(20 Oct)');
+  });
+
+  test('no previous visit, or nothing left of it: no comparison', () => {
+    expect(buildSummaryPrompt({ sex: 'M', age: 45 }, qa)).not.toContain('Since last visit');
+    const onlyVitals = { date: '2026-10-29', text: 'Vitals: BP 130/80 mmHg.' };
+    expect(buildSummaryPrompt({ sex: 'M', age: 45, previous: onlyVitals }, qa)).not.toContain('Since last visit');
+  });
+
+  test('the previous visit\'s report results and notes are not given (not today\'s)', () => {
+    const withReports = { date: '2026-10-29', text: ['Fever for 3 days.', '', '**From reports:**', 'Hb 9.1 g/dL (Low)', '', '1 report photo(s) could not be read — please check the original.'].join('\n') };
+    const p = buildSummaryPrompt({ sex: 'M', age: 45, previous: withReports }, qa);
+    expect(p).toContain('Fever for 3 days.');
+    expect(p).not.toContain('Hb 9.1');
+    expect(p).not.toContain('could not be read');
+  });
+});

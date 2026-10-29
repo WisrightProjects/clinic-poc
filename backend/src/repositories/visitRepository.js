@@ -98,6 +98,27 @@ async function findPrevious(visit, statuses, limit) {
   return rows;
 }
 
+// The patients on one mobile in a clinic (CLINIC-027): one row per name (SAME_NAME), from that
+// patient's latest visit in `statuses` — the name as last written, sex, age (plus the whole
+// years since that visit), height, the visit day — plus how many such visits they have; last
+// seen first. Uses the (clinic_id, patient_mobile) index.
+async function findPatientsByMobile(clinicId, mobile, statuses, limit) {
+  const { rows } = await db.query(
+    `SELECT name, sex, age, height_cm, last_visit_date, visit_count FROM (
+       SELECT DISTINCT ON (${SAME_NAME('patient_name')})
+              patient_name AS name, sex, height_cm, visit_date AS last_visit_date, id,
+              age + EXTRACT(YEAR FROM age(CURRENT_DATE, visit_date))::int AS age,
+              COUNT(*) OVER (PARTITION BY ${SAME_NAME('patient_name')})::int AS visit_count
+         FROM visits
+        WHERE clinic_id = $1 AND patient_mobile = $2 AND status = ANY($3::visit_status[])
+        ORDER BY ${SAME_NAME('patient_name')}, visit_date DESC, id DESC) p
+      ORDER BY last_visit_date DESC, id DESC
+      LIMIT $4`,
+    [clinicId, mobile, statuses, limit]
+  );
+  return rows;
+}
+
 async function updateStatus(id, status, client = db) {
   const { rows } = await client.query(
     `UPDATE visits SET status = $1, updated_at = now() WHERE id = $2 RETURNING *`,
@@ -168,4 +189,4 @@ async function setSections(id, sections, client = db) {
   await client.query('UPDATE visits SET sections = $1, updated_at = now() WHERE id = $2', [sections, id]);
 }
 
-module.exports = { createWithToken, withTokenLock, requeue, findById, findForUpdate, findPrevious, list, updateStatus, setSections };
+module.exports = { createWithToken, withTokenLock, requeue, findById, findForUpdate, findPrevious, findPatientsByMobile, list, updateStatus, setSections };

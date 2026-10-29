@@ -315,7 +315,7 @@ describe('AC12: progress gate uses answers array, not visit.status', () => {
 
 describe('AC9: client-side validation in NewPatientScreen — validate()', () => {
   /**
-   * Mirror of NewPatientScreen validate() closure — lines 77–93 (and badMeasurement above it)
+   * Mirror of NewPatientScreen validate() closure — lines 80–95 (and badMeasurement above it)
    */
   // Mirrors NewPatientScreen.js validate() and badMeasurement (CLINIC-023 adds mobile,
   // weight and height; they are optional, so the old 4-argument calls stay valid).

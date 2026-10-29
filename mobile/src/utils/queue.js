@@ -3,6 +3,12 @@
 // their original visit_date / token_number but gets today's queue_date and a token at the end.
 // Keep in step with frontend/src/utils/queue.js.
 
+// A day (YYYY-MM-DD) as a compact "25 Aug", built from its parts (no time zone shift).
+export function shortDate(key) {
+  const [y, m, d] = key.split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+}
+
 // Patients the doctor sent for tests leave the day queue and form their own section.
 export const TESTS_GROUP = 'tests';
 

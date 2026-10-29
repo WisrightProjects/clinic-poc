@@ -92,6 +92,9 @@ function vitalsRow(vitals, questions) {
   return codeShowsVitals(vitals, questions) ? vitalsDisplay(vitals) : [];
 }
 
+// The line withVitalsLine writes, found again in a stored summary (any case, any markdown).
+const VITALS_LINE = /^\W*vitals:/i;
+
 // The summary with "Vitals: …." (or "Vitals: not recorded.") added by code: after the AI's
 // own text, before the "From reports" paragraph (CLINIC-018) if any — found the way
 // geminiClient finds it (any case, even with markdown such as "**From Reports:**").
@@ -103,4 +106,4 @@ function withVitalsLine(summaryText, vitals, questions) {
   return `${summaryText.slice(0, at).trimEnd()}\n${line}${summaryText.slice(at)}`;
 }
 
-module.exports = { validateVitals, vitalsDisplay, vitalsText, vitalsRow, withVitalsLine, asksSpokenVitals, codeShowsVitals };
+module.exports = { validateVitals, vitalsDisplay, vitalsText, vitalsRow, withVitalsLine, asksSpokenVitals, codeShowsVitals, VITALS_LINE };

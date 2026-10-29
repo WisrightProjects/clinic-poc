@@ -4,6 +4,8 @@
 // AC10: offline / 5xx shows retry banner; field values preserved.
 // CLINIC-023: also mobile, weight, height and New / Follow-up (client Section 1), all optional
 // except the type (default New). The server checks them again (utils/visitValidation.js).
+// CLINIC-027: Mobile comes first — a number seen before lists its patients ("Seen before");
+// picking one fills name, sex, age and height and sets Follow-up (all still editable).
 
 import React, { useState, useEffect, useCallback } from 'react';
 import {
@@ -24,6 +26,9 @@ import { withSingleFlight } from '../utils/retry';
 import { fieldErrorsOf, CHECK_FIELDS_MESSAGE } from '../utils/apiError';
 import { NumberField } from '../components/NumberField';
 import { ChoiceButtons } from '../components/ChoiceButtons';
+import { SeenBefore } from '../components/SeenBefore';
+import { usePatientLookup } from '../hooks/usePatientLookup';
+import { mobileDigits, isValidMobile } from '../utils/mobile';
 
 const NAVY = '#1a3050';
 const TEAL = '#0a8f8f';
@@ -35,15 +40,6 @@ const PATIENT_TYPES = [
   { value: 'new', label: 'New' },
   { value: 'follow_up', label: 'Follow-up' },
 ];
-
-// The digits of a mobile number as typed or pasted: "+91 98765 43210" and "09876543210"
-// keep their 10 digits (same rule as the server's normalizeMobile).
-const mobileDigits = (text) => {
-  let d = text.replace(/\D/g, '');
-  if (d.length === 12 && d.startsWith('91')) d = d.slice(2);
-  else if (d.length === 11 && d.startsWith('0')) d = d.slice(1);
-  return d.slice(0, 10);
-};
 
 // A blank, or a number in [min, max] with at most one decimal (weight / height).
 const badMeasurement = (text, min, max) => {
@@ -66,6 +62,10 @@ export default function NewPatientScreen() {
   const [departments, setDepartments] = useState([]);
   const [deptError, setDeptError] = useState(null);
 
+  // CLINIC-027: the patients seen before on this number, and the one picked (by name).
+  const lookup = usePatientLookup(patientMobile);
+  const [returning, setReturning] = useState(null);
+
   const [fieldErrors, setFieldErrors] = useState({});
   const [submitError, setSubmitError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -86,13 +86,34 @@ export default function NewPatientScreen() {
       errs.age = 'Age must be between 0 and 120';
     }
     if (sex && !['M', 'F', 'O'].includes(sex)) errs.sex = 'Select a valid option';
-    if (patientMobile !== '' && !/^[6-9]\d{9}$/.test(patientMobile)) {
+    if (patientMobile !== '' && !isValidMobile(patientMobile)) {
       errs.patientMobile = 'Enter a 10-digit mobile number starting 6–9';
     }
     if (badMeasurement(weightKg, 1, 300)) errs.weightKg = 'Weight must be 1–300 kg';
     if (badMeasurement(heightCm, 30, 250)) errs.heightCm = 'Height must be 30–250 cm';
     return errs;
   }, [patientName, age, sex, departmentId, patientMobile, weightKg, heightCm]);
+
+  // A returning patient fills the form from their latest visit; weight is today's, so it is
+  // left as typed. The name is copied exactly, so this visit joins their history.
+  const pickReturning = useCallback((p) => {
+    setPatientName(p.name);
+    setAge(p.age != null ? String(p.age) : '');
+    setSex(p.sex ?? '');
+    setHeightCm(p.height_cm != null ? String(Number(p.height_cm)) : '');
+    setPatientType('follow_up');
+    setReturning(p.name);
+  }, []);
+
+  // Change: the wrong patient was picked — empty what the pick filled and go back to New.
+  const clearReturning = useCallback(() => {
+    setPatientName('');
+    setAge('');
+    setSex('');
+    setHeightCm('');
+    setPatientType('new');
+    setReturning(null);
+  }, []);
 
   const handleSubmit = useCallback(async () => {
     const errs = validate();
@@ -153,12 +174,25 @@ export default function NewPatientScreen() {
           </View>
         )}
 
+        {/* CLINIC-023 — Mobile (digits only; never shown in the queue). First (CLINIC-027): a
+            number seen before lists its patients. Changing the number or the name forgets the pick. */}
+        <Text style={styles.label}>Mobile</Text>
+        <TextInput
+          style={[styles.input, fieldErrors.patientMobile && styles.inputError]}
+          value={patientMobile}
+          onChangeText={(t) => { setPatientMobile(mobileDigits(t)); setReturning(null); }}
+          placeholder="10 digits"
+          keyboardType="number-pad"
+        />
+        {fieldErrors.patientMobile && <Text style={styles.fieldError}>{fieldErrors.patientMobile}</Text>}
+        <SeenBefore patients={lookup.patients} failed={lookup.failed} picked={returning} onPick={pickReturning} onClear={clearReturning} />
+
         {/* Patient Name */}
         <Text style={styles.label}>Patient Name *</Text>
         <TextInput
           style={[styles.input, fieldErrors.patientName && styles.inputError]}
           value={patientName}
-          onChangeText={setPatientName}
+          onChangeText={(t) => { setPatientName(t); setReturning(null); }}
           placeholder="e.g. Lakshmi K."
           autoCapitalize="words"
         />
@@ -187,17 +221,6 @@ export default function NewPatientScreen() {
           </Picker>
         </View>
         {fieldErrors.sex && <Text style={styles.fieldError}>{fieldErrors.sex}</Text>}
-
-        {/* CLINIC-023 — Mobile (digits only; never shown in the queue) */}
-        <Text style={styles.label}>Mobile</Text>
-        <TextInput
-          style={[styles.input, fieldErrors.patientMobile && styles.inputError]}
-          value={patientMobile}
-          onChangeText={(t) => setPatientMobile(mobileDigits(t))}
-          placeholder="10 digits"
-          keyboardType="number-pad"
-        />
-        {fieldErrors.patientMobile && <Text style={styles.fieldError}>{fieldErrors.patientMobile}</Text>}
 
         {/* CLINIC-023 — Weight / Height */}
         <View style={styles.row}>
@@ -269,7 +292,8 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     overflow: 'hidden',
   },
-  picker: { height: 50, color: NAVY },
+  // A minimum, not a fixed height: with a large phone font a fixed 50 cut the text off.
+  picker: { minHeight: 50, color: NAVY },
   fieldError: { fontSize: 12, color: '#c0392b', marginTop: 3 },
   row: { flexDirection: 'row', gap: 12 },
   half: { flex: 1 },

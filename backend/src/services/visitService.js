@@ -55,6 +55,20 @@ async function list(clinicId, statusQuery, dateQuery) {
 const PREVIOUS_VISIT_STATUSES = ['summarised', 'done'];
 const PREVIOUS_VISITS_SHOWN = 5;
 
+// Summaries written by no AI: the demo text and the "AI summary not available" note.
+const NOT_AI_SUMMARIES = ['mock', 'mock-fallback'];
+
+// CLINIC-027: a follow-up's last finished visit, for the AI to say what changed: its day and
+// summary (the doctor's edit when there is one), or null — also when that summary is the demo
+// text or the "not available" note and the doctor didn't write one (nothing real to compare).
+async function lastVisitForPrompt(visit) {
+  if (visit.patient_type !== 'follow_up') return null;
+  const [last] = await visitRepository.findPrevious(visit, PREVIOUS_VISIT_STATUSES, 1);
+  const summary = last && await summaryRepository.findByVisitId(last.id);
+  if (!summary || (!summary.edited_text && NOT_AI_SUMMARIES.includes(summary.generated_by))) return null;
+  return { date: last.visit_date, text: summary.display_text };
+}
+
 // `withHistory`: also the patient's previous visits (the doctor web; the attender app doesn't
 // show them, so its many intake reads skip the query).
 async function getById(clinicId, id, { withHistory = false } = {}) {
@@ -134,8 +148,14 @@ async function submit(clinicId, visitId) {
   const existing = await summaryRepository.findByVisitId(visitId);
   // The AI sees today's vitals as context (CLINIC-024); the exact "Vitals:" line is added
   // below by the code, from the vitals read under the lock.
-  const promptVitals = existing ? null : await vitalsRepository.findByVisitId(visitId);
-  const generated = existing ? null : await summaryService.generate({ ...visit, vitals: promptVitals });
+  // CLINIC-027: a follow-up's last visit too, so the summary can say what changed.
+  let promptVitals = null;
+  let generated = null;
+  if (!existing) {
+    let previous;
+    [promptVitals, previous] = await Promise.all([vitalsRepository.findByVisitId(visitId), lastVisitForPrompt(visit)]);
+    generated = await summaryService.generate({ ...visit, vitals: promptVitals, previous });
+  }
   return withTransaction(async client => {
     const current = await visitRepository.findForUpdate(visitId, client);
     // A second Send finished first: return its summary (AC5).
@@ -170,9 +190,9 @@ async function refreshSummary(visit) {
   const current = await summaryRepository.findByVisitId(visit.id);
   if (!current || current.edited_text) return null;
   // Vitals can't change after submit (saveVitals refuses), so reading them here is safe.
-  const [vitals, template] = await Promise.all([
-    vitalsRepository.findByVisitId(visit.id), templateRepository.findForVisit(visit)]);
-  const remade = await summaryService.regenerate({ ...visit, vitals });
+  const [vitals, template, previous] = await Promise.all([
+    vitalsRepository.findByVisitId(visit.id), templateRepository.findForVisit(visit), lastVisitForPrompt(visit)]);
+  const remade = await summaryService.regenerate({ ...visit, vitals, previous });
   if (!remade) return null;
   return summaryRepository.createIfUnedited(visit.id, current.id, withVitalsLine(remade.summaryText, vitals, template?.questions),
     remade.generatedBy, status => status === 'summarised');

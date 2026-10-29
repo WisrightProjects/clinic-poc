@@ -3,7 +3,7 @@
 
 // What the summary says for an answer that can't be understood, so the doctor asks the patient.
 const UNCLEAR_NOTE = 'answer unclear — please check with the patient';
-const { vitalsText, codeShowsVitals } = require('../vitals');
+const { vitalsText, codeShowsVitals, VITALS_LINE } = require('../vitals');
 
 // CLINIC-018: rules for the report photos sent after this prompt (Gemini only).
 // Which photos get in is decided by the strict per-photo check in geminiClient; these rules
@@ -36,6 +36,29 @@ const OTHER_RESULTS_LINE = 'Other results: not marked abnormal on the report (se
 const NOT_LISTED_NOTE = 'From reports: no results listed — please check the photos.';
 // When some report photos were not read: too large in total, missing on disk, or failed the check.
 const notReadNote = count => `${count} report photo(s) could not be read — please check the original.`;
+
+// CLINIC-027: the previous visit's summary as given to the AI — only its own clinical text: cut
+// at its "From reports" paragraph (that visit's lab results and the code's notes after them —
+// not today's, must not be copied as today's) and without its "Vitals:" and "Since last visit"
+// lines (the code's line and the last comparison).
+const SINCE_LAST_VISIT = /^\W*since last visit/i;
+const previousText = (text) => text.split(/\n+\W*from reports/i)[0].split('\n')
+  .filter((l) => !VITALS_LINE.test(l) && !SINCE_LAST_VISIT.test(l)).join('\n').trim();
+// "2026-10-22" as "22 Oct" (a clinic day, read as UTC so it never shifts).
+const shortDay = (day) => new Date(`${day}T00:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+
+// A follow-up with an earlier visit (visit.previous = { date, text }): compare, but only today's
+// answers describe today — an earlier problem must never read as today's complaint.
+function previousVisitRules(previous) {
+  const text = previous?.text ? previousText(previous.text) : '';
+  if (!text) return []; // nothing left to compare with
+  const day = shortDay(previous.date);
+  return [
+    `Begin with one line "Since last visit (${day}): ..." (before the Patient line details) naming only what changed between the previous visit and today's answers: new or gone symptoms, better or worse, medicine changes. If nothing changed, write "Since last visit (${day}): no change reported".`,
+    `After that line, describe only today's answers: never present a problem from the previous visit as today's, and never fill a gap in today's answers from it.`,
+    `The previous visit's summary (${day}), for comparison only:\n"""\n${text}\n"""`,
+  ];
+}
 
 function buildSummaryPrompt(visit, qa, language = 'English', images) {
   const todaysVitals = vitalsText(visit?.vitals); // CLINIC-024, null when none recorded
@@ -80,6 +103,7 @@ function buildSummaryPrompt(visit, qa, language = 'English', images) {
     // A misheard recording can come through as garbled text; guessing from it produced a
     // made-up diagnosis ("bipolar nerve issues") in testing (CLINIC-013).
     `The answers come from speech recognition and may contain misheard words. Only report what an answer clearly says in plain words. If an answer is garbled, partial or does not make sense, do not guess what it means and never turn a misheard word into a medical term: write "${UNCLEAR_NOTE}" for that question.`,
+    ...previousVisitRules(visit?.previous),
     ...reportRules(images),
     ``,
     `Patient: ${who || 'unknown'}`,
