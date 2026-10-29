@@ -32,7 +32,11 @@ const REFERENCE = /\(?\b(?:bio\.? ?)?(?:ref(?:erence)?|range|normal|target)\b[^)
 const RANGE = /(?<![\w.])\d+(?:\.\d+)?\s*(?:-|–|to)\s*\d+(?:\.\d+)?\s*%?/gi;
 const LIMIT = /[<>≤≥]\s*=?\s*\d+(?:\.\d+)?\s*%?/g;
 // The value: the first number left, in % (a report in mmol/mol only is left out, never shown as %).
-const VALUE = /^[^\d\n]{0,25}?(?<![\w.])(\d{1,2}(?:\.\d{1,2})?)\s*%/;
+// The report's flag may sit between them, copied from its result column: "7.6 H %", "7.6 (H) %",
+// "7.6 HH %", "7.6 H* %", "7.6 [H] %", "7.6 ↑ %". (A line naming HbA1c whose value still can't be
+// read is "check photos" — hba1cOf — never "not listed".)
+const FLAG = String.raw`(?:hh?|ll?|high|low|a|abnormal|\*+|↑|↓)\*?`;
+const VALUE = new RegExp(String.raw`^[^\d\n]{0,25}?(?<![\w.])(\d{1,2}(?:\.\d{1,2})?)\s*(?:(?:\(${FLAG}\)|\[${FLAG}\]|${FLAG})\s*)?%`, 'i');
 // The code's / the AI's notes that some report photos or values were not read (CLINIC-018).
 const NOT_READ = /could not be read|no results listed|please check the (photos|original)/i;
 
@@ -61,8 +65,10 @@ function hba1cInLine(line) {
 }
 
 // The visit's HbA1c from its report lines: { value, date } — the latest report when there are
-// several (dated); { unread: true } when none was found but some photos or values were not read;
-// { notListed: true } when the reports list results without it (it may have been normal); null
+// several (dated); { unread: true } when none was found but some photos or values were not read,
+// or a line names HbA1c in a form not read here (e.g. "> 14 %", mmol/mol first) — never "not
+// listed" for a test that is listed; { notListed: true } when the reports list results without it
+// (it may have been normal); null
 // when there are no report lines. `summary`: a summaries row (display_text, generated_by, edited_text).
 function hba1cOf(summary) {
   if (!isRealSummary(summary)) return null;
@@ -72,7 +78,7 @@ function hba1cOf(summary) {
     const time = (h) => (Number.isNaN(dateTime(h.date)) ? -Infinity : dateTime(h.date));
     return found.reduce((best, h) => (time(h) > time(best) ? h : best));
   }
-  if (lines.some((l) => NOT_READ.test(l))) return { unread: true };
+  if (lines.some((l) => NOT_READ.test(l) || l.search(HBA1C_NAME) >= 0)) return { unread: true };
   return lines.length ? { notListed: true } : null;
 }
 
