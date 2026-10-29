@@ -8,7 +8,8 @@ const FROM_REPORTS = /(^|\n+)[^\w\n]*from reports/i;
 // The "Since last visit (date): …" line (CLINIC-027), at the start of a line.
 const SINCE_LAST_VISIT = /^\W*since last visit/i;
 // The doctor card's headings (CLINIC-028): asked for by summary/prompt.js, read back by
-// doctorCard.js. Always English, whatever the summary language.
-const CARD_HEADINGS = { today: "Today's status", history: 'Relevant history' };
+// doctorCard.js. Always English, whatever the summary language. `review`: the AI's points for
+// the doctor to check (CLINIC-029).
+const CARD_HEADINGS = { today: "Today's status", history: 'Relevant history', review: 'Doctor to review' };
 
 module.exports = { FROM_REPORTS, SINCE_LAST_VISIT, CARD_HEADINGS };

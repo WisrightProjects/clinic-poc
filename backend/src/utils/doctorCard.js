@@ -6,7 +6,8 @@
 const { VITALS_LINE } = require('./vitals');
 const { FROM_REPORTS, SINCE_LAST_VISIT, CARD_HEADINGS } = require('./summaryText');
 
-const BULLET = /^[-•*]\s*/;
+// "-", "•", "*" or "1." / "1)" — not the "1." of a decimal such as "1.5 mg".
+const BULLET = /^([-•*]|\d+[.)](?!\d))\s*/;
 const HEADING_KEYS = Object.keys(CARD_HEADINGS);
 const normal = (text) => text.replace(/^\W+|[:\s]+$/g, '').replace(/’/g, "'").toLowerCase();
 
@@ -38,21 +39,39 @@ function parseSummaryCard(text) {
   if (!text) return null;
   const at = text.search(FROM_REPORTS);
   const main = at < 0 ? text : text.slice(0, at);
-  const card = { since: null, today: [], history: [], vitals: null, other: [], reports: [] };
+  // review (CLINIC-029): null = the summary has no "Doctor to review" block (made before it, or
+  // edited out) — not the same as [] = the AI checked and found nothing ("- None").
+  const card = { since: null, today: [], history: [], review: null, vitals: null, other: [], reports: [] };
   let section = null;
   let last = null; // the item the previous (non-blank) line added, for wrapped lines
+  let point = false; // the previous (non-blank) line was a bulleted review point
 
   for (const raw of main.split('\n')) {
     const line = clean(raw);
-    if (!line) { last = null; continue; } // a blank line ends a wrapped value
+    if (!line) { last = null; point = false; continue; } // a blank line ends a wrapped value
     const heading = headingOf(line);
     if (heading) {
       section = heading.key;
-      last = heading.rest ? card[section][card[section].push({ label: '', value: heading.rest }) - 1] : null;
+      last = null;
+      point = false;
+      if (section === 'review') {
+        card.review = card.review || [];
+        if (heading.rest) card.review.push(heading.rest);
+      } else if (heading.rest) {
+        last = card[section][card[section].push({ label: '', value: heading.rest }) - 1];
+      }
       continue;
     }
     if (SINCE_LAST_VISIT.test(line)) { card.since = line.replace(BULLET, ''); last = null; continue; }
-    if (VITALS_LINE.test(line)) { card.vitals = line; last = null; continue; }
+    if (VITALS_LINE.test(line)) { card.vitals = line; last = null; point = false; continue; }
+    // Review points are plain lines — bulleted, numbered or not. A line without a bullet right
+    // after a bulleted point continues it (wrapped); otherwise each line is a point.
+    if (section === 'review') {
+      const bulleted = BULLET.test(line);
+      if (!bulleted && point) card.review[card.review.length - 1] += ` ${line}`;
+      else { card.review.push(line.replace(BULLET, '')); point = bulleted; }
+      continue;
+    }
     // Continues the item above: an indented line, or one with neither a bullet nor a label.
     const continues = last && !BULLET.test(line) && (/^\s/.test(raw) || !line.includes(':'));
     if (continues) { last.value += ` ${line}`; continue; }
@@ -60,6 +79,8 @@ function parseSummaryCard(text) {
     last = card[section][card[section].push(item(line)) - 1];
   }
   if (!section) return null; // no heading at all
+  // "Doctor to review: - None" — nothing to check (CLINIC-029; the prompt asks for English "None").
+  if (card.review?.length === 1 && /^none\.?$/i.test(card.review[0])) card.review = [];
   // "From reports:" (CLINIC-018) and the code's notes under it, word for word.
   if (at >= 0) {
     card.reports = text.slice(at).split('\n').map(clean).filter(Boolean)

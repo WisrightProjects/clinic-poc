@@ -42,10 +42,14 @@ const PROGRESS_COLUMNS = `
 // fetch. Only submitted visits (summarised/done) have a summary; others come back
 // null. Truncated to keep the list payload small — the client clamps it to two lines.
 // A doctor-card summary (CLINIC-028) reads as one line: its headings are dropped and its
-// "- Label: value" lines joined with " · ". (The headings are constants, not user input.)
-const CARD_HEADING_SQL = Object.values(CARD_HEADINGS).map((h) => h.replace(/'/g, "''")).join('|');
+// "- Label: value" lines joined with " · ", without its "Doctor to review" heading line and the
+// bulleted / numbered points under it (CLINIC-029), so the preview keeps the complaint, history
+// and the Vitals line. (The headings are constants, not user input.)
+const sqlText = (s) => s.replace(/'/g, "''");
+const CARD_HEADING_SQL = [CARD_HEADINGS.today, CARD_HEADINGS.history].map(sqlText).join('|');
 const SUMMARY_COLUMN = `
-  (SELECT LEFT(btrim(regexp_replace(regexp_replace(s.display_text,
+  (SELECT LEFT(btrim(regexp_replace(regexp_replace(regexp_replace(s.display_text,
+            '\\n[^[:alnum:]\\n]*${sqlText(CARD_HEADINGS.review)}[[:space:]]*:[^\\n]*(\\n[[:space:]]*([-•*]|[0-9]+[.)])[^\\n]*)*', '', 'i'),
             '(${CARD_HEADING_SQL}):', '', 'gi'), '\\s*\\n[-•*]?\\s*', ' · ', 'g'), ' ·'), 240)
      FROM summaries s
     WHERE s.visit_id = v.id
