@@ -5,8 +5,8 @@
 // The API returns { visit, template, answers, summary, reports, test_requests, vitals_display,
 // previous_visits, … } where questions live in template.questions and transcripts in answers. We
 // merge them by question_id and sort by order_index (same shape the mobile app derives). Output:
-// { visit, qa, summary, reports, testRequests, vitalsDisplay, previousVisits, isLoading, error,
-//   refetch, saveSummary }.
+// { visit, qa, summary, reports, testRequests, vitals, vitalsDisplay, previousVisits, summaryCard,
+//   mainProblem, isLoading, error, refetch, saveSummary }.
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { getVisit, saveSummary as putSummary } from '../utils/apiClient'
@@ -69,7 +69,8 @@ export function useVisitDetail(visitId) {
     async (text) => {
       const summary = await putSummary(visitId, text)
       // Skip if the doctor already switched to another patient while this was saving.
-      setData((d) => (d?.visit?.id === summary.visit_id ? { ...d, summary } : d))
+      // The PUT also returns the doctor card read from the edited text (CLINIC-028).
+      setData((d) => (d?.visit?.id === summary.visit_id ? { ...d, summary, summary_card: summary.summary_card ?? null } : d))
     },
     [visitId]
   )
@@ -82,6 +83,9 @@ export function useVisitDetail(visitId) {
     testRequests: current?.test_requests ?? [], // CLINIC-014 history, newest first
     vitalsDisplay: current?.vitals_display ?? [], // CLINIC-024 today's vitals [{ label, value }]
     previousVisits: current?.previous_visits ?? [], // CLINIC-027 the patient's earlier visits
+    vitals: current?.vitals ?? null, // CLINIC-024 the vitals row (recorded_at for the card)
+    summaryCard: current?.summary_card ?? null, // CLINIC-028 the card's AI blocks, or null = paragraph
+    mainProblem: current?.main_problem ?? null, // CLINIC-028 the Q1 taps
     isLoading: loading,
     error,
     refetch: load,

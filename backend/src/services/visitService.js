@@ -14,6 +14,7 @@ const { validateSummaryEdit } = require('../utils/summaryValidation');
 const { parseQueueDate } = require('../utils/queueDate');
 const questionFlow = require('../utils/questionFlow');
 const { validateVitals, vitalsRow, vitalsText, withVitalsLine } = require('../utils/vitals');
+const { parseSummaryCard, mainProblem } = require('../utils/doctorCard');
 const { withTransaction } = require('../repositories/transaction');
 
 // The questions this visit is asked (CLINIC-021): its template with the questions of sections
@@ -69,9 +70,9 @@ async function lastVisitForPrompt(visit) {
   return { date: last.visit_date, text: summary.display_text };
 }
 
-// `withHistory`: also the patient's previous visits (the doctor web; the attender app doesn't
-// show them, so its many intake reads skip the query).
-async function getById(clinicId, id, { withHistory = false } = {}) {
+// `forDoctor`: also what only the doctor web shows — the patient's previous visits and the
+// doctor card (the attender app's many intake reads skip them).
+async function getById(clinicId, id, { forDoctor = false } = {}) {
   const visit = await findVisit(clinicId, id);
   const [template, answers, summary, reports, testRequests, vitals, previousVisits] = await Promise.all([
     templateRepository.findForVisit(visit),
@@ -80,13 +81,17 @@ async function getById(clinicId, id, { withHistory = false } = {}) {
     reportRepository.findByVisitId(visit.id),
     testRequestRepository.findByVisitId(visit.id),
     vitalsRepository.findByVisitId(visit.id),
-    withHistory ? visitRepository.findPrevious(visit, PREVIOUS_VISIT_STATUSES, PREVIOUS_VISITS_SHOWN) : [],
+    forDoctor ? visitRepository.findPrevious(visit, PREVIOUS_VISIT_STATUSES, PREVIOUS_VISITS_SHOWN) : [],
   ]);
   // CLINIC-024: the vitals row (or null) and its display, built once here for both apps.
   return {
     visit, template: askedTemplate(visit, template), answers, summary, reports, test_requests: testRequests,
     vitals, vitals_display: vitalsRow(vitals, template?.questions), vitals_text: vitalsText(vitals),
     previous_visits: previousVisits, // CLINIC-027: the same patient's earlier visits ([] for the attender)
+    // CLINIC-028: the doctor card — the AI blocks read from the summary text (null: show the
+    // paragraph, e.g. a visit from before the card) and the main problem tapped in Q1.
+    summary_card: forDoctor ? parseSummaryCard(summary?.display_text) : null,
+    main_problem: forDoctor ? mainProblem(askedTemplate(visit, template)?.questions, answers) : null,
   };
 }
 
@@ -208,7 +213,8 @@ async function editSummary(clinicId, visitId, text, userId) {
     ? await summaryRepository.updateEdit(visit.id, editedText, userId)
     : null;
   if (!summary) throw new AppError('NO_SUMMARY', 'This visit has no summary to edit yet', 409);
-  return summary;
+  // The doctor card read from the edited text (CLINIC-028), so the page updates without a reload.
+  return { ...summary, summary_card: parseSummaryCard(summary.display_text) };
 }
 
 // Saves an answer and moves the visit on, in one transaction with the visit row locked, so

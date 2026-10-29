@@ -12,7 +12,7 @@ async function list(req, res) {
 }
 
 async function getById(req, res) {
-  const data = await visitService.getById(req.user.clinicId, req.params.id, { withHistory: req.user.role === 'doctor' });
+  const data = await visitService.getById(req.user.clinicId, req.params.id, { forDoctor: req.user.role === 'doctor' });
   res.json(data);
 }
 

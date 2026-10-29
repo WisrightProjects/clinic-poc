@@ -5,6 +5,7 @@ const { LATEST_FIRST } = require('./summaryRepository');
 const { ACTIVE_TEMPLATE_ID } = require('./templateRepository');
 const { VISIBLE_QUESTION_SQL } = require('../utils/questionFlow');
 const { CLINIC_TIME_ZONE } = require('../utils/queueDate');
+const { CARD_HEADINGS } = require('../utils/summaryText');
 
 // Every read is scoped to the caller's clinic (CLINIC-008): another clinic's visit
 // comes back null, so callers answer 404 and ids can't be probed.
@@ -40,8 +41,12 @@ const PROGRESS_COLUMNS = `
 // CLINIC-012), so the queue row can show a two-line preview without a per-visit
 // fetch. Only submitted visits (summarised/done) have a summary; others come back
 // null. Truncated to keep the list payload small — the client clamps it to two lines.
+// A doctor-card summary (CLINIC-028) reads as one line: its headings are dropped and its
+// "- Label: value" lines joined with " · ". (The headings are constants, not user input.)
+const CARD_HEADING_SQL = Object.values(CARD_HEADINGS).map((h) => h.replace(/'/g, "''")).join('|');
 const SUMMARY_COLUMN = `
-  (SELECT LEFT(s.display_text, 240)
+  (SELECT LEFT(btrim(regexp_replace(regexp_replace(s.display_text,
+            '(${CARD_HEADING_SQL}):', '', 'gi'), '\\s*\\n[-•*]?\\s*', ' · ', 'g'), ' ·'), 240)
      FROM summaries s
     WHERE s.visit_id = v.id
     ORDER BY ${LATEST_FIRST}

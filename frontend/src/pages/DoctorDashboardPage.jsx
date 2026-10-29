@@ -24,6 +24,7 @@ import ReportsList from '../components/ReportsList'
 import VitalsStrip from '../components/VitalsStrip'
 import TestRequestPanel from '../components/TestRequestPanel'
 import PreviousVisits from '../components/PreviousVisits'
+import DoctorCard from '../components/DoctorCard'
 import { isInQueueOn, todayKey } from '../utils/queue'
 
 export default function DoctorDashboardPage() {
@@ -100,6 +101,17 @@ export default function DoctorDashboardPage() {
   const current = selected ?? detail.visit
   const canMarkDone = current?.status === 'summarised'
 
+  // The day stats, in both the card and the paragraph layout.
+  const stats = (
+    <StatsStrip
+      seenToday={seenToday}
+      remaining={remaining}
+      isToday={viewDate === today}
+      answered={answeredCount}
+      total={detail.qa.length}
+    />
+  )
+
   // After "Send for tests" the visit's status moved: reload its detail (quietly, so the
   // whole pane doesn't flash back to "Loading patient…") and the queue.
   async function handleTestsChanged() {
@@ -112,6 +124,9 @@ export default function DoctorDashboardPage() {
     await detail.saveSummary(text)
     refetch()
   }
+
+  // A previous visit (CLINIC-027) opens in place of the open patient.
+  const openVisit = (id) => selectPatient(id, { replace: true })
 
   // A Done error belongs to the patient it happened on. `replace`: opening a previous visit
   // (CLINIC-027) takes the open patient's place, so Back to queue still goes to the queue.
@@ -210,16 +225,36 @@ export default function DoctorDashboardPage() {
             // left the previous patient's panels on screen (CR-003). useVisitDetail only
             // returns data for the selected visit, so nothing stale renders under it.
             <Fragment key={selectedId}>
+              {detail.summaryCard ? (
+                // CLINIC-028: the doctor card; the tabs under it hold the answers, the summary
+                // text (Edit), reports and previous visits. Day stats stay below it.
+                <>
+                  <DoctorCard
+                    visit={current}
+                    mobile={detail.visit?.patient_mobile}
+                    card={detail.summaryCard}
+                    mainProblem={detail.mainProblem}
+                    vitals={detail.vitals}
+                    vitalsDisplay={detail.vitalsDisplay}
+                    qa={detail.qa}
+                    answered={answeredCount}
+                    summary={detail.summary}
+                    reports={detail.reports}
+                    previousVisits={detail.previousVisits}
+                    onSummarySave={handleSummarySave}
+                    onOpenVisit={openVisit}
+                    actions={
+                      <TestRequestPanel visit={current} requests={detail.testRequests} onChanged={handleTestsChanged} />
+                    }
+                  />
+                  {stats}
+                </>
+              ) : (
+              <>
               {/* The queue row has no mobile (CLINIC-023): it comes from the detail. */}
               <PatientHeader visit={current} mobile={detail.visit?.patient_mobile} />
               <VitalsStrip display={detail.vitalsDisplay} />
-              <StatsStrip
-                seenToday={seenToday}
-                remaining={remaining}
-                isToday={viewDate === today}
-                answered={answeredCount}
-                total={detail.qa.length}
-              />
+              {stats}
               {/* Summary right after the patient (CLINIC-010 reading order), then the actions
                   that follow from it. */}
               <AiSummaryCard
@@ -227,7 +262,7 @@ export default function DoctorDashboardPage() {
                 status={current.status}
                 onSave={handleSummarySave}
               />
-              <PreviousVisits visits={detail.previousVisits} onOpen={(id) => selectPatient(id, { replace: true })} />
+              <PreviousVisits visits={detail.previousVisits} onOpen={openVisit} />
               <TestRequestPanel
                 visit={current}
                 requests={detail.testRequests}
@@ -235,6 +270,8 @@ export default function DoctorDashboardPage() {
               />
               <QaList qa={detail.qa} />
               <ReportsList reports={detail.reports} />
+              </>
+              )}
 
               {doneError ? <div className="done-error">{doneError}</div> : null}
               <div className="action-bar">
