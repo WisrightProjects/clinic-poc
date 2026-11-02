@@ -6,48 +6,63 @@
 // previous_visits, … } where questions live in template.questions and transcripts in answers. We
 // merge them by question_id and sort by order_index (same shape the mobile app derives). Output:
 // { visit, qa, summary, reports, testRequests, vitals, vitalsDisplay, previousVisits, summaryCard,
-//   mainProblem, isLoading, error, refetch, saveSummary }.
+//   mainProblem, trends, isLoading, error, refetch, saveSummary }.
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { getVisit, saveSummary as putSummary } from '../utils/apiClient'
 
 export function useVisitDetail(visitId) {
-  const [data, setData] = useState(null)
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState(null)
-  // The visit the latest load is for: a slower response for a patient the doctor has
-  // already clicked away from must not replace the current patient's data.
-  const latestId = useRef(visitId)
+  // The detail is stored with the visit it belongs to (as useVisitQueue stores its day), so
+  // another patient's data or error never shows under this one.
+  const [state, setState] = useState({ id: null, data: null, error: null })
+  // Numbers each load; only the latest one may set state. Covers a slower reply for a patient
+  // the doctor has left, and an older reply for this patient finishing after a newer one.
+  const seq = useRef(0)
+  const inFlight = useRef(false) // the latest load hasn't answered yet
 
-  // silent = refresh the data in place, without flipping the page to "Loading patient…".
-  const load = useCallback(async ({ silent = false } = {}) => {
-    latestId.current = visitId
-    if (!visitId) {
-      setData(null)
-      return
+  // A newly selected patient starts without an old error, so one whose last load failed shows
+  // "Loading patient…" while it loads again (set while rendering, not in the effect).
+  const [selected, setSelected] = useState(visitId)
+  if (selected !== visitId) {
+    setSelected(visitId)
+    if (state.error) setState((s) => ({ ...s, error: null }))
+  }
+
+  // A failed refresh keeps this visit's data. No visit: nothing to fetch — `current` is null.
+  const fetchVisit = useCallback(() => {
+    const n = ++seq.current
+    inFlight.current = Boolean(visitId)
+    if (!visitId) return Promise.resolve()
+    const settle = (update) => {
+      if (seq.current !== n) return
+      inFlight.current = false
+      setState(update)
     }
-    const isCurrent = () => latestId.current === visitId
-    if (!silent) setIsLoading(true)
-    setError(null)
-    try {
-      const result = await getVisit(visitId)
-      if (isCurrent()) setData(result)
-    } catch (e) {
-      if (isCurrent()) setError(e)
-    } finally {
-      if (!silent && isCurrent()) setIsLoading(false)
-    }
+    return getVisit(visitId).then(
+      (data) => settle({ id: visitId, data, error: null }),
+      (error) => settle((s) => ({ id: visitId, data: s.id === visitId ? s.data : null, error }))
+    )
   }, [visitId])
 
   useEffect(() => {
-    load()
-  }, [load])
+    fetchVisit()
+  }, [fetchVisit])
 
-  // Only data for the visit asked for. Right after the selection changes, `data` still holds
+  // Reload in place (the panel stays while it runs); Retry clears the error first, so the page
+  // shows "Loading patient…" until the answer comes.
+  const refetch = useCallback(() => {
+    setState((s) => (s.error ? { ...s, error: null } : s))
+    return fetchVisit()
+  }, [fetchVisit])
+
+  // Only data for the visit asked for. Right after the selection changes, the state still holds
   // the previous patient until the effect above loads the new one; treat that as loading,
   // so one patient's summary, tests or photos never render under another's name.
-  const current = visitId && data?.visit?.id === Number(visitId) ? data : null
-  const loading = isLoading || (Boolean(visitId) && !current && !error)
+  const mine = state.id === visitId
+  const current = mine ? state.data : null
+  // An error only matters while there is nothing to show: a failed refresh keeps the panel.
+  const error = mine && !current ? state.error : null
+  const loading = Boolean(visitId) && !current && !error
 
   // Merge questions (template) with answers (transcripts) — ordered.
   const questions = current?.template?.questions ?? []
@@ -70,9 +85,13 @@ export function useVisitDetail(visitId) {
       const summary = await putSummary(visitId, text)
       // Skip if the doctor already switched to another patient while this was saving.
       // The PUT also returns the doctor card read from the edited text (CLINIC-028).
-      setData((d) => (d?.visit?.id === summary.visit_id ? { ...d, summary, summary_card: summary.summary_card ?? null } : d))
+      setState((s) => (s.data?.visit?.id === summary.visit_id
+        ? { ...s, data: { ...s.data, summary, summary_card: summary.summary_card ?? null } } : s))
+      // A load that started before the save would bring back the old summary: load again
+      // (the newer load drops the older reply).
+      if (inFlight.current) fetchVisit()
     },
-    [visitId]
+    [visitId, fetchVisit]
   )
 
   return {
@@ -89,7 +108,7 @@ export function useVisitDetail(visitId) {
     trends: current?.trends ?? null, // CLINIC-030 the same measurements across visits, or null
     isLoading: loading,
     error,
-    refetch: load,
+    refetch,
     saveSummary,
   }
 }

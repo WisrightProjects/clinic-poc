@@ -41,7 +41,9 @@ export default function DoctorDashboardPage() {
   // The open patient comes from the URL; anything that isn't a number counts as none.
   const { visitId } = useParams()
   const selectedId = /^\d+$/.test(visitId ?? '') ? Number(visitId) : null
-  const [overrides, setOverrides] = useState({}) // optimistic status by visit id
+  // Optimistic 'done' by visit id: kept until the polled queue shows it (a poll that started
+  // before the PATCH can still bring the old status), removed at once if Done fails.
+  const [overrides, setOverrides] = useState({})
   const [doneError, setDoneError] = useState(null)
   const [markingId, setMarkingId] = useState(null) // the visit whose Done is in flight
 
@@ -51,20 +53,20 @@ export default function DoctorDashboardPage() {
     [visits, overrides]
   )
 
-  // Drop an override once the real data has caught up (status persisted).
-  useEffect(() => {
-    setOverrides((prev) => {
-      let changed = false
-      const next = { ...prev }
-      for (const v of visits) {
-        if (next[v.id] && v.status === next[v.id]) {
-          delete next[v.id]
-          changed = true
-        }
-      }
-      return changed ? next : prev
-    })
-  }, [visits])
+  // Drop an override once the real data has caught up (status persisted). Done while
+  // rendering, when a new list arrives (React's "adjust state on a prop change").
+  const [seenVisits, setSeenVisits] = useState(visits)
+  if (seenVisits !== visits) {
+    setSeenVisits(visits)
+    const caughtUp = visits.filter((v) => overrides[v.id] && v.status === overrides[v.id])
+    if (caughtUp.length) {
+      setOverrides((prev) => {
+        const next = { ...prev }
+        for (const v of caughtUp) delete next[v.id]
+        return next
+      })
+    }
+  }
 
   // Auto-select the first actionable patient only when nothing is selected yet
   // (never override the doctor's selection on a background poll — AC3). Not on a phone:
@@ -112,10 +114,10 @@ export default function DoctorDashboardPage() {
     />
   )
 
-  // After "Send for tests" the visit's status moved: reload its detail (quietly, so the
-  // whole pane doesn't flash back to "Loading patient…") and the queue.
+  // After "Send for tests" the visit's status moved: reload its detail (in place, the pane
+  // stays) and the queue.
   async function handleTestsChanged() {
-    await Promise.all([detail.refetch({ silent: true }), refetch()])
+    await Promise.all([detail.refetch(), refetch()])
   }
 
   // The queue rail previews the summary's display_text, so refresh it after a save. The save
@@ -158,7 +160,7 @@ export default function DoctorDashboardPage() {
     setOverrides((p) => ({ ...p, [id]: 'done' })) // optimistic
     try {
       await setVisitDone(id)
-      await Promise.all([refetch(), selected ? null : detail.refetch({ silent: true })])
+      await Promise.all([refetch(), selected ? null : detail.refetch()])
       // Advance to the next actionable patient in token order (on a phone, back to the queue)
       // — only if the doctor is still on this patient (never override a selection made
       // while Done was saving).
