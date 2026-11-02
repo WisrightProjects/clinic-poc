@@ -7,32 +7,45 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { getVisits } from '../utils/apiClient'
 
+// One empty list for "loading", the same on every render (a new [] each render is a new
+// value to anything that compares lists). Frozen: it is shared by every caller.
+const NO_VISITS = Object.freeze([])
+
 export function useVisitQueue(date, intervalMs = 5000) {
   // The list is stored with the day it belongs to, so a day that hasn't loaded yet is
-  // never shown another day's patients (and a slow reply for a day we left is dropped).
+  // never shown another day's patients.
   const [state, setState] = useState({ date: null, visits: [], error: null })
 
-  const currentDate = useRef(date)
+  // Numbers each load; only the latest one may set state. Drops a slow reply for a day we
+  // left, and an older poll finishing after a newer reload (e.g. the one after Done).
+  const seq = useRef(0)
+  const inFlight = useRef(false)
 
   const load = useCallback(async () => {
+    const n = ++seq.current
+    inFlight.current = true
     try {
       const data = await getVisits({ date })
-      if (currentDate.current !== date) return // the doctor has moved to another day
+      if (seq.current !== n) return
       setState({ date, visits: Array.isArray(data) ? data : [], error: null })
     } catch (e) {
-      if (currentDate.current !== date) return
+      if (seq.current !== n) return
       // keep the last good list of this day visible
       setState((s) => ({ date, visits: s.date === date ? s.visits : [], error: e }))
+    } finally {
+      if (seq.current === n) inFlight.current = false
     }
   }, [date])
 
   useEffect(() => {
-    currentDate.current = date
     load()
-    const id = setInterval(load, intervalMs)
+    // A poll is skipped while a load is still running, so slow replies don't pile up.
+    const id = setInterval(() => {
+      if (!inFlight.current) load()
+    }, intervalMs)
     return () => clearInterval(id) // stop polling on unmount (AC2)
-  }, [load, date, intervalMs])
+  }, [load, intervalMs])
 
   const isLoading = state.date !== date // first load of this day only
-  return { visits: isLoading ? [] : state.visits, isLoading, error: isLoading ? null : state.error, refetch: load }
+  return { visits: isLoading ? NO_VISITS : state.visits, isLoading, error: isLoading ? null : state.error, refetch: load }
 }

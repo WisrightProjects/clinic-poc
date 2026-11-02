@@ -41,8 +41,9 @@ export default function DoctorDashboardPage() {
   // The open patient comes from the URL; anything that isn't a number counts as none.
   const { visitId } = useParams()
   const selectedId = /^\d+$/.test(visitId ?? '') ? Number(visitId) : null
-  // Optimistic 'done' by visit id: kept until the polled queue shows it (a poll that started
-  // before the PATCH can still bring the old status), removed at once if Done fails.
+  // Optimistic 'done' by visit id, removed at once if Done fails. A successful one is kept:
+  // 'done' is final (statusEngine), so the server can only agree with it, and a poll that
+  // started before the PATCH can't bring the old status back.
   const [overrides, setOverrides] = useState({})
   const [doneError, setDoneError] = useState(null)
   const [markingId, setMarkingId] = useState(null) // the visit whose Done is in flight
@@ -52,21 +53,6 @@ export default function DoctorDashboardPage() {
     () => visits.map((v) => (overrides[v.id] ? { ...v, status: overrides[v.id] } : v)),
     [visits, overrides]
   )
-
-  // Drop an override once the real data has caught up (status persisted). Done while
-  // rendering, when a new list arrives (React's "adjust state on a prop change").
-  const [seenVisits, setSeenVisits] = useState(visits)
-  if (seenVisits !== visits) {
-    setSeenVisits(visits)
-    const caughtUp = visits.filter((v) => overrides[v.id] && v.status === overrides[v.id])
-    if (caughtUp.length) {
-      setOverrides((prev) => {
-        const next = { ...prev }
-        for (const v of caughtUp) delete next[v.id]
-        return next
-      })
-    }
-  }
 
   // Auto-select the first actionable patient only when nothing is selected yet
   // (never override the doctor's selection on a background poll — AC3). Not on a phone:
