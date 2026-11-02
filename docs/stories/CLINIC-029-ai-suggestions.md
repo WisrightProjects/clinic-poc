@@ -4,7 +4,7 @@
 **Epic:** Doctor Review (Phase 2)
 **Feature:** A short "AI suggestions — for doctor to confirm" block on the doctor card: what is worth checking before the consultation.
 **Priority:** P1 — client document Section 10 ("AI Suggestions – For Doctor to Confirm": "Clarify dizziness. Confirm medicine names and missed doses. Review recent BP and glucose readings.") and the client's sample ("AI Suggestions – Doctor to Review"). Final goal: "The AI should organise and highlight information, not invent diagnoses, prescribe treatment or replace the doctor's clinical judgement."
-**Status:** In development (`feature/clinic-029-ai-suggestions`). No migration, no APK.
+**Status:** Done — PR #52, tested in production. No migration, no APK.
 **Depends On:** CLINIC-028 (the doctor card).
 
 ---

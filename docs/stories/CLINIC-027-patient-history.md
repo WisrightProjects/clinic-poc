@@ -4,7 +4,7 @@
 **Epic:** Patient Record (Phase 2)
 **Feature:** Find a returning patient's earlier visits by mobile number and name: the doctor sees them, the attender can pick the patient at registration, and the AI summary says what changed.
 **Priority:** P1 — client document "Final Physician OPD Questionnaire": "For follow-up patients, retrieve previous history and focus on changes"; Section 9 "display previous answers and ask what has changed"; Section 10 "The doctor must be able to open … previous visits".
-**Status:** PR A done (PR #49, tested in production). PR B in development (`feature/clinic-027b-returning-patient`). No migration (uses the `(clinic_id, patient_mobile)` index from CLINIC-023). Mockup: `ClinicAI-027B-Returning-Patient-Mockup.html`.
+**Status:** Done — PR A (PR #49) and PR B (PR #50, APK v4), tested in production. No migration (uses the `(clinic_id, patient_mobile)` index from CLINIC-023). Mockup: `ClinicAI-027B-Returning-Patient-Mockup.html`.
 **Depends On:** CLINIC-023 (patient mobile on the visit). PR A: no APK. PR B: **new APK**.
 
 > Privacy: the mobile number is patient data. Never log it, never put it in a URL (the lookup is a POST body), never send it to the AI.

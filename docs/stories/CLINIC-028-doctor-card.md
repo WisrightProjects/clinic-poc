@@ -4,7 +4,7 @@
 **Epic:** Doctor Review (Phase 2)
 **Feature:** Show the doctor one short screen of blocks instead of a summary paragraph: patient and main problem, today's status, relevant history, vitals, attender checklist (and AI suggestions next, task 12).
 **Priority:** P1 — client document "Final Physician OPD Questionnaire", Section 10 "Doctor Smart Summary": "The doctor should see one short screen, not a long paragraph" … "The doctor must be able to open full answers, uploaded reports and previous visits."
-**Status:** In development (`feature/clinic-028-doctor-card`). No migration, **no APK** (backend + doctor web). Mockup: `ClinicAI-Doctor-Card-Mockup.html`.
+**Status:** Done — PR #51, tested in production. No migration, **no APK** (backend + doctor web). Mockup: `ClinicAI-Doctor-Card-Mockup.html`.
 **Depends On:** CLINIC-018 (report photos), CLINIC-021 (Q1 taps), CLINIC-024 (vitals), CLINIC-027 (previous visits, "Since last visit").
 
 ---

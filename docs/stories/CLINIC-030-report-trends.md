@@ -4,7 +4,7 @@
 **Epic:** Doctor Review (Phase 2)
 **Feature:** A "Trends" block on the doctor card: the same measurement across a returning patient's visits (e.g. HbA1c 8.2 → 7.6), so the doctor sees in seconds whether values went up or down without opening old visits.
 **Priority:** P1 — client task 10 (report trends). Final goal of the client document: "organise and highlight information, not invent diagnoses".
-**Status:** In development (`feature/clinic-030-report-trends`). No migration, no APK.
+**Status:** Done — PR #53 + fix PR #54 (HbA1c with the report flag), tested in production. No migration, no APK.
 **Depends On:** CLINIC-024 (vitals as fields), CLINIC-027 (same patient), CLINIC-028 (the doctor card), CLINIC-018 (report results in the summary).
 
 ---
