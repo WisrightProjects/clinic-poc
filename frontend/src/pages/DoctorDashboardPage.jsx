@@ -131,12 +131,14 @@ export default function DoctorDashboardPage() {
     navigate('/doctor', { replace: true })
   }
 
-  // The patient open right now, for handleDone to check after its await (the closure's
-  // selectedId is the one from when Done was tapped).
+  // The patient open right now and the queue on screen now, for handleDone to read after its
+  // awaits (the closure's selectedId and queue are the ones from when Done was tapped).
   const openIdRef = useRef(selectedId)
+  const queueRef = useRef(queue)
   useEffect(() => {
     openIdRef.current = selectedId
-  }, [selectedId])
+    queueRef.current = queue
+  }, [selectedId, queue])
 
   async function handleDone() {
     if (!canMarkDone || markingId) return
@@ -146,13 +148,16 @@ export default function DoctorDashboardPage() {
     setOverrides((p) => ({ ...p, [id]: 'done' })) // optimistic
     try {
       await setVisitDone(id)
-      await Promise.all([refetch(), selected ? null : detail.refetch()])
+      const [fresh] = await Promise.all([refetch(), selected ? null : detail.refetch()])
       // Advance to the next actionable patient in token order (on a phone, back to the queue)
       // — only if the doctor is still on this patient (never override a selection made
-      // while Done was saving).
+      // while Done was saving). Picked from the list just reloaded (a patient may have been
+      // marked done or sent for tests meanwhile), else the latest list on screen. No one left:
+      // stay on this patient, now Done (going to /doctor would just auto-open the first row).
       if (openIdRef.current === id) {
-        const next = queue.find((v) => v.id !== id && isActionable(v.status))
-        navigate(isPhone || !next ? '/doctor' : `/doctor/${next.id}`, { replace: true })
+        const next = (fresh ?? queueRef.current).find((v) => v.id !== id && isActionable(v.status))
+        if (isPhone) navigate('/doctor', { replace: true })
+        else if (next) navigate(`/doctor/${next.id}`, { replace: true })
       }
     } catch (e) {
       setOverrides((p) => {

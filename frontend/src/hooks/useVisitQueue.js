@@ -2,7 +2,8 @@
 // Fetches GET /api/visits?date= for the day being viewed (CLINIC-015) on mount and whenever
 // the day changes, then every intervalMs. Background polls update data WITHOUT flipping
 // isLoading (AC8) and keep the last good list on failure (AC9). Switching day shows a
-// loading state instead of the previous day's list. Output: { visits, isLoading, error, refetch }.
+// loading state instead of the previous day's list. Output: { visits, isLoading, error, refetch }
+// (refetch resolves to the fresh list, or undefined if it failed or was overtaken).
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { getVisits } from '../utils/apiClient'
@@ -27,7 +28,9 @@ export function useVisitQueue(date, intervalMs = 5000) {
     try {
       const data = await getVisits({ date })
       if (seq.current !== n) return
-      setState({ date, visits: Array.isArray(data) ? data : [], error: null })
+      const visits = Array.isArray(data) ? data : []
+      setState({ date, visits, error: null })
+      return visits // for a caller that needs the fresh list now (handleDone)
     } catch (e) {
       if (seq.current !== n) return
       // keep the last good list of this day visible

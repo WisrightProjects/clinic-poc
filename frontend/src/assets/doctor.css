@@ -156,7 +156,7 @@ html, body, #root {
 .rail-tokenday { display: block; margin-top: 2px; font-size: 12px; font-weight: 700; color: var(--muted); }
 .rail-prog { display: flex; align-items: center; gap: 8px; margin-top: 5px; }
 .rail-prog-track { width: 62px; height: 5px; border-radius: 3px; background: #dde4ec; overflow: hidden; flex-shrink: 0; }
-.rail-prog-fill { height: 100%; border-radius: 3px; background: var(--teal); }
+.rail-prog-fill { display: block; height: 100%; border-radius: 3px; background: var(--teal); }
 .rail-prog-num { font-size: 12px; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; letter-spacing: 0.2px; }
 .rail-prog[data-state="idle"] .rail-prog-fill { background: #b8c2d0; }
 .rail-prog[data-state="live"] .rail-prog-num  { color: var(--teal); }
